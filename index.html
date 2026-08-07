@@ -223,14 +223,6 @@
     .form-group label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.9em; color: var(--primary); }
     .form-group input, .form-group select { width: 100%; padding: 11px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95em; }
     
-    .password-toggle-icon {
-      position: absolute;
-      right: 12px;
-      top: 38px;
-      cursor: pointer;
-      color: #666;
-    }
-
     .water-badge {
       display: inline-block;
       padding: 4px 10px;
@@ -356,7 +348,6 @@
       border: 3px solid var(--primary);
       overflow: hidden;
     }
-    .dev-avatar img { width: 100%; height: 100%; object-fit: cover; }
     .dev-name { font-size: 1.2em; font-weight: bold; color: var(--primary); }
     .dev-role { font-size: 0.85em; color: #666; margin-bottom: 8px; }
     .dev-phone { font-size: 0.9em; font-weight: 600; color: var(--secondary); }
@@ -503,14 +494,14 @@
                 <input type="email" id="agent-email-input" placeholder="e.g. karanamharish93@gmail.com" required>
               </div>
 
-              <!-- Gmail OTP Block (Unhides directly under the Gmail field) -->
+              <!-- Gmail OTP Block -->
               <div id="agent-login-otp-block" class="form-group hidden" style="background: var(--accent); padding: 12px; border-radius: 8px; border: 1px solid var(--secondary);">
                 <label style="color: var(--primary);"><i class="fa-solid fa-key"></i> Enter Received Gmail OTP *</label>
                 <input type="text" id="agent-login-otp" placeholder="Enter 6-digit OTP sent to Gmail" pattern="[0-9]{6}">
                 <small style="color: var(--primary); margin-top: 5px; display: block;"><i class="fa-solid fa-paper-plane"></i> OTP dispatched to your inbox via backend SMTP.</small>
               </div>
 
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+              <div style="display:flex; justify-space-between; align-items:center; margin-bottom:15px;">
                 <button type="button" class="btn btn-gold btn-sm" id="btn-send-agent-otp" onclick="sendAgentLoginOtp()"><i class="fa-solid fa-paper-plane"></i> Send Gmail OTP</button>
                 <a href="#" onclick="toggleAgentResetPass(true)" style="color:var(--primary); font-size:0.85em; font-weight:bold; text-decoration:none;">Reset Password?</a>
               </div>
@@ -1138,7 +1129,7 @@
   </footer>
 
   <script>
-    const API_BASE_URL = "https://dairy-vision-backend.onrender.com/api"; 
+    const API_BASE_URL = "https://all-labs.onrender.com/api"; 
 
     const DairyVisionAPI = {
       async queryGmailOtp(email, purpose = 'VERIFY') {
@@ -1150,7 +1141,7 @@
           });
           return await res.json();
         } catch(e) {
-          console.warn('Backend API fallback:', e);
+          console.warn('Backend API fallback triggered:', e);
           return { success: true };
         }
       },
@@ -1164,7 +1155,7 @@
           });
           return await res.json();
         } catch(e) {
-          console.warn('Backend API fallback:', e);
+          console.warn('Backend API fallback triggered:', e);
           return { success: true };
         }
       },
@@ -1234,17 +1225,6 @@
       showAlert(`CAN Number updated to ${val}`);
     }
 
-    function togglePasswordVisibility(inputId, iconEl) {
-      const input = document.getElementById(inputId);
-      if (input.type === "password") {
-        input.type = "text";
-        iconEl.classList.replace("fa-eye", "fa-eye-slash");
-      } else {
-        input.type = "password";
-        iconEl.classList.replace("fa-eye-slash", "fa-eye");
-      }
-    }
-
     function autoFillIfscCode(bankName) {
       const ifscInput = document.getElementById('farmer-ifsc');
       if(bankName.includes('SBI')) ifscInput.value = "SBIN0001234";
@@ -1260,6 +1240,7 @@
 
     function addLog(msg) {
       const container = document.getElementById('status-log-container');
+      if(!container) return;
       const time = new Date().toLocaleTimeString();
       container.innerHTML = `<div>[${time}] ${msg}</div>` + container.innerHTML;
     }
@@ -1293,7 +1274,6 @@
       showAlert(`Transmitting Login OTP via Backend SMTP to ${email}...`, 'info');
       await DairyVisionAPI.queryGmailOtp(email, 'AGENT_LOGIN');
       
-      // Unhide OTP block right under the Gmail input field
       const otpBlock = document.getElementById('agent-login-otp-block');
       otpBlock.classList.remove('hidden');
       document.getElementById('agent-login-otp').focus();
@@ -1425,6 +1405,7 @@
       renderFarmers();
       populateDropdowns();
       updateDashboardMetrics();
+      addLog(`New Farmer Registered: ${newFarmer.name} (${newFarmer.id})`);
       showAlert(`Farmer ${newFarmer.name} registered and verified via Gmail!`);
 
       document.getElementById('farmer-verification-form').reset();
@@ -1433,7 +1414,6 @@
       document.getElementById('send-otp-btn').classList.remove('hidden');
     });
 
-    // AGENT LOGIN HANDLER WITH MANDATORY BACKEND SERVER OTP VERIFICATION
     document.getElementById('agent-login-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const email = document.getElementById('agent-email-input').value.trim();
@@ -1451,7 +1431,6 @@
 
       showAlert('Verifying OTP with backend server...', 'info');
       
-      // Strict Backend Verification Call
       const verifyRes = await DairyVisionAPI.verifyGmailOtp(email, otp);
       if (verifyRes.success === false) {
         showAlert('Invalid or expired OTP! Authentication failed.', 'danger');
@@ -1466,6 +1445,7 @@
       document.getElementById('active-user-label').innerText = `Agent (${currentAgentEmail})`;
 
       initAppView();
+      addLog(`Agent ${email} authenticated successfully.`);
       showAlert('Agent Authenticated Successfully via Backend Server!');
     });
 
@@ -1660,6 +1640,7 @@
       
       renderCollections();
       updateDashboardMetrics();
+      addLog(`Milk Collection Logged: ${qty}L for ${farmer ? farmer.name : farmerId}`);
       showAlert(`Record synced to cloud server for ${farmer ? farmer.name : ''}`);
 
       document.getElementById('milk-form').reset();
@@ -1683,11 +1664,12 @@
 
     function renderFarmers() {
       const tbody = document.getElementById('farmer-table-body');
+      if(!tbody) return;
       if(DB.farmers.length === 0) {
         tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No farmers registered yet.</td></tr>`;
         return;
       }
-      tbody.innerHTML = DB.farmers.map((f, i) => `
+      tbody.innerHTML = DB.farmers.map((f) => `
         <tr>
           <td><strong>${f.id}</strong></td>
           <td>${f.name}</td>
@@ -1730,6 +1712,11 @@
 
     function renderCollections() {
       const tbody = document.getElementById('collection-table-body');
+      if(!tbody) return;
+      if(DB.collections.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#888;">No milk collection entries recorded.</td></tr>`;
+        return;
+      }
       tbody.innerHTML = DB.collections.map(c => `
         <tr>
           <td>${c.time}<br><small style="color:#777;">${c.date}</small></td>
@@ -1761,20 +1748,29 @@
     }
 
     function updateDashboardMetrics() {
-      document.getElementById('dash-farmer-count').innerText = DB.farmers.length;
-      const totalQty = DB.collections.reduce((acc, curr) => acc + curr.qty, 0);
-      document.getElementById('dash-milk-total').innerText = `${totalQty.toFixed(1)} L`;
+      const countEl = document.getElementById('dash-farmer-count');
+      if (countEl) countEl.innerText = DB.farmers.length;
       
+      const totalQty = DB.collections.reduce((acc, curr) => acc + curr.qty, 0);
+      const totalEl = document.getElementById('dash-milk-total');
+      if (totalEl) totalEl.innerText = `${totalQty.toFixed(1)} L`;
+      
+      const waterAlertsCount = DB.collections.filter(c => c.waterPct > 0).length;
+      const alertsEl = document.getElementById('dash-water-alerts');
+      if (alertsEl) alertsEl.innerText = waterAlertsCount;
+
       const emptyBanner = document.getElementById('empty-dash-banner');
       const activeCharts = document.getElementById('active-dash-charts');
 
-      if (DB.farmers.length === 0 || DB.collections.length === 0) {
-        emptyBanner.classList.remove('hidden');
-        activeCharts.classList.add('hidden');
-      } else {
-        emptyBanner.classList.add('hidden');
-        activeCharts.classList.remove('hidden');
-        renderDashboardCharts();
+      if (emptyBanner && activeCharts) {
+        if (DB.farmers.length === 0 || DB.collections.length === 0) {
+          emptyBanner.classList.remove('hidden');
+          activeCharts.classList.add('hidden');
+        } else {
+          emptyBanner.classList.add('hidden');
+          activeCharts.classList.remove('hidden');
+          renderDashboardCharts();
+        }
       }
     }
 
@@ -2135,6 +2131,7 @@
       }
 
       const imgTbody = document.getElementById('farmer-image-format-tbody');
+      if(!imgTbody) return;
       if(records.length === 0) {
         imgTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888; padding:20px;">No collection records match selected date range.</td></tr>`;
         return;
