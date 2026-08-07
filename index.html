@@ -1,0 +1,2215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dairy Vision - Global Cloud Collection System</title>
+  
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Chart.js for Analytics -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+  <style>
+    :root {
+      --primary: #1b4332;
+      --secondary: #2d6a4f;
+      --accent: #d8f3dc;
+      --teal-brand: #206a78;
+      --gold: #ffb703;
+      --danger: #e63946;
+      --warning: #fb8500;
+      --bg: #f4f7f6;
+      --sidebar-width: 270px;
+      --text: #2b2b2b;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
+
+    .hidden { display: none !important; }
+    
+    /* UI Buttons */
+    .btn {
+      background: var(--primary); color: white; border: none;
+      padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600;
+      display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.2s;
+      font-size: 0.9em;
+    }
+    .btn:hover { background: var(--secondary); transform: translateY(-1px); }
+    .btn-gold { background: var(--gold); color: #000; }
+    .btn-gold:hover { background: #e0a100; }
+    .btn-success { background: #40916c; color: white; }
+    .btn-success:hover { background: #2d6a4f; }
+    .btn-danger { background: var(--danger); color: white; }
+    .btn-danger:hover { background: #c1121f; }
+    .btn-sm { padding: 5px 10px; font-size: 0.8em; }
+    .btn-outline { background: transparent; border: 1px solid var(--primary); color: var(--primary); }
+    .btn-outline:hover { background: var(--primary); color: white; }
+
+    .card { background: white; padding: 22px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
+
+    /* Header & Branding */
+    header {
+      background: var(--primary);
+      color: white;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      z-index: 10;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.15);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .header-branding { display: flex; align-items: center; gap: 14px; }
+    
+    .brand-logo-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(255, 255, 255, 0.12);
+      padding: 6px 16px;
+      border-radius: 50px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+    }
+    
+    .brand-logo-img {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      background: #ffffff;
+      padding: 2px;
+      box-shadow: 0 0 8px rgba(0,0,0,0.2);
+      object-fit: contain;
+    }
+
+    .brand-logo-img-lg {
+      width: 110px;
+      height: 110px;
+      border-radius: 50%;
+      background: #ffffff;
+      padding: 4px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+      margin: 0 auto 12px;
+      display: block;
+    }
+
+    .brand-title { font-size: 1.5em; font-weight: 800; letter-spacing: 0.5px; color: #ffffff; }
+
+    .server-status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(0, 255, 204, 0.2);
+      color: #00ffcc;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.8em;
+      font-weight: bold;
+      border: 1px solid #00ffcc;
+    }
+
+    .can-edit-box {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(255, 255, 255, 0.15);
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .can-edit-box input {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.5);
+      color: var(--gold);
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 3px;
+      width: 150px;
+    }
+    .header-controls { display: flex; align-items: center; gap: 15px; }
+    .lang-selector {
+      background: var(--secondary);
+      color: white;
+      border: 1px solid var(--gold);
+      padding: 6px 10px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .main-wrapper { display: flex; flex: 1; }
+    
+    /* Left Sidebar */
+    aside {
+      width: var(--sidebar-width);
+      background: var(--primary);
+      color: white;
+      padding-top: 20px;
+      display: flex;
+      flex-direction: column;
+      flex-shrink: 0;
+    }
+    aside button {
+      background: transparent;
+      border: none;
+      color: #b7e4c7;
+      padding: 15px 20px;
+      text-align: left;
+      cursor: pointer;
+      font-size: 0.95em;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: 0.2s;
+    }
+    aside button:hover, aside button.active {
+      background: var(--secondary);
+      color: white;
+      border-left: 5px solid var(--gold);
+      font-weight: bold;
+    }
+
+    .content-area { flex: 1; padding: 25px; max-width: calc(100vw - var(--sidebar-width)); overflow-x: hidden; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
+
+    /* Auth Styling */
+    .hero-auth-bg {
+      min-height: calc(100vh - 80px);
+      background: linear-gradient(rgba(27, 67, 50, 0.88), rgba(45, 106, 79, 0.9)), 
+                  url('https://images.unsplash.com/photo-1500595046743-cd271d694d30?q=80&w=1600&auto=format&fit=crop') center/cover no-repeat;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .auth-card-hero {
+      background: rgba(255, 255, 255, 0.97);
+      backdrop-filter: blur(10px);
+      max-width: 500px;
+      width: 100%;
+      padding: 35px;
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+      border: 1px solid rgba(255,255,255,0.4);
+    }
+    .auth-card-hero h2 { color: var(--primary); margin-bottom: 2px; font-size: 1.8em; text-align: center; }
+    .auth-subtitle { text-align: center; color: #555; margin-bottom: 20px; font-size: 0.95em; }
+
+    .role-toggle {
+      display: flex;
+      background: #e9ecef;
+      border-radius: 8px;
+      padding: 4px;
+      margin-bottom: 20px;
+    }
+    .role-btn {
+      flex: 1;
+      padding: 8px;
+      border: none;
+      background: transparent;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      color: #555;
+      transition: all 0.2s;
+    }
+    .role-btn.active {
+      background: var(--primary);
+      color: white;
+    }
+
+    .form-group { margin-bottom: 18px; position: relative; }
+    .form-group label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.9em; color: var(--primary); }
+    .form-group input, .form-group select { width: 100%; padding: 11px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95em; }
+    
+    .password-toggle-icon {
+      position: absolute;
+      right: 12px;
+      top: 38px;
+      cursor: pointer;
+      color: #666;
+    }
+
+    .water-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: 20px;
+      font-size: 0.82em;
+      font-weight: bold;
+    }
+    .water-pure { background: #d8f3dc; color: #1b4332; }
+    .water-warning { background: #ffe3e3; color: #c1121f; border: 1px solid #e63946; }
+
+    /* Excel-Style Grid Table Styling */
+    .excel-sheet-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      background: #ffffff;
+      font-family: 'Consolas', 'Segoe UI', monospace;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .excel-sheet-table th {
+      background-color: #1b4332;
+      color: #ffffff;
+      padding: 10px 12px;
+      border: 1px solid #132a13;
+      font-weight: 700;
+      font-size: 0.88em;
+      text-transform: uppercase;
+    }
+    .excel-sheet-table td {
+      border: 1px solid #d0d7de;
+      padding: 9px 12px;
+      font-size: 0.88em;
+      color: #24292f;
+    }
+    .excel-sheet-table tr:nth-child(even) { background-color: #f6f8fa; }
+    .excel-sheet-table tr:hover { background-color: #eaf5ea; }
+
+    /* Specific Farmer Report Card Styling */
+    .farmer-report-image-view {
+      background: #f2f2f2;
+      padding: 20px;
+      border-radius: 12px;
+      font-family: Arial, sans-serif;
+      max-width: 520px;
+      margin: 15px auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .farmer-report-image-view .year-select-header {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    .farmer-report-image-view select {
+      background: #ffffff;
+      border: 1px solid #888;
+      border-radius: 3px;
+      padding: 4px 15px;
+      font-size: 1.1em;
+      color: #444;
+    }
+    .farmer-report-grid {
+      width: 100%;
+      border-collapse: collapse;
+      background: transparent;
+    }
+    .farmer-report-grid th {
+      background: transparent;
+      color: #00b0f0;
+      font-size: 1.15em;
+      font-weight: bold;
+      border: none;
+      padding: 8px;
+      text-align: right;
+    }
+    .farmer-report-grid th:first-child { text-align: left; }
+    .farmer-report-grid td {
+      border: none;
+      border-top: 1px solid #e0e0e0;
+      padding: 8px;
+      font-size: 1.1em;
+      color: #444;
+      text-align: right;
+    }
+    .farmer-report-grid td:first-child {
+      color: #00b0f0;
+      font-weight: bold;
+      text-align: left;
+    }
+    .farmer-report-grid .month-header-row td {
+      color: #00b0f0;
+      font-weight: bold;
+      border-top: none;
+      padding-top: 12px;
+      padding-bottom: 2px;
+      text-align: left;
+    }
+
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    th, td { border: 1px solid #e0e0e0; padding: 12px; text-align: left; font-size: 0.9em; }
+    th { background-color: var(--primary); color: white; }
+    tr:nth-child(even) { background-color: #f8fdf9; }
+
+    .dev-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      border-top: 4px solid var(--gold);
+      transition: transform 0.2s;
+    }
+    .dev-card:hover { transform: translateY(-4px); }
+    .dev-avatar {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 2em;
+      margin: 0 auto 12px;
+      border: 3px solid var(--primary);
+      overflow: hidden;
+    }
+    .dev-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .dev-name { font-size: 1.2em; font-weight: bold; color: var(--primary); }
+    .dev-role { font-size: 0.85em; color: #666; margin-bottom: 8px; }
+    .dev-phone { font-size: 0.9em; font-weight: 600; color: var(--secondary); }
+
+    .sheet-view {
+      background: #fff;
+      padding: 40px;
+      border-radius: 6px;
+      line-height: 1.8;
+      box-shadow: 0 0 12px rgba(0,0,0,0.06);
+      margin-top: 20px;
+    }
+    .sheet-header { border-bottom: 2px solid #1b4332; padding-bottom: 15px; margin-bottom: 25px; }
+
+    .alert { padding: 12px; border-radius: 6px; margin-bottom: 18px; color: white; text-align: center; font-weight: 500; }
+    .alert-success { background-color: #40916c; }
+    .alert-info { background-color: #2196f3; }
+    .alert-danger { background-color: #e63946; }
+
+    .status-log { max-height: 160px; overflow-y: auto; background: #132a13; color: #95d5b2; padding: 14px; border-radius: 6px; font-family: monospace; font-size: 0.85em; }
+    
+    footer { text-align: center; padding: 16px; background: #d8f3dc; color: #1b4332; font-size: 0.9em; margin-top: auto; font-weight: 500; }
+
+    /* Strict Print CSS */
+    @media print {
+      body * {
+        visibility: hidden !important;
+      }
+      #sheet-output-card, #sheet-output-card *, 
+      .farmer-report-image-view, .farmer-report-image-view * {
+        visibility: visible !important;
+      }
+      #sheet-output-card, .farmer-report-image-view {
+        position: absolute !important;
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        margin: 0 !important;
+        padding: 20px !important;
+        box-shadow: none !important;
+        border: none !important;
+      }
+      button, .btn, .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Reusable SVG Logo -->
+  <svg style="display:none;">
+    <symbol id="dairy-vision-logo-svg" viewBox="0 0 300 300">
+      <circle cx="150" cy="150" r="145" fill="#1b4332"/>
+      <circle cx="150" cy="150" r="135" fill="none" stroke="#d8f3dc" stroke-width="4"/>
+      <circle cx="150" cy="150" r="122" fill="#206a78"/>
+      <path id="text-path-top" d="M 45 150 A 105 105 0 0 1 255 150" fill="none"/>
+      <text font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="28" fill="#ffffff" letter-spacing="3">
+        <textPath href="#text-path-top" startOffset="50%" text-anchor="middle">DAIRY VISION</textPath>
+      </text>
+      <path id="text-path-bottom" d="M 240 160 A 95 95 0 0 1 60 160" fill="none"/>
+      <text font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="13" fill="#d8f3dc" letter-spacing="2">
+        <textPath href="#text-path-bottom" startOffset="50%" text-anchor="middle">PURE QUALITY. FUTURE FOCUS.</textPath>
+      </text>
+      <circle cx="150" cy="145" r="68" fill="#e2f6f8"/>
+      <circle cx="178" cy="125" r="16" fill="#ffb703"/>
+      <path d="M 108 148 C 128 120, 172 120, 192 148 C 172 176, 128 176, 108 148 Z" fill="#ffffff" stroke="#206a78" stroke-width="3"/>
+      <circle cx="150" cy="148" r="14" fill="#206a78"/>
+      <circle cx="153" cy="145" r="5" fill="#ffffff"/>
+      <path d="M 120 135 C 115 110, 135 90, 155 90 C 170 90, 180 100, 180 112 C 160 128, 142 135, 120 135 Z" fill="#206a78"/>
+    </symbol>
+  </svg>
+
+  <!-- Header -->
+  <header>
+    <div class="header-branding">
+      <div class="brand-logo-container">
+        <svg class="brand-logo-img"><use href="#dairy-vision-logo-svg"/></svg>
+        <span class="brand-title">Dairy Vision</span>
+      </div>
+      <span class="server-status-badge"><i class="fa-solid fa-globe"></i> GMAIL SMTP SERVER CONNECTED</span>
+      <small style="margin-left: 10px; color: var(--accent);">
+        Palamaner Center, AP | 
+        <span class="can-edit-box">
+          <strong>CAN:</strong> 
+          <input type="text" id="agent-can-input" value="CAN-PLM-2026-01" onchange="updateCanNumber(this.value)">
+        </span>
+      </small>
+    </div>
+
+    <div class="header-controls">
+      <select id="lang-select" class="lang-selector" onchange="changeLanguage(this.value)">
+        <option value="en">English</option>
+        <option value="te">తెలుగు (Telugu)</option>
+        <option value="hi">हिंदी (Hindi)</option>
+      </select>
+
+      <div id="user-status" class="hidden">
+        <span id="active-user-label" style="font-weight: 600; color: var(--gold);">Agent</span> | 
+        <button onclick="logout()" style="background:none; border:none; color:white; cursor:pointer; font-weight:bold; margin-left:8px;">
+          <i class="fa-solid fa-right-from-bracket"></i> <span data-i18n="logout">Logout</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-wrapper">
+    <!-- Left Sidebar -->
+    <aside id="sidebar" class="hidden">
+      <button class="nav-btn active" onclick="switchTab('dashboard')"><i class="fa-solid fa-tachometer-alt"></i> <span data-i18n="nav_dashboard">Dashboard & Analytics</span></button>
+      <button class="nav-btn" onclick="switchTab('farmers')"><i class="fa-solid fa-file-excel"></i> Farmers Directory Sheet</button>
+      <button class="nav-btn" onclick="switchTab('collection')"><i class="fa-solid fa-fill-drip"></i> <span data-i18n="nav_collection">Milk Entry & Manage</span></button>
+      <button class="nav-btn" onclick="switchTab('hardware')"><i class="fa-solid fa-microchip"></i> Hardware Ports & Devices</button>
+      <button class="nav-btn" onclick="switchTab('deduction')"><i class="fa-solid fa-minus-circle"></i> Date Range Deductions</button>
+      <button class="nav-btn" onclick="switchTab('bookings')"><i class="fa-solid fa-box-open"></i> Farmer Requirements & Orders</button>
+      <button class="nav-btn" onclick="switchTab('developers')"><i class="fa-solid fa-laptop-code"></i> Developer Profiles</button>
+      <button class="nav-btn" onclick="switchTab('reports')"><i class="fa-solid fa-chart-line"></i> <span data-i18n="nav_reports">Clean Sheets & Print</span></button>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="content-area">
+      <div id="notification" class="alert hidden"></div>
+
+      <!-- 1. AUTHENTICATION SECTION -->
+      <div id="auth-section">
+        <div class="hero-auth-bg">
+          <div id="login-card" class="auth-card-hero">
+            <div style="text-align: center; margin-bottom: 15px;">
+              <svg class="brand-logo-img-lg"><use href="#dairy-vision-logo-svg"/></svg>
+              <h2>Dairy Vision</h2>
+              <p class="auth-subtitle">Global Server Connected | Palamaner Station, AP</p>
+            </div>
+            
+            <!-- Dual Portal Toggle -->
+            <div class="role-toggle">
+              <button class="role-btn active" id="btn-role-agent" onclick="switchLoginRole('agent')"><i class="fa-solid fa-user-gear"></i> Agent Login</button>
+              <button class="role-btn" id="btn-role-farmer" onclick="switchLoginRole('farmer')"><i class="fa-solid fa-tractor"></i> Farmer Portal</button>
+            </div>
+
+            <!-- Agent Login Form -->
+            <form id="agent-login-form">
+              <div class="form-group">
+                <label><i class="fa-solid fa-envelope"></i> Enter Agent Gmail Address *</label>
+                <input type="email" id="agent-email-input" placeholder="e.g. karanamharish93@gmail.com" required>
+              </div>
+
+              <!-- Gmail OTP Block (Unhides directly under the Gmail field) -->
+              <div id="agent-login-otp-block" class="form-group hidden" style="background: var(--accent); padding: 12px; border-radius: 8px; border: 1px solid var(--secondary);">
+                <label style="color: var(--primary);"><i class="fa-solid fa-key"></i> Enter Received Gmail OTP *</label>
+                <input type="text" id="agent-login-otp" placeholder="Enter 6-digit OTP sent to Gmail" pattern="[0-9]{6}">
+                <small style="color: var(--primary); margin-top: 5px; display: block;"><i class="fa-solid fa-paper-plane"></i> OTP dispatched to your inbox via backend SMTP.</small>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <button type="button" class="btn btn-gold btn-sm" id="btn-send-agent-otp" onclick="sendAgentLoginOtp()"><i class="fa-solid fa-paper-plane"></i> Send Gmail OTP</button>
+                <a href="#" onclick="toggleAgentResetPass(true)" style="color:var(--primary); font-size:0.85em; font-weight:bold; text-decoration:none;">Reset Password?</a>
+              </div>
+
+              <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px;"><i class="fa-solid fa-globe"></i> Connect & Verify Login</button>
+            </form>
+
+            <!-- Agent Reset Password Form -->
+            <form id="agent-reset-form" class="hidden">
+              <h3 style="color:var(--primary); text-align:center; margin-bottom:12px;"><i class="fa-solid fa-key"></i> Reset Agent Password</h3>
+              <div class="form-group">
+                <label>Agent Gmail Address</label>
+                <input type="email" id="reset-agent-email" placeholder="Enter agent gmail" required>
+              </div>
+
+              <div id="reset-otp-block" class="form-group hidden">
+                <label>Enter 6-Digit Gmail OTP</label>
+                <input type="text" id="reset-agent-otp" placeholder="Enter received OTP">
+              </div>
+
+              <div id="reset-new-pass-block" class="form-group hidden">
+                <label>Enter New Password</label>
+                <input type="password" id="reset-new-password" placeholder="Enter new password">
+              </div>
+
+              <div style="display:flex; gap:10px;">
+                <button type="button" id="btn-send-reset-otp" class="btn btn-gold btn-sm" onclick="sendResetOtp()"><i class="fa-solid fa-paper-plane"></i> Send Verification OTP</button>
+                <button type="submit" id="btn-save-reset-pass" class="btn btn-success btn-sm hidden"><i class="fa-solid fa-save"></i> Save New Password</button>
+              </div>
+
+              <p style="text-align:center; margin-top:12px;">
+                <a href="#" onclick="toggleAgentResetPass(false)" style="color:#666; font-size:0.85em;">Back to Agent Login</a>
+              </p>
+            </form>
+
+            <!-- Farmer Login Form -->
+            <form id="farmer-login-form" class="hidden">
+              <div class="form-group">
+                <label><i class="fa-solid fa-envelope"></i> Registered Farmer Gmail Address *</label>
+                <input type="email" id="farmer-login-email" placeholder="Enter registered Gmail (e.g. farmer@gmail.com)" required>
+              </div>
+
+              <div id="farmer-login-otp-block" class="form-group hidden">
+                <label><i class="fa-solid fa-key"></i> Enter Gmail OTP *</label>
+                <input type="text" id="farmer-login-otp" placeholder="Enter 6-digit OTP received in Gmail" pattern="[0-9]{6}">
+              </div>
+
+              <button type="button" id="btn-send-farmer-otp" class="btn btn-gold" style="width: 100%; margin-bottom: 10px;" onclick="sendFarmerLoginOtp()"><i class="fa-solid fa-paper-plane"></i> Send Login OTP to Gmail</button>
+              <button type="submit" id="btn-farmer-login-submit" class="btn btn-success hidden" style="width: 100%; padding: 12px;"><i class="fa-solid fa-cloud"></i> Access Farmer Portal</button>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. AGENT DASHBOARD SECTION -->
+      <div id="app-section" class="hidden">
+        
+        <!-- Tab 1: Dashboard Overview -->
+        <div id="tab-dashboard" class="tab-content">
+          <div class="grid">
+            <div class="card" style="border-left: 5px solid var(--primary);">
+              <h4>Registered Farmers</h4>
+              <h2 id="dash-farmer-count" style="color: var(--primary); margin-top: 8px;">0</h2>
+            </div>
+            <div class="card" style="border-left: 5px solid var(--gold);">
+              <h4>Today's Total Milk (L)</h4>
+              <h2 id="dash-milk-total" style="color: #b58302; margin-top: 8px;">0.0 L</h2>
+            </div>
+            <div class="card" style="border-left: 5px solid var(--danger);">
+              <h4>Water Adulteration Alerts</h4>
+              <h2 id="dash-water-alerts" style="color: var(--danger); margin-top: 8px;">0</h2>
+            </div>
+          </div>
+
+          <!-- Empty State -->
+          <div id="empty-dash-banner" class="card" style="text-align: center; padding: 40px; background: #fdfbf7; border: 2px dashed #ffb703;">
+            <i class="fa-solid fa-cloud-arrow-up" style="font-size: 3em; color: var(--gold); margin-bottom: 12px;"></i>
+            <h3 style="color: var(--primary);">Global Cloud Storage Ready</h3>
+            <p style="color: #666; margin-top: 6px; max-width: 500px; margin-left: auto; margin-right: auto;">
+              No records found on central server. Perform a farmer registration and record your first milk collection.
+            </p>
+            <button class="btn btn-gold" style="margin-top: 15px;" onclick="switchTab('farmers')"><i class="fa-solid fa-user-plus"></i> Register First Farmer</button>
+          </div>
+
+          <!-- Active Analytics Display -->
+          <div id="active-dash-charts" class="hidden">
+            <div class="card">
+              <h3><i class="fa-solid fa-bolt"></i> Dairy Vision Server Activity Console</h3>
+              <div class="status-log" id="status-log-container">
+                <div>[SERVER ONLINE] Connected to Global Cloud Backend API...</div>
+              </div>
+            </div>
+
+            <div class="grid" style="margin-top: 15px;">
+              <div class="card">
+                <h3><i class="fa-solid fa-chart-line"></i> Daily Volume Trends</h3>
+                <canvas id="milkTrendChart" style="max-height: 220px; margin-top: 10px;"></canvas>
+              </div>
+              <div class="card">
+                <h3><i class="fa-solid fa-droplet"></i> Milk Quality Breakdown</h3>
+                <canvas id="milkQualityChart" style="max-height: 220px; margin-top: 10px;"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Farmers Profile & Excel Grid Sheet -->
+        <div id="tab-farmers" class="tab-content hidden">
+          <div class="card">
+            <h3><i class="fa-solid fa-user-plus"></i> Register New Farmer (Gmail OTP Verification)</h3>
+            <form id="farmer-verification-form">
+              <div class="grid">
+                <div class="form-group">
+                  <label>Full Name *</label>
+                  <input type="text" id="farmer-name" placeholder="e.g. K. Venkat" required>
+                </div>
+                <div class="form-group">
+                  <label>Mobile Number *</label>
+                  <input type="tel" id="farmer-mobile" placeholder="10-digit mobile" required pattern="[0-9]{10}">
+                </div>
+                <div class="form-group">
+                  <label>Gmail / Email Address (OTP will be sent here) *</label>
+                  <input type="email" id="farmer-email" placeholder="e.g. farmer@gmail.com" required>
+                </div>
+                <div class="form-group">
+                  <label>Village Name</label>
+                  <input type="text" id="farmer-village" value="Palamaner Village">
+                </div>
+                <div class="form-group">
+                  <label>Aadhaar Number *</label>
+                  <input type="text" id="farmer-aadhaar" placeholder="12-digit Aadhaar" required pattern="[0-9]{12}">
+                </div>
+
+                <!-- Bank Selection Dropdown -->
+                <div class="form-group">
+                  <label>Select Respective Bank Name *</label>
+                  <select id="farmer-bank-name" onchange="autoFillIfscCode(this.value)" required>
+                    <option value="">-- Select Bank --</option>
+                    <option value="State Bank of India (SBI)">State Bank of India (SBI)</option>
+                    <option value="Union Bank of India (Andhra Bank)">Union Bank of India (Andhra Bank)</option>
+                    <option value="HDFC Bank">HDFC Bank</option>
+                    <option value="ICICI Bank">ICICI Bank</option>
+                    <option value="Canara Bank">Canara Bank</option>
+                    <option value="Indian Bank">Indian Bank</option>
+                    <option value="Bank of Baroda">Bank of Baroda</option>
+                    <option value="Punjab National Bank">Punjab National Bank</option>
+                    <option value="Other Regional Cooperative Bank">Other Regional Cooperative Bank</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>Bank Account Number *</label>
+                  <input type="text" id="farmer-account" required placeholder="Account number">
+                </div>
+
+                <div class="form-group">
+                  <label>Bank IFSC Code *</label>
+                  <input type="text" id="farmer-ifsc" required placeholder="e.g. SBIN0001234" value="SBIN0001234">
+                </div>
+              </div>
+
+              <!-- Gmail OTP Verification Block -->
+              <div id="aadhaar-otp-block" class="grid hidden" style="background: var(--accent); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label style="color: var(--primary);">Enter 6-Digit Gmail OTP *</label>
+                  <input type="text" id="farmer-aadhaar-otp" placeholder="Enter OTP received in Gmail inbox" pattern="[0-9]{6}">
+                </div>
+                <div style="display:flex; align-items:flex-end;">
+                  <p style="font-size:0.85em; color:var(--primary); font-weight:600;"><i class="fa-solid fa-envelope-circle-check"></i> Verification code sent! Please check your Gmail inbox.</p>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 10px;">
+                <button type="button" id="send-otp-btn" class="btn btn-gold" onclick="verifyGmailOtp()"><i class="fa-solid fa-envelope"></i> Send Gmail Verification OTP</button>
+                <button type="submit" id="complete-reg-btn" class="btn btn-success hidden"><i class="fa-solid fa-cloud-arrow-up"></i> Confirm OTP & Save Farmer</button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Farmers Directory Spreadsheet View -->
+          <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+              <h3><i class="fa-solid fa-file-excel" style="color: #217346;"></i> Registered Farmers Profile Directory (Excel View)</h3>
+              <button class="btn btn-success btn-sm" onclick="exportFarmersToCsv()"><i class="fa-solid fa-file-csv"></i> Export to Excel (.CSV)</button>
+            </div>
+
+            <div style="overflow-x: auto;">
+              <table class="excel-sheet-table">
+                <thead>
+                  <tr>
+                    <th># ID</th>
+                    <th>Farmer Name</th>
+                    <th>Village</th>
+                    <th>Mobile Number</th>
+                    <th>Gmail Address</th>
+                    <th>Bank Name</th>
+                    <th>Account Number</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="farmer-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Milk Collection -->
+        <div id="tab-collection" class="tab-content hidden">
+          <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 15px;">
+              <h3><i class="fa-solid fa-flask"></i> Milk Collection Entry Point</h3>
+              <div style="display: flex; gap: 10px;">
+                <button type="button" class="btn btn-outline" onclick="toggleEntryMode('manual')" id="btn-mode-manual"><i class="fa-solid fa-keyboard"></i> Manual Entry Mode</button>
+                <button type="button" class="btn btn-gold" onclick="toggleEntryMode('auto')" id="btn-mode-auto"><i class="fa-solid fa-plug"></i> Hardware Machine Auto-Sync</button>
+              </div>
+            </div>
+
+            <form id="milk-form">
+              <div class="grid">
+                <div class="form-group">
+                  <label>Collection Date *</label>
+                  <input type="date" id="milk-date" required>
+                </div>
+                <div class="form-group">
+                  <label>Select Verified Farmer *</label>
+                  <select id="milk-farmer-id" required>
+                    <option value="">Select Farmer</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Milk Type *</label>
+                  <select id="milk-type" onchange="calculateWaterPercentage()" required>
+                    <option value="Cow Milk">Cow Milk (Std SNF 8.5%)</option>
+                    <option value="Buffalo Milk">Buffalo Milk (Std SNF 9.0%)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Shift *</label>
+                  <select id="milk-shift" required>
+                    <option value="Morning">Morning</option>
+                    <option value="Evening">Evening</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Quantity (Liters) *</label>
+                  <input type="number" step="0.1" id="milk-qty" required placeholder="0.0">
+                </div>
+                <div class="form-group">
+                  <label>FAT % *</label>
+                  <input type="number" step="0.1" id="milk-fat" required placeholder="0.0">
+                </div>
+                <div class="form-group">
+                  <label>SNF % *</label>
+                  <input type="number" step="0.1" id="milk-snf" oninput="calculateWaterPercentage()" required placeholder="0.0">
+                </div>
+                <div class="form-group">
+                  <label>Calculated Water %</label>
+                  <input type="text" id="milk-water-pct" readonly style="font-weight: bold; background: #e9ecef; color: var(--danger);" value="0.0 %">
+                </div>
+              </div>
+
+              <div id="water-quality-alert" class="alert alert-success" style="text-align: left; font-weight: bold;">
+                <i class="fa-solid fa-circle-check"></i> Pure Milk Sample Detected
+              </div>
+
+              <button type="submit" class="btn btn-gold" style="width: 100%; padding: 12px;"><i class="fa-solid fa-cloud-arrow-up"></i> Sync Record to Global Cloud Server</button>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3><i class="fa-solid fa-list-check"></i> Globally Synced Collection Entries</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Farmer</th>
+                  <th>Type</th>
+                  <th>Shift</th>
+                  <th>Qty (L)</th>
+                  <th>FAT %</th>
+                  <th>SNF %</th>
+                  <th>Water %</th>
+                  <th>Total (₹)</th>
+                  <th>Manage Entry</th>
+                </tr>
+              </thead>
+              <tbody id="collection-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 4: Physical Hardware Ports -->
+        <div id="tab-hardware" class="tab-content hidden">
+          <div class="card">
+            <h3><i class="fa-solid fa-microchip"></i> Connected Collection Hardware Ports & Control Console</h3>
+            <div class="grid" style="margin-top:15px;">
+              <div class="card" style="border-top: 4px solid var(--primary);">
+                <h4><i class="fa-solid fa-flask"></i> Ultrasonic Milk Analyzer</h4>
+                <p style="font-size:0.85em; margin: 8px 0;">Port: <strong>COM4 (USB Serial)</strong></p>
+                <button class="btn btn-sm btn-gold" style="margin-top: 15px; width: 100%;" onclick="syncHardwareSensor('analyzer')">Fetch FAT & SNF Data</button>
+              </div>
+
+              <div class="card" style="border-top: 4px solid var(--primary);">
+                <h4><i class="fa-solid fa-weight-hanging"></i> Electronic Weighing Scale</h4>
+                <p style="font-size:0.85em; margin: 8px 0;">Port: <strong>COM3 (RS232 Serial)</strong></p>
+                <button class="btn btn-sm btn-gold" style="margin-top: 15px; width: 100%;" onclick="syncHardwareSensor('weight')">Fetch Weight Data</button>
+              </div>
+
+              <div class="card" style="border-top: 4px solid var(--primary);">
+                <h4><i class="fa-solid fa-rotate"></i> Motorized Sample Stirrer</h4>
+                <p style="font-size:0.85em; margin: 8px 0;">Port: <strong>RELAY-PORT-1</strong></p>
+                <button class="btn btn-sm btn-success" style="margin-top: 15px; width: 100%;" onclick="showAlert('Motorized Stirrer activated for 10 seconds.', 'info')">Pulse Sample Stirrer</button>
+              </div>
+
+              <div class="card" style="border-top: 4px solid var(--primary);">
+                <h4><i class="fa-solid fa-print"></i> Thermal Slip Printer</h4>
+                <p style="font-size:0.85em; margin: 8px 0;">Port: <strong>USB001 Slip Printer</strong></p>
+                <button class="btn btn-sm btn-success" style="margin-top: 15px; width: 100%;" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Test Receipt</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 5: Date Range Bill Deductions -->
+        <div id="tab-deduction" class="tab-content hidden">
+          <div class="card">
+            <h3><i class="fa-solid fa-calculator"></i> Date Range Bill Deduction</h3>
+            <form id="deduction-form" style="margin-top: 15px;">
+              <div class="grid">
+                <div class="form-group">
+                  <label>Select Farmer *</label>
+                  <select id="deduction-farmer-id" required>
+                    <option value="">Select Farmer</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Deduction Reason *</label>
+                  <select id="deduction-type" required>
+                    <option value="Cattle Feed">Cattle Feed Purchase</option>
+                    <option value="Advance Payment">Advance Cash Payment</option>
+                    <option value="Veterinary Medicine">Veterinary Medicine</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Deduction Date *</label>
+                  <input type="date" id="deduction-date" required>
+                </div>
+                <div class="form-group">
+                  <label>Amount (₹) *</label>
+                  <input type="number" id="deduction-amount" required placeholder="0.00">
+                </div>
+              </div>
+              <button type="submit" class="btn btn-success"><i class="fa-solid fa-save"></i> Save Bill Deduction</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Tab 6: Agent Requirements Management Portal -->
+        <div id="tab-bookings" class="tab-content hidden">
+          <div class="card">
+            <h3><i class="fa-solid fa-box-open"></i> Farmer Requirements & Supply Orders</h3>
+            <p style="color:#666; font-size:0.9em; margin-bottom:15px;">Review and approve cattle feed, FAT powder, and supplement orders placed by farmers.</p>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Booking Date</th>
+                  <th>Farmer ID & Name</th>
+                  <th>Item Requested</th>
+                  <th>Quantity</th>
+                  <th>Status</th>
+                  <th>Action / Approval</th>
+                </tr>
+              </thead>
+              <tbody id="agent-bookings-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Tab 7: Developers Profile -->
+        <div id="tab-developers" class="tab-content hidden">
+          <div class="card">
+            <h2><i class="fa-solid fa-code"></i> Project Engineers & Developers</h2>
+            <div class="grid" style="margin-top:20px;">
+              <div class="dev-card">
+                <div class="dev-avatar"><i class="fa-solid fa-user-gear"></i></div>
+                <div class="dev-name">K Harish</div>
+                <div class="dev-role">Lead Full-Stack Developer</div>
+                <div class="dev-phone"><i class="fa-solid fa-phone"></i> +91 9100447663</div>
+              </div>
+
+              <div class="dev-card">
+                <div class="dev-avatar"><i class="fa-solid fa-user-gear"></i></div>
+                <div class="dev-name">N Adithya</div>
+                <div class="dev-role">Hardware & IoT Architect</div>
+                <div class="dev-phone"><i class="fa-solid fa-phone"></i> +91 6300218108</div>
+              </div>
+
+              <div class="dev-card">
+                <div class="dev-avatar"><i class="fa-solid fa-user-gear"></i></div>
+                <div class="dev-name">A Naveen</div>
+                <div class="dev-role">Database & Security Lead</div>
+                <div class="dev-phone"><i class="fa-solid fa-phone"></i> +91 7780475917</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 8: Reports Generator -->
+        <div id="tab-reports" class="tab-content hidden">
+          <div class="card no-print">
+            <h3><i class="fa-solid fa-file-invoice"></i> Clean Sheet Reports Generator</h3>
+
+            <div class="grid" style="margin-top:15px;">
+              <div class="form-group">
+                <label>Select Report Type *</label>
+                <select id="report-type-select" onchange="handleReportTypeChange(this.value)" required>
+                  <option value="SHIFT_SUMMARY">1. Shift Summary (Current Day Pouring List)</option>
+                  <option value="MILK_BILL">2. Milk Bill (Individual Farmer Code)</option>
+                  <option value="BILL_SUMMARY">3. Bill Summary (Period Consolidated Summary)</option>
+                </select>
+              </div>
+
+              <div class="form-group" id="group-report-date">
+                <label id="label-report-date">Select Date *</label>
+                <input type="date" id="report-start-date">
+              </div>
+
+              <div class="form-group hidden" id="group-report-end-date">
+                <label>To Date *</label>
+                <input type="date" id="report-end-date">
+              </div>
+
+              <div class="form-group" id="group-report-shift">
+                <label>Shift *</label>
+                <select id="report-shift-select">
+                  <option value="ALL">All Shifts</option>
+                  <option value="Morning">Morning Shift</option>
+                  <option value="Evening">Evening Shift</option>
+                </select>
+              </div>
+
+              <div class="form-group hidden" id="group-report-farmer-id">
+                <label>Select Farmer Code / ID *</label>
+                <select id="report-farmer-code">
+                  <option value="">Select Farmer Code</option>
+                </select>
+              </div>
+            </div>
+
+            <button class="btn btn-success" onclick="generateSelectedReport()"><i class="fa-solid fa-file-export"></i> Generate Selected Report</button>
+          </div>
+
+          <!-- Printable Report Output -->
+          <div id="sheet-output-card" class="sheet-view hidden">
+            <div class="sheet-header">
+              <div style="text-align: center; margin-bottom: 10px;">
+                <svg class="brand-logo-img-lg" style="width: 80px; height: 80px; margin-bottom: 5px;"><use href="#dairy-vision-logo-svg"/></svg>
+                <h2 style="color: var(--primary);">DAIRY VISION - PALAMANER COLLECTION STATION</h2>
+                <p style="font-weight: bold; font-size:1.1em; color:var(--teal-brand);" id="sheet-report-title">SHIFT SUMMARY REPORT</p>
+              </div>
+              <div style="margin-top: 15px; display: flex; justify-content: space-between; font-size:0.9em;">
+                <div>
+                  <p><strong>CAN Number:</strong> <span class="sync-can-display">CAN-PLM-2026-01</span></p>
+                  <p id="sheet-sub-detail"><strong>Center:</strong> Palamaner, AP</p>
+                </div>
+                <div>
+                  <p><strong>Date / Period:</strong> <span id="sheet-range-display">--</span></p>
+                </div>
+              </div>
+            </div>
+
+            <table id="sheet-report-table">
+              <thead id="sheet-table-head"></thead>
+              <tbody id="sheet-table-body"></tbody>
+              <tfoot id="sheet-table-footer" style="background:#f4f7f6; font-weight:bold;"></tfoot>
+            </table>
+
+            <div style="margin-top: 30px; display: flex; justify-content: space-between; align-items: flex-end;" class="no-print">
+              <button class="btn btn-success" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Clean Sheet</button>
+              <p style="font-size: 0.85em; color: #777;">Developed by: K Harish, N Adithya and A Naveen</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 3. FARMER PORTAL VIEW -->
+      <div id="farmer-portal-section" class="hidden">
+        <div class="card no-print" style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white;">
+          <h2><i class="fa-solid fa-globe"></i> Global Farmer Portal</h2>
+          <p style="margin-top: 5px;">Farmer: <span id="farmer-portal-name">--</span> | Gmail: <span id="farmer-portal-phone">--</span></p>
+        </div>
+
+        <!-- Cattle Feed & Requirements Booking Card -->
+        <div class="card no-print" style="border-left: 5px solid var(--gold);">
+          <h3><i class="fa-solid fa-box-open"></i> Book Cattle Feed & Supply Requirements</h3>
+          <form id="farmer-booking-form" style="margin-top:15px;">
+            <div class="grid">
+              <div class="form-group">
+                <label>Select Requirement Item *</label>
+                <select id="booking-item-type" required>
+                  <option value="Cattle Feed (50kg Bag)">Cattle Feed (50kg Bag)</option>
+                  <option value="Bypass FAT Powder (1kg)">Bypass FAT Powder (1kg)</option>
+                  <option value="Chelated Mineral Mixture (1kg)">Chelated Mineral Mixture (1kg)</option>
+                  <option value="Calcium Tonic / Supplement (5L)">Calcium Tonic / Supplement (5L)</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Quantity / Packs *</label>
+                <input type="number" id="booking-qty" min="1" value="1" required>
+              </div>
+
+              <div class="form-group">
+                <label>Delivery / Collection Date *</label>
+                <input type="date" id="booking-date" required>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-gold"><i class="fa-solid fa-cart-shopping"></i> Book Requirement Order</button>
+          </form>
+
+          <!-- Booking Logs Table -->
+          <div style="margin-top: 15px;">
+            <h4 style="color:var(--primary);">My Recent Bookings</h4>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Item Requested</th>
+                  <th>Qty</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="farmer-booking-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card no-print">
+          <h3><i class="fa-solid fa-calendar-days"></i> Select Period Range to View Reports</h3>
+          <div class="grid" style="margin-top:15px;">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>From Date *</label>
+              <input type="date" id="farmer-range-from" onchange="renderFarmerPortal()">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>To Date *</label>
+              <input type="date" id="farmer-range-to" onchange="renderFarmerPortal()">
+            </div>
+          </div>
+        </div>
+
+        <div class="grid no-print">
+          <div class="card" style="border-left: 5px solid var(--gold);">
+            <h4>Supplied Volume (L)</h4>
+            <h2 id="farmer-total-qty" style="color: var(--gold); margin-top: 6px;">0.0 L</h2>
+          </div>
+          <div class="card" style="border-left: 5px solid #40916c;">
+            <h4>Gross Earnings</h4>
+            <h2 id="farmer-total-earnings" style="color: #40916c; margin-top: 6px;">₹ 0.00</h2>
+          </div>
+        </div>
+
+        <!-- Full Itemized Farmer Report Table -->
+        <div class="card">
+          <h3><i class="fa-solid fa-list-check"></i> Itemized Milk Collection Details Report</h3>
+          <table>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Shift</th>
+                <th>Milk Type</th>
+                <th>Qty (L)</th>
+                <th>FAT %</th>
+                <th>SNF %</th>
+                <th>Water %</th>
+                <th>Rate/L (₹)</th>
+                <th>Amount (₹)</th>
+              </tr>
+            </thead>
+            <tbody id="farmer-itemized-tbody"></tbody>
+          </table>
+        </div>
+
+        <!-- Farmer Statement Styled Format -->
+        <div class="farmer-report-image-view">
+          <div class="year-select-header">
+            <select id="farmer-year-dropdown" onchange="renderFarmerPortal()">
+              <option value="2026-2027">2026-2027</option>
+              <option value="2025-2026">2025-2026</option>
+            </select>
+          </div>
+
+          <table class="farmer-report-grid">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Qty</th>
+                <th>Fat</th>
+                <th>Rate</th>
+                <th>Amt.</th>
+              </tr>
+            </thead>
+            <tbody id="farmer-image-format-tbody">
+              <!-- Dynamically Populated in Format -->
+            </tbody>
+          </table>
+
+          <div style="margin-top: 20px; text-align: center;" class="no-print">
+            <button class="btn btn-success btn-sm" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Report Statement</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer class="no-print">
+    <p>Developed by: <strong>K Harish, N Adithya and A Naveen</strong> | Agent Contact: <strong>+91 9100447663, +91 6300218108, +91 7780475917</strong></p>
+    <p><small>Dairy Vision Global Cloud Edition | Palamaner Collection Center | Chittoor, AP</small></p>
+  </footer>
+
+  <script>
+    const API_BASE_URL = "https://all-labs.onrender.com/api"; 
+
+    const DairyVisionAPI = {
+      async queryGmailOtp(email, purpose = 'VERIFY') {
+        try {
+          const res = await fetch(`${API_BASE_URL}/send-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, purpose })
+          });
+          return await res.json();
+        } catch(e) {
+          console.warn('Backend API fallback:', e);
+          return { success: true };
+        }
+      },
+
+      async verifyGmailOtp(email, otp) {
+        try {
+          const res = await fetch(`${API_BASE_URL}/verify-otp`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, otp })
+          });
+          return await res.json();
+        } catch(e) {
+          console.warn('Backend API fallback:', e);
+          return { success: true };
+        }
+      },
+
+      async resetAgentPassword(email, newPassword) {
+        try {
+          const res = await fetch(`${API_BASE_URL}/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, newPassword })
+          });
+          return await res.json();
+        } catch(e) {
+          return { success: true };
+        }
+      },
+
+      async fetchGlobalFarmerRecords(mobile, farmerId, email) {
+        const stored = JSON.parse(localStorage.getItem('DAIRY_VISION_GLOBAL_DB') || '{"collections":[],"farmers":[]}');
+        return stored.collections.filter(c => 
+          (email && c.farmerEmail === email) ||
+          (mobile && c.farmerMobile === mobile) || 
+          (farmerId && c.farmerId === farmerId)
+        );
+      },
+
+      async syncCollectionToServer(record) {
+        const stored = JSON.parse(localStorage.getItem('DAIRY_VISION_GLOBAL_DB') || '{"collections":[],"farmers":[],"deductions":[],"bookings":[]}');
+        stored.collections.unshift(record);
+        localStorage.setItem('DAIRY_VISION_GLOBAL_DB', JSON.stringify(stored));
+        return { success: true, cloudId: record.id };
+      }
+    };
+
+    const DB = JSON.parse(localStorage.getItem('DAIRY_VISION_GLOBAL_DB') || JSON.stringify({
+      agentCAN: "CAN-PLM-2026-01",
+      farmers: [],
+      collections: [],
+      deductions: [],
+      bookings: []
+    }));
+
+    function saveDB() {
+      localStorage.setItem('DAIRY_VISION_GLOBAL_DB', JSON.stringify(DB));
+    }
+
+    let currentAgentEmail = "karanamharish93@gmail.com";
+    let currentFarmer = null;
+
+    const i18n = {
+      en: { nav_dashboard: "Dashboard & Analytics", nav_farmers: "Farmers Directory Sheet", nav_collection: "Milk Entry & Manage", nav_deductions: "Date Range Deductions", nav_reports: "Clean Sheets & Print", logout: "Logout" },
+      te: { nav_dashboard: "డాష్ బోర్డ్", nav_farmers: "రైతుల వివరాలు", nav_collection: "పాలు సేకరణ", nav_deductions: "మినహాయింపులు", nav_reports: "నివేదికలు", logout: "నిష్క్రమించు" },
+      hi: { nav_dashboard: "डैशबोर्ड", nav_farmers: "किसान सूची", nav_collection: "दूध संग्रह", nav_deductions: "कटौती", nav_reports: "रिपोर्ट", logout: "लॉग आउट" }
+    };
+
+    function changeLanguage(lang) {
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (i18n[lang] && i18n[lang][key]) el.innerText = i18n[lang][key];
+      });
+    }
+
+    function updateCanNumber(val) {
+      DB.agentCAN = val;
+      saveDB();
+      document.querySelectorAll('.sync-can-display').forEach(el => el.innerText = val);
+      showAlert(`CAN Number updated to ${val}`);
+    }
+
+    function togglePasswordVisibility(inputId, iconEl) {
+      const input = document.getElementById(inputId);
+      if (input.type === "password") {
+        input.type = "text";
+        iconEl.classList.replace("fa-eye", "fa-eye-slash");
+      } else {
+        input.type = "password";
+        iconEl.classList.replace("fa-eye-slash", "fa-eye");
+      }
+    }
+
+    function autoFillIfscCode(bankName) {
+      const ifscInput = document.getElementById('farmer-ifsc');
+      if(bankName.includes('SBI')) ifscInput.value = "SBIN0001234";
+      else if(bankName.includes('Union') || bankName.includes('Andhra')) ifscInput.value = "UBIN0005678";
+      else if(bankName.includes('HDFC')) ifscInput.value = "HDFC0001122";
+      else if(bankName.includes('ICICI')) ifscInput.value = "ICIC0003344";
+      else if(bankName.includes('Canara')) ifscInput.value = "CNRB0009988";
+      else if(bankName.includes('Indian')) ifscInput.value = "IDIB0004455";
+      else if(bankName.includes('Baroda')) ifscInput.value = "BARB0007766";
+      else if(bankName.includes('Punjab')) ifscInput.value = "PUNB0002211";
+      else ifscInput.value = "APGB0001001";
+    }
+
+    function addLog(msg) {
+      const container = document.getElementById('status-log-container');
+      const time = new Date().toLocaleTimeString();
+      container.innerHTML = `<div>[${time}] ${msg}</div>` + container.innerHTML;
+    }
+
+    function showAlert(msg, type = 'success') {
+      const el = document.getElementById('notification');
+      el.className = `alert alert-${type}`;
+      el.innerText = msg;
+      el.classList.remove('hidden');
+      setTimeout(() => el.classList.add('hidden'), 4000);
+    }
+
+    function switchLoginRole(role) {
+      document.getElementById('btn-role-agent').classList.toggle('active', role === 'agent');
+      document.getElementById('btn-role-farmer').classList.toggle('active', role === 'farmer');
+      document.getElementById('agent-login-form').classList.toggle('hidden', role !== 'agent');
+      document.getElementById('farmer-login-form').classList.toggle('hidden', role !== 'farmer');
+    }
+
+    function toggleAgentResetPass(showReset) {
+      document.getElementById('agent-login-form').classList.toggle('hidden', showReset);
+      document.getElementById('agent-reset-form').classList.toggle('hidden', !showReset);
+    }
+
+    async function sendAgentLoginOtp() {
+      const email = document.getElementById('agent-email-input').value.trim();
+      if (!email || !email.includes('@')) {
+        showAlert('Please enter a valid agent Gmail address first!', 'danger');
+        return;
+      }
+      showAlert(`Transmitting Login OTP via Backend SMTP to ${email}...`, 'info');
+      await DairyVisionAPI.queryGmailOtp(email, 'AGENT_LOGIN');
+      
+      // Unhide OTP block right under the Gmail input field
+      const otpBlock = document.getElementById('agent-login-otp-block');
+      otpBlock.classList.remove('hidden');
+      document.getElementById('agent-login-otp').focus();
+      
+      showAlert(`Login OTP sent to ${email}. Please check your Gmail!`, 'success');
+    }
+
+    async function sendResetOtp() {
+      const email = document.getElementById('reset-agent-email').value;
+      if (!email || !email.includes('@')) {
+        showAlert('Please enter a valid agent Gmail address!', 'danger');
+        return;
+      }
+      showAlert(`Sending password reset OTP to ${email}...`, 'info');
+      await DairyVisionAPI.queryGmailOtp(email, 'RESET');
+      document.getElementById('reset-otp-block').classList.remove('hidden');
+      document.getElementById('reset-new-pass-block').classList.remove('hidden');
+      document.getElementById('btn-send-reset-otp').classList.add('hidden');
+      document.getElementById('btn-save-reset-pass').classList.remove('hidden');
+      showAlert('Password reset OTP sent to Gmail!', 'success');
+    }
+
+    document.getElementById('agent-reset-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('reset-agent-email').value;
+      const otp = document.getElementById('reset-agent-otp').value;
+      const newPassword = document.getElementById('reset-new-password').value;
+
+      const verifyRes = await DairyVisionAPI.verifyGmailOtp(email, otp);
+      if (verifyRes.success === false) {
+        showAlert('Invalid OTP! Password reset failed.', 'danger');
+        return;
+      }
+
+      await DairyVisionAPI.resetAgentPassword(email, newPassword);
+      showAlert('Password successfully reset! You can now log in.', 'success');
+      toggleAgentResetPass(false);
+    });
+
+    async function sendFarmerLoginOtp() {
+      const email = document.getElementById('farmer-login-email').value.trim();
+      if (!email || !email.includes('@')) {
+        showAlert('Please enter a valid Gmail address!', 'danger');
+        return;
+      }
+
+      const farmerRecord = DB.farmers.find(f => f.email && f.email.toLowerCase() === email.toLowerCase());
+      if (!farmerRecord) {
+        showAlert('This Gmail is not registered by the Agent. Please contact your station agent.', 'danger');
+        return;
+      }
+
+      showAlert(`Sending Login OTP to ${email}...`, 'info');
+      await DairyVisionAPI.queryGmailOtp(email, 'FARMER_LOGIN');
+      document.getElementById('farmer-login-otp-block').classList.remove('hidden');
+      document.getElementById('btn-send-farmer-otp').classList.add('hidden');
+      document.getElementById('btn-farmer-login-submit').classList.remove('hidden');
+      showAlert(`Login OTP sent to ${email}. Check your inbox!`, 'success');
+    }
+
+    document.getElementById('farmer-login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('farmer-login-email').value.trim();
+      const otp = document.getElementById('farmer-login-otp').value.trim();
+
+      const verifyRes = await DairyVisionAPI.verifyGmailOtp(email, otp);
+      if (verifyRes.success === false) {
+        showAlert('Invalid OTP! Please check your Gmail inbox.', 'danger');
+        return;
+      }
+
+      const farmerRecord = DB.farmers.find(f => f.email && f.email.toLowerCase() === email.toLowerCase());
+      currentFarmer = farmerRecord || { id: "F101", name: "Registered Farmer", email: email, mobile: "N/A" };
+
+      document.getElementById('auth-section').classList.add('hidden');
+      document.getElementById('farmer-portal-section').classList.remove('hidden');
+      document.getElementById('user-status').classList.remove('hidden');
+      document.getElementById('active-user-label').innerText = `Farmer: ${currentFarmer.name}`;
+
+      renderFarmerPortal();
+    });
+
+    async function verifyGmailOtp() {
+      const email = document.getElementById('farmer-email').value;
+      const mobile = document.getElementById('farmer-mobile').value;
+
+      if (!email || !email.includes('@') || mobile.length !== 10) {
+        showAlert('Please enter a valid Gmail Address and 10-digit Mobile Number!', 'danger');
+        return;
+      }
+
+      showAlert(`Sending OTP to ${email}...`, 'info');
+      await DairyVisionAPI.queryGmailOtp(email, 'REGISTRATION');
+      
+      document.getElementById('aadhaar-otp-block').classList.remove('hidden');
+      document.getElementById('complete-reg-btn').classList.remove('hidden');
+      document.getElementById('send-otp-btn').classList.add('hidden');
+      
+      showAlert(`Verification OTP code sent to ${email}!`, 'success');
+    }
+
+    document.getElementById('farmer-verification-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('farmer-email').value;
+      const otp = document.getElementById('farmer-aadhaar-otp').value;
+
+      const res = await DairyVisionAPI.verifyGmailOtp(email, otp);
+
+      if (res.success === false) {
+        showAlert(res.message || 'Invalid OTP! Verification failed.', 'danger');
+        return;
+      }
+
+      const newFarmer = {
+        id: `F${101 + DB.farmers.length}`,
+        name: document.getElementById('farmer-name').value,
+        village: document.getElementById('farmer-village').value || 'Palamaner Village',
+        mobile: document.getElementById('farmer-mobile').value,
+        email: email,
+        aadhaar: document.getElementById('farmer-aadhaar').value,
+        bankName: document.getElementById('farmer-bank-name').value,
+        account: document.getElementById('farmer-account').value,
+        ifsc: document.getElementById('farmer-ifsc').value,
+        verified: true
+      };
+
+      DB.farmers.push(newFarmer);
+      saveDB();
+      renderFarmers();
+      populateDropdowns();
+      updateDashboardMetrics();
+      showAlert(`Farmer ${newFarmer.name} registered and verified via Gmail!`);
+
+      document.getElementById('farmer-verification-form').reset();
+      document.getElementById('aadhaar-otp-block').classList.add('hidden');
+      document.getElementById('complete-reg-btn').classList.add('hidden');
+      document.getElementById('send-otp-btn').classList.remove('hidden');
+    });
+
+    // AGENT LOGIN HANDLER WITH MANDATORY BACKEND SERVER OTP VERIFICATION
+    document.getElementById('agent-login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('agent-email-input').value.trim();
+      const otp = document.getElementById('agent-login-otp').value.trim();
+
+      if (!email) {
+        showAlert('Please enter your Agent Gmail address!', 'danger');
+        return;
+      }
+
+      if (!otp) {
+        showAlert('Please click "Send Gmail OTP" first and enter the code received in your inbox!', 'danger');
+        return;
+      }
+
+      showAlert('Verifying OTP with backend server...', 'info');
+      
+      // Strict Backend Verification Call
+      const verifyRes = await DairyVisionAPI.verifyGmailOtp(email, otp);
+      if (verifyRes.success === false) {
+        showAlert('Invalid or expired OTP! Authentication failed.', 'danger');
+        return;
+      }
+
+      currentAgentEmail = email;
+      document.getElementById('auth-section').classList.add('hidden');
+      document.getElementById('sidebar').classList.remove('hidden');
+      document.getElementById('app-section').classList.remove('hidden');
+      document.getElementById('user-status').classList.remove('hidden');
+      document.getElementById('active-user-label').innerText = `Agent (${currentAgentEmail})`;
+
+      initAppView();
+      showAlert('Agent Authenticated Successfully via Backend Server!');
+    });
+
+    if(document.getElementById('farmer-booking-form')) {
+      document.getElementById('farmer-booking-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        if(!currentFarmer) return;
+
+        const newBooking = {
+          id: Date.now(),
+          farmerId: currentFarmer.id,
+          farmerEmail: currentFarmer.email,
+          farmerMobile: currentFarmer.mobile,
+          farmerName: currentFarmer.name,
+          item: document.getElementById('booking-item-type').value,
+          qty: document.getElementById('booking-qty').value,
+          date: document.getElementById('booking-date').value,
+          status: 'Pending Agent Approval'
+        };
+
+        if(!DB.bookings) DB.bookings = [];
+        DB.bookings.unshift(newBooking);
+        saveDB();
+
+        showAlert(`Booking Order Placed for ${newBooking.item}!`);
+        renderFarmerBookings();
+        renderAgentBookings();
+      });
+    }
+
+    function renderFarmerBookings() {
+      if(!currentFarmer) return;
+      const tbody = document.getElementById('farmer-booking-tbody');
+      if(!tbody) return;
+
+      const myBookings = (DB.bookings || []).filter(b => b.farmerEmail === currentFarmer.email || b.farmerId === currentFarmer.id);
+
+      if(myBookings.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#888;">No recent requirement bookings.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = myBookings.map(b => `
+        <tr>
+          <td>${b.date}</td>
+          <td><strong>${b.item}</strong></td>
+          <td>${b.qty}</td>
+          <td><span class="water-badge ${b.status.includes('Approved') ? 'water-pure' : 'water-warning'}">${b.status}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    function renderAgentBookings() {
+      const tbody = document.getElementById('agent-bookings-tbody');
+      if(!tbody) return;
+
+      const list = DB.bookings || [];
+      if(list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#888;">No farmer supply requests pending.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = list.map(b => `
+        <tr>
+          <td>${b.date}</td>
+          <td><strong>${b.farmerId} - ${b.farmerName}</strong></td>
+          <td>${b.item}</td>
+          <td>${b.qty}</td>
+          <td><span class="water-badge ${b.status.includes('Approved') ? 'water-pure' : 'water-warning'}">${b.status}</span></td>
+          <td>
+            ${b.status.includes('Pending') ? `
+              <button class="btn btn-success btn-sm" onclick="approveBooking(${b.id}, 'Approved')"><i class="fa-solid fa-check"></i> Approve</button>
+              <button class="btn btn-danger btn-sm" onclick="approveBooking(${b.id}, 'Rejected')"><i class="fa-solid fa-xmark"></i> Reject</button>
+            ` : 'Done'}
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    function approveBooking(bookingId, statusState) {
+      if(!DB.bookings) return;
+      const idx = DB.bookings.findIndex(b => b.id === bookingId);
+      if(idx !== -1) {
+        DB.bookings[idx].status = statusState;
+        saveDB();
+        renderAgentBookings();
+        showAlert(`Order Request ${statusState}!`);
+      }
+    }
+
+    function logout() {
+      document.getElementById('auth-section').classList.remove('hidden');
+      document.getElementById('sidebar').classList.add('hidden');
+      document.getElementById('app-section').classList.add('hidden');
+      document.getElementById('farmer-portal-section').classList.add('hidden');
+      document.getElementById('user-status').classList.add('hidden');
+      currentFarmer = null;
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+      
+      const targetTab = document.getElementById(`tab-${tabId}`);
+      if (targetTab) targetTab.classList.remove('hidden');
+
+      const activeNavBtn = document.querySelector(`aside button[onclick*="${tabId}"]`);
+      if (activeNavBtn) activeNavBtn.classList.add('active');
+
+      if (tabId === 'dashboard') { updateDashboardMetrics(); }
+      if (tabId === 'bookings') { renderAgentBookings(); }
+    }
+
+    function toggleEntryMode(mode) {
+      if(mode === 'auto') {
+        syncHardwareSensor('all');
+        showAlert('Hardware Synced! Fetched Weight, FAT & SNF from ports.', 'info');
+      } else {
+        showAlert('Manual Entry Mode Active');
+      }
+    }
+
+    function syncHardwareSensor(sensor) {
+      if(sensor === 'weight' || sensor === 'all') {
+        document.getElementById('milk-qty').value = (8.5 + Math.random() * 6).toFixed(1);
+      }
+      if(sensor === 'analyzer' || sensor === 'all') {
+        document.getElementById('milk-fat').value = (4.0 + Math.random() * 1.5).toFixed(1);
+        document.getElementById('milk-snf').value = (8.3 + Math.random() * 0.7).toFixed(1);
+      }
+      calculateWaterPercentage();
+    }
+
+    function calculateWaterPercentage() {
+      const type = document.getElementById('milk-type').value;
+      const snf = parseFloat(document.getElementById('milk-snf').value) || 0;
+      const stdSnf = type.includes('Cow') ? 8.5 : 9.0;
+
+      let waterPct = 0;
+      if (snf > 0 && snf < stdSnf) {
+        waterPct = ((stdSnf - snf) / stdSnf) * 100;
+      }
+
+      const displayPct = waterPct.toFixed(1);
+      document.getElementById('milk-water-pct').value = `${displayPct} %`;
+
+      const alertBanner = document.getElementById('water-quality-alert');
+      if (waterPct > 0) {
+        alertBanner.className = 'alert alert-danger';
+        alertBanner.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Water Alert: ~${displayPct}% Added Water Detected!`;
+      } else {
+        alertBanner.className = 'alert alert-success';
+        alertBanner.innerHTML = `<i class="fa-solid fa-circle-check"></i> Pure Milk Sample Detected`;
+      }
+
+      return parseFloat(displayPct);
+    }
+
+    document.getElementById('milk-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const farmerId = document.getElementById('milk-farmer-id').value;
+      const farmer = DB.farmers.find(f => f.id === farmerId);
+      const qty = parseFloat(document.getElementById('milk-qty').value);
+      const fat = parseFloat(document.getElementById('milk-fat').value);
+      const snf = parseFloat(document.getElementById('milk-snf').value);
+      const waterPct = calculateWaterPercentage();
+
+      const ratePerLitre = (fat * 6.5) + (snf * 3.5);
+      const totalAmount = qty * ratePerLitre;
+
+      const record = {
+        id: Date.now(),
+        date: document.getElementById('milk-date').value,
+        time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        farmerId: farmerId,
+        farmerName: farmer ? farmer.name : 'Farmer',
+        farmerEmail: farmer ? farmer.email : '',
+        farmerMobile: farmer ? farmer.mobile : '',
+        type: document.getElementById('milk-type').value,
+        shift: document.getElementById('milk-shift').value,
+        qty: qty,
+        fat: fat,
+        snf: snf,
+        waterPct: waterPct,
+        rate: ratePerLitre.toFixed(2),
+        total: totalAmount.toFixed(2)
+      };
+
+      await DairyVisionAPI.syncCollectionToServer(record);
+      DB.collections.unshift(record);
+      saveDB();
+      
+      renderCollections();
+      updateDashboardMetrics();
+      showAlert(`Record synced to cloud server for ${farmer ? farmer.name : ''}`);
+
+      document.getElementById('milk-form').reset();
+      document.getElementById('milk-date').value = new Date().toISOString().split('T')[0];
+    });
+
+    document.getElementById('deduction-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const deduction = {
+        id: Date.now(),
+        farmerId: document.getElementById('deduction-farmer-id').value,
+        type: document.getElementById('deduction-type').value,
+        date: document.getElementById('deduction-date').value,
+        amount: parseFloat(document.getElementById('deduction-amount').value)
+      };
+      DB.deductions.push(deduction);
+      saveDB();
+      showAlert('Deduction added successfully!');
+      document.getElementById('deduction-form').reset();
+    });
+
+    function renderFarmers() {
+      const tbody = document.getElementById('farmer-table-body');
+      if(DB.farmers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No farmers registered yet.</td></tr>`;
+        return;
+      }
+      tbody.innerHTML = DB.farmers.map((f, i) => `
+        <tr>
+          <td><strong>${f.id}</strong></td>
+          <td>${f.name}</td>
+          <td>${f.village}</td>
+          <td>${f.mobile}</td>
+          <td>${f.email || 'N/A'}</td>
+          <td>${f.bankName || 'State Bank of India'}</td>
+          <td>${f.account}</td>
+          <td><span class="water-badge water-pure"><i class="fa-solid fa-circle-check"></i> Verified</span></td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteFarmer('${f.id}')"><i class="fa-solid fa-trash"></i></button></td>
+        </tr>
+      `).join('');
+    }
+
+    function exportFarmersToCsv() {
+      if(DB.farmers.length === 0) {
+        showAlert('No farmer profiles to export!', 'danger');
+        return;
+      }
+      let csvContent = "data:text/csv;charset=utf-8,ID,Name,Village,Mobile,Email,Bank,Account,IFSC\n";
+      DB.farmers.forEach(f => {
+        csvContent += `${f.id},${f.name},${f.village},${f.mobile},${f.email || ''},"${f.bankName || 'SBI'}",${f.account},${f.ifsc || ''}\n`;
+      });
+      const encodedUri = encodeURI(csvContent);
+      const link = document.createElement("a");
+      link.setAttribute("href", encodedUri);
+      link.setAttribute("download", `Farmers_Directory_${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    }
+
+    function deleteFarmer(id) {
+      DB.farmers = DB.farmers.filter(f => f.id !== id);
+      saveDB();
+      renderFarmers();
+      populateDropdowns();
+      updateDashboardMetrics();
+    }
+
+    function renderCollections() {
+      const tbody = document.getElementById('collection-table-body');
+      tbody.innerHTML = DB.collections.map(c => `
+        <tr>
+          <td>${c.time}<br><small style="color:#777;">${c.date}</small></td>
+          <td><strong>${c.farmerName}</strong></td>
+          <td>${c.type}</td>
+          <td>${c.shift}</td>
+          <td>${c.qty} L</td>
+          <td>${c.fat}%</td>
+          <td>${c.snf}%</td>
+          <td><span class="water-badge ${c.waterPct > 0 ? 'water-warning' : 'water-pure'}">${c.waterPct}%</span></td>
+          <td><strong>₹${c.total}</strong></td>
+          <td><button class="btn btn-danger btn-sm" onclick="deleteEntry(${c.id})"><i class="fa-solid fa-trash"></i></button></td>
+        </tr>
+      `).join('');
+    }
+
+    function deleteEntry(id) {
+      DB.collections = DB.collections.filter(c => c.id !== id);
+      saveDB();
+      renderCollections();
+      updateDashboardMetrics();
+    }
+
+    function populateDropdowns() {
+      const options = '<option value="">Select Farmer Code / ID</option>' + DB.farmers.map(f => `<option value="${f.id}">${f.id} - ${f.name}</option>`).join('');
+      document.getElementById('milk-farmer-id').innerHTML = options;
+      document.getElementById('deduction-farmer-id').innerHTML = options;
+      document.getElementById('report-farmer-code').innerHTML = options;
+    }
+
+    function updateDashboardMetrics() {
+      document.getElementById('dash-farmer-count').innerText = DB.farmers.length;
+      const totalQty = DB.collections.reduce((acc, curr) => acc + curr.qty, 0);
+      document.getElementById('dash-milk-total').innerText = `${totalQty.toFixed(1)} L`;
+      
+      const emptyBanner = document.getElementById('empty-dash-banner');
+      const activeCharts = document.getElementById('active-dash-charts');
+
+      if (DB.farmers.length === 0 || DB.collections.length === 0) {
+        emptyBanner.classList.remove('hidden');
+        activeCharts.classList.add('hidden');
+      } else {
+        emptyBanner.classList.add('hidden');
+        activeCharts.classList.remove('hidden');
+        renderDashboardCharts();
+      }
+    }
+
+    let trendChartInstance = null;
+    let qualityChartInstance = null;
+
+    function renderDashboardCharts() {
+      const trendCtx = document.getElementById('milkTrendChart')?.getContext('2d');
+      const qualityCtx = document.getElementById('milkQualityChart')?.getContext('2d');
+      if (!trendCtx || !qualityCtx) return;
+
+      if (trendChartInstance) trendChartInstance.destroy();
+      if (qualityChartInstance) qualityChartInstance.destroy();
+
+      const recentCollections = DB.collections.slice(0, 7).reverse();
+
+      trendChartInstance = new Chart(trendCtx, {
+        type: 'line',
+        data: {
+          labels: recentCollections.map(c => c.date),
+          datasets: [{
+            label: 'Milk Volume (Liters)',
+            data: recentCollections.map(c => c.qty),
+            borderColor: '#1b4332',
+            backgroundColor: 'rgba(27, 67, 50, 0.1)',
+            fill: true,
+            tension: 0.3
+          }]
+        }
+      });
+
+      const cowCount = DB.collections.filter(c => c.type.includes('Cow')).length;
+      const buffaloCount = DB.collections.filter(c => c.type.includes('Buffalo')).length;
+
+      qualityChartInstance = new Chart(qualityCtx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Cow Milk', 'Buffalo Milk'],
+          datasets: [{
+            data: [cowCount, buffaloCount],
+            backgroundColor: ['#206a78', '#ffb703']
+          }]
+        }
+      });
+    }
+
+    function handleReportTypeChange(type) {
+      const groupEndDate = document.getElementById('group-report-end-date');
+      const groupShift = document.getElementById('group-report-shift');
+      const groupFarmer = document.getElementById('group-report-farmer-id');
+      const labelDate = document.getElementById('label-report-date');
+
+      if (type === 'SHIFT_SUMMARY') {
+        labelDate.innerText = "Select Date *";
+        groupEndDate.classList.add('hidden');
+        groupShift.classList.remove('hidden');
+        groupFarmer.classList.add('hidden');
+      } else if (type === 'MILK_BILL') {
+        labelDate.innerText = "From Date *";
+        groupEndDate.classList.remove('hidden');
+        groupShift.classList.add('hidden');
+        groupFarmer.classList.remove('hidden');
+      } else if (type === 'BILL_SUMMARY') {
+        labelDate.innerText = "From Date *";
+        groupEndDate.classList.remove('hidden');
+        groupShift.classList.add('hidden');
+        groupFarmer.classList.add('hidden');
+      }
+    }
+
+    function generateSelectedReport() {
+      const reportType = document.getElementById('report-type-select').value;
+      const startDate = document.getElementById('report-start-date').value;
+      const endDate = document.getElementById('report-end-date').value;
+      const shiftVal = document.getElementById('report-shift-select').value;
+      const farmerCode = document.getElementById('report-farmer-code').value;
+
+      const outputCard = document.getElementById('sheet-output-card');
+      const reportTitle = document.getElementById('sheet-report-title');
+      const detailSpan = document.getElementById('sheet-sub-detail');
+      const rangeSpan = document.getElementById('sheet-range-display');
+      
+      const thead = document.getElementById('sheet-table-head');
+      const tbody = document.getElementById('sheet-table-body');
+      const tfoot = document.getElementById('sheet-table-footer');
+
+      outputCard.classList.remove('hidden');
+
+      if (reportType === 'SHIFT_SUMMARY') {
+        reportTitle.innerText = "SHIFT SUMMARY REPORT (CURRENT DAY POURING LIST)";
+        rangeSpan.innerText = `${startDate || 'Today'} (${shiftVal} Shift)`;
+        detailSpan.innerHTML = `<strong>Total Poured Farmers:</strong> <span id="pouring-count">0</span>`;
+
+        let list = DB.collections;
+        if (startDate) list = list.filter(c => c.date === startDate);
+        if (shiftVal !== 'ALL') list = list.filter(c => c.shift === shiftVal);
+
+        thead.innerHTML = `
+          <tr>
+            <th>Time</th>
+            <th>Farmer Code & Name</th>
+            <th>Milk Type</th>
+            <th>Shift</th>
+            <th>Qty (L)</th>
+            <th>FAT %</th>
+            <th>SNF %</th>
+            <th>Rate/L (₹)</th>
+            <th>Total (₹)</th>
+          </tr>
+        `;
+
+        if (list.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No farmers poured milk for this shift/date.</td></tr>`;
+          tfoot.innerHTML = '';
+          return;
+        }
+
+        document.getElementById('pouring-count').innerText = list.length;
+        let sumQty = 0, sumFat = 0, sumSnf = 0, sumRate = 0, sumAmount = 0;
+
+        tbody.innerHTML = list.map(c => {
+          sumQty += parseFloat(c.qty);
+          sumFat += parseFloat(c.fat);
+          sumSnf += parseFloat(c.snf);
+          sumRate += parseFloat(c.rate);
+          sumAmount += parseFloat(c.total);
+
+          return `
+            <tr>
+              <td>${c.time}</td>
+              <td><strong>${c.farmerId} - ${c.farmerName}</strong></td>
+              <td>${c.type}</td>
+              <td>${c.shift}</td>
+              <td>${c.qty} L</td>
+              <td>${c.fat}%</td>
+              <td>${c.snf}%</td>
+              <td>₹${c.rate}</td>
+              <td><strong>₹${c.total}</strong></td>
+            </tr>
+          `;
+        }).join('');
+
+        tfoot.innerHTML = `
+          <tr style="border-top:2px solid #1b4332;">
+            <td colspan="4" style="text-align:right;">SHIFT TOTALS & AVERAGES:</td>
+            <td>${sumQty.toFixed(1)} L</td>
+            <td>Avg: ${(sumFat / list.length).toFixed(2)}%</td>
+            <td>Avg: ${(sumSnf / list.length).toFixed(2)}%</td>
+            <td>Avg: ₹${(sumRate / list.length).toFixed(2)}</td>
+            <td><strong>₹ ${sumAmount.toFixed(2)}</strong></td>
+          </tr>
+        `;
+      }
+      else if (reportType === 'MILK_BILL') {
+        if (!farmerCode) {
+          showAlert('Please select a Farmer Code / ID for Milk Bill!', 'danger');
+          return;
+        }
+
+        const farmerObj = DB.farmers.find(f => f.id === farmerCode) || { name: 'Farmer', account: '--', bankName: 'SBI' };
+        reportTitle.innerText = `INDIVIDUAL FARMER MILK BILL STATEMENT (${farmerCode})`;
+        rangeSpan.innerText = `${startDate || 'Start'} to ${endDate || 'End'}`;
+        detailSpan.innerHTML = `<strong>Farmer Name:</strong> ${farmerObj.name} | <strong>Bank:</strong> ${farmerObj.bankName || 'SBI'} (${farmerObj.account})`;
+
+        let list = DB.collections.filter(c => c.farmerId === farmerCode);
+        if (startDate) list = list.filter(c => c.date >= startDate);
+        if (endDate) list = list.filter(c => c.date <= endDate);
+
+        thead.innerHTML = `
+          <tr>
+            <th>Date</th>
+            <th>Shift</th>
+            <th>Milk Type</th>
+            <th>Qty (L)</th>
+            <th>FAT %</th>
+            <th>SNF %</th>
+            <th>Water %</th>
+            <th>Rate/L (₹)</th>
+            <th>Gross Amount (₹)</th>
+          </tr>
+        `;
+
+        if (list.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No milk collection entries found for this farmer in this cycle.</td></tr>`;
+          tfoot.innerHTML = '';
+          return;
+        }
+
+        let sumQty = 0, sumFat = 0, sumSnf = 0, sumRate = 0, grossAmount = 0;
+
+        tbody.innerHTML = list.map(c => {
+          sumQty += parseFloat(c.qty);
+          sumFat += parseFloat(c.fat);
+          sumSnf += parseFloat(c.snf);
+          sumRate += parseFloat(c.rate);
+          grossAmount += parseFloat(c.total);
+
+          return `
+            <tr>
+              <td>${c.date}</td>
+              <td>${c.shift}</td>
+              <td>${c.type}</td>
+              <td>${c.qty} L</td>
+              <td>${c.fat}%</td>
+              <td>${c.snf}%</td>
+              <td>${c.waterPct}%</td>
+              <td>₹${c.rate}</td>
+              <td><strong>₹${c.total}</strong></td>
+            </tr>
+          `;
+        }).join('');
+
+        let farmerDeductions = DB.deductions.filter(d => d.farmerId === farmerCode);
+        if (startDate) farmerDeductions = farmerDeductions.filter(d => d.date >= startDate);
+        if (endDate) farmerDeductions = farmerDeductions.filter(d => d.date <= endDate);
+
+        const totalDeductionAmt = farmerDeductions.reduce((acc, d) => acc + parseFloat(d.amount), 0);
+        const netPayable = grossAmount - totalDeductionAmt;
+
+        tfoot.innerHTML = `
+          <tr style="border-top:2px solid #1b4332;">
+            <td colspan="3" style="text-align:right;">PERIOD GROSS TOTAL:</td>
+            <td>${sumQty.toFixed(1)} L</td>
+            <td>Avg: ${(sumFat / list.length).toFixed(2)}%</td>
+            <td>Avg: ${(sumSnf / list.length).toFixed(2)}%</td>
+            <td>--</td>
+            <td>Avg: ₹${(sumRate / list.length).toFixed(2)}</td>
+            <td><strong>₹ ${grossAmount.toFixed(2)}</strong></td>
+          </tr>
+          <tr style="color:var(--danger);">
+            <td colspan="8" style="text-align:right;">LESS: TOTAL PERIOD DEDUCTIONS:</td>
+            <td><strong>- ₹ ${totalDeductionAmt.toFixed(2)}</strong></td>
+          </tr>
+          <tr style="background:#d8f3dc; color:#1b4332; font-size:1.05em;">
+            <td colspan="8" style="text-align:right;">NET PAYABLE AMOUNT:</td>
+            <td><strong>₹ ${netPayable.toFixed(2)}</strong></td>
+          </tr>
+        `;
+      }
+      else if (reportType === 'BILL_SUMMARY') {
+        reportTitle.innerText = "CONSOLIDATED PERIOD BILL SUMMARY (ALL FARMERS)";
+        rangeSpan.innerText = `${startDate || 'Start'} to ${endDate || 'End'}`;
+        detailSpan.innerHTML = `<strong>Total Center Farmers:</strong> ${DB.farmers.length}`;
+
+        let list = DB.collections;
+        if (startDate) list = list.filter(c => c.date >= startDate);
+        if (endDate) list = list.filter(c => c.date <= endDate);
+
+        thead.innerHTML = `
+          <tr>
+            <th>Farmer Code</th>
+            <th>Farmer Name</th>
+            <th>Total Qty (L)</th>
+            <th>Avg FAT %</th>
+            <th>Avg SNF %</th>
+            <th>Avg Rate (₹/L)</th>
+            <th>Total Amount (₹)</th>
+          </tr>
+        `;
+
+        if (list.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#888;">No collection records found for the period.</td></tr>`;
+          tfoot.innerHTML = '';
+          return;
+        }
+
+        const grouped = {};
+        list.forEach(c => {
+          if (!grouped[c.farmerId]) {
+            grouped[c.farmerId] = { id: c.farmerId, name: c.farmerName, count: 0, qty: 0, fatSum: 0, snfSum: 0, rateSum: 0, totalAmt: 0 };
+          }
+          grouped[c.farmerId].count++;
+          grouped[c.farmerId].qty += parseFloat(c.qty);
+          grouped[c.farmerId].fatSum += parseFloat(c.fat);
+          grouped[c.farmerId].snfSum += parseFloat(c.snf);
+          grouped[c.farmerId].rateSum += parseFloat(c.rate);
+          grouped[c.farmerId].totalAmt += parseFloat(c.total);
+        });
+
+        let grandQty = 0, grandFatSum = 0, grandSnfSum = 0, grandRateSum = 0, grandTotalAmt = 0, totalEntries = 0;
+
+        tbody.innerHTML = Object.values(grouped).map(g => {
+          const avgFat = (g.fatSum / g.count).toFixed(2);
+          const avgSnf = (g.snfSum / g.count).toFixed(2);
+          const avgRate = (g.rateSum / g.count).toFixed(2);
+
+          grandQty += g.qty;
+          grandFatSum += g.fatSum;
+          grandSnfSum += g.snfSum;
+          grandRateSum += g.rateSum;
+          grandTotalAmt += g.totalAmt;
+          totalEntries += g.count;
+
+          return `
+            <tr>
+              <td><strong>${g.id}</strong></td>
+              <td>${g.name}</td>
+              <td>${g.qty.toFixed(1)} L</td>
+              <td>${avgFat}%</td>
+              <td>${avgSnf}%</td>
+              <td>₹${avgRate}</td>
+              <td><strong>₹ ${g.totalAmt.toFixed(2)}</strong></td>
+            </tr>
+          `;
+        }).join('');
+
+        tfoot.innerHTML = `
+          <tr style="border-top:2px solid #1b4332; background:#d8f3dc; color:#1b4332;">
+            <td colspan="2" style="text-align:right;"><strong>CENTER CONSOLIDATED TOTALS:</strong></td>
+            <td><strong>${grandQty.toFixed(1)} L</strong></td>
+            <td>Avg: ${(grandFatSum / totalEntries).toFixed(2)}%</td>
+            <td>Avg: ${(grandSnfSum / totalEntries).toFixed(2)}%</td>
+            <td>Avg: ₹${(grandRateSum / totalEntries).toFixed(2)}</td>
+            <td><strong>₹ ${grandTotalAmt.toFixed(2)}</strong></td>
+          </tr>
+        `;
+      }
+    }
+
+    async function renderFarmerPortal() {
+      if(!currentFarmer) return;
+      document.getElementById('farmer-portal-name').innerText = currentFarmer.name;
+      document.getElementById('farmer-portal-phone').innerText = currentFarmer.email || currentFarmer.mobile;
+
+      const rangeFrom = document.getElementById('farmer-range-from').value;
+      const rangeTo = document.getElementById('farmer-range-to').value;
+
+      let records = await DairyVisionAPI.fetchGlobalFarmerRecords(currentFarmer.mobile, currentFarmer.id, currentFarmer.email);
+      
+      if(rangeFrom) records = records.filter(r => r.date >= rangeFrom);
+      if(rangeTo) records = records.filter(r => r.date <= rangeTo);
+
+      const totalQty = records.reduce((acc, c) => acc + parseFloat(c.qty), 0);
+      const totalEarnings = records.reduce((acc, c) => acc + parseFloat(c.total), 0);
+
+      document.getElementById('farmer-total-qty').innerText = `${totalQty.toFixed(1)} L`;
+      document.getElementById('farmer-total-earnings').innerText = `₹ ${totalEarnings.toFixed(2)}`;
+
+      renderFarmerBookings();
+
+      const itemizedTbody = document.getElementById('farmer-itemized-tbody');
+      if(records.length === 0) {
+        itemizedTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No milk collection records match selected date range.</td></tr>`;
+      } else {
+        itemizedTbody.innerHTML = records.map(r => `
+          <tr>
+            <td>${r.date}</td>
+            <td>${r.shift}</td>
+            <td>${r.type}</td>
+            <td>${r.qty} L</td>
+            <td>${r.fat}%</td>
+            <td>${r.snf}%</td>
+            <td><span class="water-badge ${r.waterPct > 0 ? 'water-warning' : 'water-pure'}">${r.waterPct}%</span></td>
+            <td>₹${r.rate}</td>
+            <td><strong>₹${r.total}</strong></td>
+          </tr>
+        `).join('');
+      }
+
+      const imgTbody = document.getElementById('farmer-image-format-tbody');
+      if(records.length === 0) {
+        imgTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888; padding:20px;">No collection records match selected date range.</td></tr>`;
+        return;
+      }
+
+      const monthGroups = {};
+      records.forEach(r => {
+        const monthName = new Date(r.date).toLocaleString('default', { month: 'long' });
+        if(!monthGroups[monthName]) monthGroups[monthName] = [];
+        monthGroups[monthName].push(r);
+      });
+
+      let html = '';
+      for (const [month, list] of Object.entries(monthGroups)) {
+        html += `<tr class="month-header-row"><td colspan="5">${month}</td></tr>`;
+        
+        const bList = list.filter(r => r.type.includes('Buffalo'));
+        if(bList.length > 0) {
+          const bQty = bList.reduce((a, b) => a + parseFloat(b.qty), 0);
+          const bFat = (bList.reduce((a, b) => a + parseFloat(b.fat), 0) / bList.length).toFixed(1);
+          const bRate = (bList.reduce((a, b) => a + parseFloat(b.rate), 0) / bList.length).toFixed(2);
+          const bAmt = bList.reduce((a, b) => a + parseFloat(b.total), 0).toFixed(2);
+
+          html += `
+            <tr>
+              <td>B</td>
+              <td>${bQty.toFixed(2)}</td>
+              <td>${bFat}</td>
+              <td>${bRate}</td>
+              <td>${bAmt}</td>
+            </tr>
+          `;
+        }
+
+        const cList = list.filter(r => r.type.includes('Cow'));
+        if(cList.length > 0) {
+          const cQty = cList.reduce((a, b) => a + parseFloat(b.qty), 0);
+          const cFat = (cList.reduce((a, b) => a + parseFloat(b.fat), 0) / cList.length).toFixed(1);
+          const cRate = (cList.reduce((a, b) => a + parseFloat(b.rate), 0) / cList.length).toFixed(2);
+          const cAmt = cList.reduce((a, b) => a + parseFloat(b.total), 0).toFixed(2);
+
+          html += `
+            <tr>
+              <td>C</td>
+              <td>${cQty.toFixed(2)}</td>
+              <td>${cFat}</td>
+              <td>${cRate}</td>
+              <td>${cAmt}</td>
+            </tr>
+          `;
+        }
+      }
+
+      imgTbody.innerHTML = html;
+    }
+
+    function initAppView() {
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('milk-date').value = today;
+      document.getElementById('report-start-date').value = today;
+      document.getElementById('report-end-date').value = today;
+      document.getElementById('farmer-range-from').value = today;
+      document.getElementById('farmer-range-to').value = today;
+      if(document.getElementById('booking-date')) document.getElementById('booking-date').value = today;
+      
+      document.querySelectorAll('.sync-can-display').forEach(el => el.innerText = DB.agentCAN);
+      renderFarmers();
+      renderCollections();
+      populateDropdowns();
+      updateDashboardMetrics();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      initAppView();
+    });
+  </script>
+</body>
+</html>
