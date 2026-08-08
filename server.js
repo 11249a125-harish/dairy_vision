@@ -8,28 +8,28 @@ dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public')); // Serves index.html if placed in a /public folder
+app.use(express.static('public')); 
 
 // In-memory OTP store
 const otpStore = {};
 
-// Setup Gmail SMTP Transporter (Using Port 465 SSL for cloud host compatibility)
+// Setup Brevo SMTP Transporter (Replaced Gmail with your active Brevo Credentials)
 const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true, // SSL port 465 helps bypass cloud platform port blocks
+  host: 'smtp-relay.brevo.com',
+  port: 587,
+  secure: false, // TLS port 587 setup
   auth: {
-    user: process.env.GMAIL_USER || process.env.EMAIL_USER,
-    pass: process.env.GMAIL_APP_PASS || process.env.EMAIL_PASS,
+    user: '811dc3@smtp-brevo.com', // Your Brevo SMTP Login ID visible under your Brevo profile
+    pass: 'process.env.BREVO_API_KEY', // Your live generated Brevo Key
   },
 });
 
-// Verify SMTP connection on startup
+// Verify Brevo SMTP connection on startup
 transporter.verify((error) => {
   if (error) {
-    console.error('❌ SMTP Connection Error:', error);
+    console.error('❌ Brevo SMTP Connection Error:', error);
   } else {
-    console.log('✅ Gmail SMTP Server is ready to send verification emails.');
+    console.log('✅ Brevo SMTP Server is ready to send Dairy Vision verification emails.');
   }
 });
 
@@ -41,7 +41,9 @@ app.post('/api/send-otp', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Valid email required.' });
   }
 
-  const senderEmail = process.env.GMAIL_USER || process.env.EMAIL_USER;
+  // NOTE: This MUST be the email address you registered and verified inside your Brevo dashboard account!
+  const senderEmail = 'karanamharish93@gmail.com'; 
+  
   const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = Date.now() + 5 * 60 * 1000; // 5 mins expiration
   
@@ -66,12 +68,12 @@ app.post('/api/send-otp', async (req, res) => {
   try {
     await transporter.sendMail(mailOptions);
     console.log(`[OTP SENT] Code sent to ${email}`);
-    return res.json({ success: true, message: 'OTP sent successfully.' });
+    return res.json({ success: true, message: 'OTP sent successfully via Brevo.' });
   } catch (err) {
-    console.error('[SMTP ERROR]', err);
+    console.error('[BREVO SMTP ERROR]', err);
     return res.status(500).json({ 
       success: false, 
-      message: 'Failed to send OTP. Please check server logs and email configuration.' 
+      message: 'Failed to send OTP via Brevo. Review your server logs or confirmed sender list.' 
     });
   }
 });
@@ -96,17 +98,15 @@ app.post('/api/verify-otp', (req, res) => {
     return res.status(400).json({ success: false, message: 'OTP has expired. Please request a new one.' });
   }
 
-  // Type-safe string comparison
   if (String(record.otp).trim() !== String(otp).trim()) {
     return res.status(400).json({ success: false, message: 'Invalid OTP code.' });
   }
 
-  // Clear OTP on successful verification
   delete otpStore[formattedEmail];
   return res.json({ success: true, message: 'OTP verified successfully.' });
 });
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
