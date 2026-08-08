@@ -1,22 +1,29 @@
-const API_BASE_URL = 'http://localhost:5000';
+const API_BASE_URL = window.location.origin;
 
-// Global Utility Notification Banner Handler
 function showToast(message, isError = false) {
-    const toast = document.getElementById('toast');
+    const toast = document.getElementById('notification');
+    if (!toast) {
+        alert(message);
+        return;
+    }
     toast.innerText = message;
-    toast.style.background = isError ? '#d90429' : '#1b4332';
+    toast.className = `alert ${isError ? 'alert-danger' : 'alert-success'}`;
     toast.classList.remove('hidden');
     setTimeout(() => {
         toast.classList.add('hidden');
     }, 4000);
 }
 
-// 1. Hook Outgoing Dispatches to Backend node server
 async function handleSendOTP(emailInputId, contextPurpose) {
-    const emailValue = document.getElementById(emailInputId).value;
+    const emailField = document.getElementById(emailInputId);
+    if (!emailField) {
+        console.error(`Input element with ID '${emailInputId}' was not found in HTML.`);
+        return;
+    }
+    const emailValue = emailField.value;
 
     if (!emailValue || !emailValue.includes('@')) {
-        showToast('Please enter a valid Gmail address.', true);
+        showToast('Please enter a valid email address.', true);
         return;
     }
 
@@ -33,13 +40,12 @@ async function handleSendOTP(emailInputId, contextPurpose) {
         if (data.success) {
             showToast('Verification code dispatched successfully to your inbox!');
             
-            // Toggle step visibility dynamically depending on target block
-            if (emailInputId === 'agent-email') {
-                document.getElementById('agent-email-step').classList.add('hidden');
-                document.getElementById('agent-otp-step').classList.remove('hidden');
+            if (emailInputId === 'agent-email-input') {
+                document.getElementById('agent-login-otp-block')?.classList.remove('hidden');
             } else if (emailInputId === 'farmer-email') {
-                document.getElementById('farmer-reg-email-step').classList.add('hidden');
-                document.getElementById('farmer-reg-otp-step').classList.remove('hidden');
+                document.getElementById('aadhaar-otp-block')?.classList.remove('hidden');
+            } else if (emailInputId === 'farmer-login-email') {
+                document.getElementById('farmer-login-otp-block')?.classList.remove('hidden');
             }
         } else {
             showToast(data.message || 'Error executing OTP delivery.', true);
@@ -50,10 +56,9 @@ async function handleSendOTP(emailInputId, contextPurpose) {
     }
 }
 
-// 2. Validate User Submission Strings via Backend Array Checkers
-async function handleVerifyOTP(emailInputId, otpInputId, successActionMessage) {
-    const emailValue = document.getElementById(emailInputId).value;
-    const otpValue = document.getElementById(otpInputId).value;
+async function handleVerifyOTP(emailInputId, otpInputId, successCallback) {
+    const emailValue = document.getElementById(emailInputId)?.value;
+    const otpValue = document.getElementById(otpInputId)?.value;
 
     if (!otpValue || otpValue.length !== 6) {
         showToast('Please submit an authentic 6-digit numeric token.', true);
@@ -70,11 +75,8 @@ async function handleVerifyOTP(emailInputId, otpInputId, successActionMessage) {
         const data = await response.json();
 
         if (data.success) {
-            showToast(successActionMessage);
-            // Execute portal entrance transition actions or document persistence operations here
-            setTimeout(() => {
-                window.location.reload(); 
-            }, 2000);
+            showToast('OTP verified successfully!');
+            if (typeof successCallback === 'function') successCallback();
         } else {
             showToast(data.message || 'Incorrect verification security credentials.', true);
         }
@@ -82,4 +84,16 @@ async function handleVerifyOTP(emailInputId, otpInputId, successActionMessage) {
         console.error('Validation Connection Failure:', error);
         showToast('Network synchronization fault encountered.', true);
     }
+}
+
+function sendAgentLoginOtp() {
+    handleSendOTP('agent-email-input', 'Agent Login Verification');
+}
+
+function verifyGmailOtp() {
+    handleSendOTP('farmer-email', 'Farmer Registration');
+}
+
+function sendFarmerLoginOtp() {
+    handleSendOTP('farmer-login-email', 'Farmer Portal Login');
 }

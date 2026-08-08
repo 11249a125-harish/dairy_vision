@@ -12,7 +12,7 @@ app.use(express.static('public'));
 // In-memory OTP store
 const otpStore = {};
 
-// Endpoint: Send OTP via Brevo REST API with Extended Error Logging
+// Endpoint: Send OTP via Brevo REST API
 app.post('/api/send-otp', async (req, res) => {
   const { email, purpose } = req.body;
 
@@ -22,15 +22,15 @@ app.post('/api/send-otp', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Valid email required.' });
   }
 
-  const senderEmail = 'karanamharish93@gmail.com'; 
+  const senderEmail = process.env.SENDER_EMAIL || 'karanamharish93@gmail.com'; 
   const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = Date.now() + 5 * 60 * 1000; 
+  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes expiry
   
   otpStore[email.toLowerCase().trim()] = { otp: generatedOtp, expiresAt };
 
   try {
     console.log(`[BREVO HTTP] Dispatching payload to Brevo API...`);
-    const response = await fetch('https://brevo.com', {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
         'accept': 'application/json',
@@ -44,7 +44,7 @@ app.post('/api/send-otp', async (req, res) => {
         htmlContent: `
           <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
             <h2 style="color: #1b4332;">Dairy Vision Cloud System</h2>
-            <p>Your OTP code for <strong>${purpose || 'Verification'}</strong> is:</p>
+            <p>Your verification code for <strong>${purpose || 'Verification'}</strong> is:</p>
             <h1 style="color: #ffb703; background: #1b4332; display: inline-block; padding: 10px 20px; border-radius: 5px; letter-spacing: 3px;">
               ${generatedOtp}
             </h1>

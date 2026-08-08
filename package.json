@@ -1,23 +1,24 @@
 {
-  "name": "html-tutorial",
+  "name": "dairy_vision",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node index.js"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/11249a125-harish/ALL-LABS.git"
+    "url": "git+https://github.com/11249a125-harish/dairy_vision.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "bugs": {
-    "url": "https://github.com/11249a125-harish/ALL-LABS/issues"
+    "url": "https://github.com/11249a125-harish/dairy_vision/issues"
   },
-  "homepage": "https://github.com/11249a125-harish/ALL-LABS#readme",
+  "homepage": "https://github.com/11249a125-harish/dairy_vision#readme",
   "dependencies": {
     "@getbrevo/brevo": "^6.0.2",
     "body-parser": "^2.3.0",
