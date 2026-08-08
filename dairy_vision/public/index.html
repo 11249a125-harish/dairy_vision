@@ -501,7 +501,7 @@
                 <small style="color: var(--primary); margin-top: 5px; display: block;"><i class="fa-solid fa-paper-plane"></i> OTP dispatched to your inbox via backend SMTP.</small>
               </div>
 
-              <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:15px;">
+              <div style="display:flex; justify-space-between; align-items:center; margin-bottom:15px;">
                 <button type="button" class="btn btn-gold btn-sm" id="btn-send-agent-otp" onclick="sendAgentLoginOtp()"><i class="fa-solid fa-paper-plane"></i> Send Gmail OTP</button>
                 <a href="#" onclick="toggleAgentResetPass(true)" style="color:var(--primary); font-size:0.85em; font-weight:bold; text-decoration:none;">Reset Password?</a>
               </div>
@@ -2203,90 +2203,6 @@
       populateDropdowns();
       updateDashboardMetrics();
     }
-// 🚀 LIVE BACKEND INTEGRATION: Sends the target email to your running Express server
-async function simulateOutgoingOTP() {
-  const emailField = document.getElementById('userEmailField');
-  const targetEmail = emailField ? emailField.value.trim() : '';
-  
-  if (!targetEmail) {
-    alert("Please enter a valid email address.");
-    return;
-  }
-
-  logTerminal(`Communicating with Express backend framework to build token route for: ${targetEmail}`);
-  
-  try {
-    const response = await fetch('/api/auth/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: targetEmail })
-    });
-    
-    const result = await response.json();
-    
-    if (result.success) {
-      logTerminal(`Brevo API Node Transmission Accepted! OTP Dispatched over active HTTPS sockets.`, 'success');
-      alert(`Success! A secure validation code has been sent to ${targetEmail}.\nPlease check your inbox.`);
-      
-      const otpStep2Box = document.getElementById('otpStep2');
-      if (otpStep2Box) otpStep2Box.classList.remove('hidden');
-    } else {
-      logTerminal(`API Gateway Fault: ${result.error}`, 'danger');
-      alert("Backend routing rejected request: " + result.error);
-    }
-  } catch (error) {
-    console.error("Connection link closed unexpectedly:", error);
-    logTerminal(`Network connection interface dropped. Confirm node server instance state.`, 'danger');
-    alert("Could not reach backend environment sockets. Make sure your local node server or Render cloud engine is awake.");
-  }
-}
-
-// 🚀 LIVE BACKEND INTEGRATION: Sends the typed 6-digit code to the server to check it
-async function verifyReceivedOTP() {
-  const emailField = document.getElementById('userEmailField');
-  const otpField = document.getElementById('enteredOtpField');
-  
-  const targetEmail = emailField ? emailField.value.trim() : '';
-  const enteredCode = otpField ? otpField.value.trim() : '';
-  
-  if (!enteredCode) {
-    alert("Please enter the verification code sent to your email.");
-    return;
-  }
-
-  logTerminal(`Validating secure access key consensus maps with central application memory caches...`);
-
-  try {
-    const response = await fetch('/api/auth/verify-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: targetEmail, code: enteredCode })
-    });
-    
-    const result = await response.json();
-    
-    if (result.success) {
-      logTerminal(`Session Authenticated! Security credentials matched. Initializing systems dashboard layout...`, 'success');
-      alert("Authorization code verified! Loading system matrices.");
-      
-      document.getElementById('authSection').classList.add('hidden');
-      document.getElementById('dashboardCoreLayout').classList.remove('hidden');
-      if (document.getElementById('globalLogoutBtn')) {
-        document.getElementById('globalLogoutBtn').classList.remove('hidden');
-      }
-      
-      adjustDashboardForRole();
-      renderAnalyticsCharts();
-    } else {
-      logTerminal(`Authorization failure: ${result.error}`, 'danger');
-      alert("Validation Token Mismatch: " + result.error);
-    }
-  } catch (error) {
-    console.error("Verification communication error:", error);
-    logTerminal(`Server connection timeout during authorization sequence channels.`, 'danger');
-    alert("Connection failure occurred while mapping token values.");
-  }
-}
 
     document.addEventListener('DOMContentLoaded', () => {
       initAppView();
