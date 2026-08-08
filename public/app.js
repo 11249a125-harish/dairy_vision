@@ -27,6 +27,16 @@ async function handleSendOTP(emailInputId, contextPurpose) {
         return;
     }
 
+    // Locate the triggered button to enforce cooldown
+    const sendBtn = document.querySelector(`button[onclick*="${emailInputId}"]`) || event?.target;
+    let originalText = '';
+
+    if (sendBtn && sendBtn.tagName === 'BUTTON') {
+        originalText = sendBtn.innerText;
+        sendBtn.disabled = true;
+        sendBtn.innerText = 'Sending...';
+    }
+
     try {
         showToast('Processing verification delivery...');
         const response = await fetch(`${API_BASE_URL}/api/send-otp`, {
@@ -53,6 +63,14 @@ async function handleSendOTP(emailInputId, contextPurpose) {
     } catch (error) {
         console.error('Request Execution Failure:', error);
         showToast('Unable to connect to local cloud server network.', true);
+    } finally {
+        // 30-second cooldown timer to avoid 429 rate limiting
+        if (sendBtn && sendBtn.tagName === 'BUTTON') {
+            setTimeout(() => {
+                sendBtn.disabled = false;
+                sendBtn.innerText = originalText || 'Send Gmail OTP';
+            }, 30000);
+        }
     }
 }
 
