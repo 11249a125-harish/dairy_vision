@@ -4,10 +4,14 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const app = express();
-app.use(cors());
-app.use(express.json());
-app.use(express.static('public')); 
+const app = express(); // <
+
+// Allow requests from your GitHub Pages site
+app.use(cors({
+  origin: 'https://11249a125-harish.github.io',
+  methods: ['GET', 'POST'],
+  allowedHeaders: ['Content-Type']
+}));
 
 // In-memory OTP store
 const otpStore = {};
