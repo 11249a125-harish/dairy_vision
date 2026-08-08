@@ -1,99 +1,104 @@
-require('dotenv').config(); // Loads secret keys safely from your local .env file
 const express = require('express');
-const axios = require('axios');
-const path = require('path');
+const cors = require('cors');
+const dotenv = require('dotenv');
+
+dotenv.config();
 
 const app = express();
+app.use(cors());
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public'))); // Serves your HTML UI files smoothly
+app.use(express.static('public')); 
 
-// Temporary local cache memory array to hold active validation tokens
-const otpCacheMemory = {}; 
+// In-memory OTP store
+const otpStore = {};
 
-/**
- * Endpoint 1: Triggers, generates, and fires an OTP to Brevo's API nodes
- */
-app.post('/api/auth/send-otp', async (req, res) => {
-    const { email } = req.body;
+// Endpoint: Send OTP via Brevo REST API with Extended Error Logging
+app.post('/api/send-otp', async (req, res) => {
+  const { email, purpose } = req.body;
 
-    if (!email) {
-        return res.status(400).json({ success: false, error: "Recipient email address parameter is missing." });
-    }
+  console.log(`[OTP ATTEMPT] Received request for: ${email}`);
 
-    // 1. Generate a secure, pseudo-random 6 digit verification string
-    const generatedOTP = String(Math.floor(100000 + Math.random() * 900000));
-    
-    // 2. Temporarily store it in memory for 5 minutes before auto-expiring it
-    otpCacheMemory[email] = {
-        code: generatedOTP,
-        expiresAt: Date.now() + 5 * 60 * 1000 
-    };
+  if (!email || typeof email !== 'string' || !email.includes('@')) {
+    return res.status(400).json({ success: false, message: 'Valid email required.' });
+  }
 
-    // 3. Prepare the transactional structure framework for Brevo
-    const BREVO_ENDPOINT = 'https://brevo.com';
-    const payload = {
-        sender: { 
-            name: "Dairy Vision Procurement", 
-            email: process.env.SENDER_EMAIL 
-        },
-        to: [{ email: email }],
-        subject: "Secure Dashboard Access Token",
+  const senderEmail = 'karanamharish93@gmail.com'; 
+  const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = Date.now() + 5 * 60 * 1000; 
+  
+  otpStore[email.toLowerCase().trim()] = { otp: generatedOtp, expiresAt };
+
+  try {
+    console.log(`[BREVO HTTP] Dispatching payload to Brevo API...`);
+    const response = await fetch('https://brevo.com', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': process.env.BREVO_API_KEY,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        sender: { name: "Dairy Vision Portal", email: senderEmail },
+        to: [{ email: email.trim() }],
+        subject: `Dairy Vision Verification Code: ${generatedOtp}`,
         htmlContent: `
-            <html>
-                <body style="font-family: Arial, sans-serif; background-color: #f4f7f6; padding: 30px;">
-                    <div style="max-width: 500px; margin: 0 auto; background: white; padding: 25px; border-radius: 12px; border-top: 6px solid #1b4332; box-shadow: 0 4px 15px rgba(0,0,0,0.05);">
-                        <h2 style="color: #1b4332; margin-bottom: 5px;">Dairy Vision Gateway</h2>
-                        <p style="color: #555;">Your secure cloud portal login access token is ready:</p>
-                        <div style="font-size: 28px; font-weight: bold; background: #e2f0d9; padding: 12px 25px; display: inline-block; color: #1b4332; border-radius: 8px; letter-spacing: 4px; margin: 15px 0;">
-                            ${generatedOTP}
-                        </div>
-                        <p style="font-size: 0.85em; color: #888; border-top: 1px dashed #ccc; padding-top: 15px; margin-top: 15px;">
-                            This authorization code is strictly valid for 5 minutes. If you did not trigger this connection attempt, safely discard this notice.
-                        </p>
-                    </div>
-                </body>
-            </html>`
-    };
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+            <h2 style="color: #1b4332;">Dairy Vision Cloud System</h2>
+            <p>Your OTP code for <strong>${purpose || 'Verification'}</strong> is:</p>
+            <h1 style="color: #ffb703; background: #1b4332; display: inline-block; padding: 10px 20px; border-radius: 5px; letter-spacing: 3px;">
+              ${generatedOtp}
+            </h1>
+            <p>This code expires in 5 minutes. If you did not request this, please ignore this email.</p>
+          </div>
+        `
+      })
+    });
 
-    try {
-        // 4. Send the data request payload out over the network connection
-        await axios.post(BREVO_ENDPOINT, payload, {
-            headers: {
-                'api-key': process.env.BREVO_API_KEY,
-                'Content-Type': 'application/json'
-            }
-        });
+    const data = await response.json();
 
-        return res.status(200).json({ success: true, message: "Secure authentication verification code dispatched successfully." });
-    } catch (error) {
-        console.error("Brevo API Node Transmission Fault Details:", error.response ? error.response.data : error.message);
-        return res.status(500).json({ success: false, error: "Failed to dispatch email transmission request via remote gateway nodes." });
+    if (!response.ok) {
+      console.error('❌ BREVO API ERROR DETAILS:', JSON.stringify(data));
+      return res.status(response.status).json({ success: false, message: data.message || 'Brevo API rejection.' });
     }
+
+    console.log(`[OTP SENT] Code ${generatedOtp} successfully accepted by Brevo. Message ID: ${data.messageId}`);
+    return res.json({ success: true, message: 'OTP sent successfully via Brevo API.' });
+
+  } catch (err) {
+    console.error('❌ CRITICAL SERVER ERROR:', err.message);
+    return res.status(500).json({ success: false, message: 'Internal server error while sending OTP.' });
+  }
 });
 
-/**
- * Endpoint 2: Validates the token typed into your frontend interface form
- */
-app.post('/api/auth/verify-otp', (req, res) => {
-    const { email, code } = req.body;
-    const cachedRecord = otpCacheMemory[email];
+// Endpoint: Verify OTP
+app.post('/api/verify-otp', (req, res) => {
+  const { email, otp } = req.body;
 
-    if (!cachedRecord) {
-        return res.status(400).json({ success: false, error: "No active token registration mapped to this address. Request a fresh token." });
-    }
+  if (!email || !otp) {
+    return res.status(400).json({ success: false, message: 'Email and OTP are required.' });
+  }
 
-    if (Date.now() > cachedRecord.expiresAt) {
-        delete otpCacheMemory[email]; // Clean cache trees safely
-        return res.status(400).json({ success: false, error: "Verification session validation expired. Please re-verify." });
-    }
+  const formattedEmail = email.toLowerCase().trim();
+  const record = otpStore[formattedEmail];
 
-    if (cachedRecord.code === String(code).trim()) {
-        delete otpCacheMemory[email]; // Consume code instantly to prevent replay loops
-        return res.status(200).json({ success: true, message: "Consensus met. Authorization initialized successfully." });
-    } else {
-        return res.status(400).json({ success: false, error: "Secure access token verification string mismatch." });
-    }
+  if (!record) {
+    return res.status(400).json({ success: false, message: 'No OTP requested for this email.' });
+  }
+
+  if (Date.now() > record.expiresAt) {
+    delete otpStore[formattedEmail];
+    return res.status(400).json({ success: false, message: 'OTP has expired. Please request a new one.' });
+  }
+
+  if (String(record.otp).trim() !== String(otp).trim()) {
+    return res.status(400).json({ success: false, message: 'Invalid OTP code.' });
+  }
+
+  delete otpStore[formattedEmail];
+  return res.json({ success: true, message: 'OTP verified successfully.' });
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Dairy Vision Enterprise infrastructure listening securely on port ${PORT}...`));
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Server running on port ${PORT}`);
+});
