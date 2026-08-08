@@ -19,6 +19,7 @@
   },
   "homepage": "https://github.com/11249a125-harish/ALL-LABS#readme",
   "dependencies": {
+    "@getbrevo/brevo": "^6.0.2",
     "body-parser": "^2.3.0",
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",

@@ -16,7 +16,7 @@ const otpStore = {};
 // Setup Brevo SMTP Transporter (Replaced Gmail with your active Brevo Credentials)
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com',
-  port: 587,
+  port: 465,
   secure: false, // TLS port 587 setup
   auth: {
     user: '811dc3@smtp-brevo.com', // Your Brevo SMTP Login ID visible under your Brevo profile
