@@ -1,5 +1,4 @@
 const express = require('express');
-const nodemailer = require('nodemailer');
 const cors = require('cors');
 const dotenv = require('dotenv');
 
@@ -13,27 +12,7 @@ app.use(express.static('public'));
 // In-memory OTP store
 const otpStore = {};
 
-// Setup Brevo SMTP Transporter (Replaced Gmail with your active Brevo Credentials)
-const transporter = nodemailer.createTransport({
-  host: 'smtp-relay.brevo.com',
-  port: 465,
-  secure: false, // TLS port 587 setup
-  auth: {
-    user: '811dc3@smtp-brevo.com', // Your Brevo SMTP Login ID visible under your Brevo profile
-    pass: 'process.env.BREVO_API_KEY', // Your live generated Brevo Key
-  },
-});
-
-// Verify Brevo SMTP connection on startup
-transporter.verify((error) => {
-  if (error) {
-    console.error('❌ Brevo SMTP Connection Error:', error);
-  } else {
-    console.log('✅ Brevo SMTP Server is ready to send Dairy Vision verification emails.');
-  }
-});
-
-// Endpoint: Send OTP
+// Endpoint: Send OTP via Brevo REST API (Bypasses Port Blocks)
 app.post('/api/send-otp', async (req, res) => {
   const { email, purpose } = req.body;
 
@@ -41,40 +20,50 @@ app.post('/api/send-otp', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Valid email required.' });
   }
 
-  // NOTE: This MUST be the email address you registered and verified inside your Brevo dashboard account!
   const senderEmail = 'karanamharish93@gmail.com'; 
-  
   const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = Date.now() + 5 * 60 * 1000; // 5 mins expiration
   
   otpStore[email.toLowerCase().trim()] = { otp: generatedOtp, expiresAt };
 
-  const mailOptions = {
-    from: `"Dairy Vision Portal" <${senderEmail}>`,
-    to: email.trim(),
-    subject: `Dairy Vision Verification Code: ${generatedOtp}`,
-    html: `
-      <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-        <h2 style="color: #1b4332;">Dairy Vision Cloud System</h2>
-        <p>Your OTP code for <strong>${purpose || 'Verification'}</strong> is:</p>
-        <h1 style="color: #ffb703; background: #1b4332; display: inline-block; padding: 10px 20px; border-radius: 5px; letter-spacing: 3px;">
-          ${generatedOtp}
-        </h1>
-        <p>This code expires in 5 minutes. If you did not request this, please ignore this email.</p>
-      </div>
-    `,
-  };
-
   try {
-    await transporter.sendMail(mailOptions);
-    console.log(`[OTP SENT] Code sent to ${email}`);
-    return res.json({ success: true, message: 'OTP sent successfully via Brevo.' });
-  } catch (err) {
-    console.error('[BREVO SMTP ERROR]', err);
-    return res.status(500).json({ 
-      success: false, 
-      message: 'Failed to send OTP via Brevo. Review your server logs or confirmed sender list.' 
+    const response = await fetch('https://brevo.com', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': process.env.BREVO_API_KEY,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        sender: { name: "Dairy Vision Portal", email: senderEmail },
+        to: [{ email: email.trim() }],
+        subject: `Dairy Vision Verification Code: ${generatedOtp}`,
+        htmlContent: `
+          <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+            <h2 style="color: #1b4332;">Dairy Vision Cloud System</h2>
+            <p>Your OTP code for <strong>${purpose || 'Verification'}</strong> is:</p>
+            <h1 style="color: #ffb703; background: #1b4332; display: inline-block; padding: 10px 20px; border-radius: 5px; letter-spacing: 3px;">
+              ${generatedOtp}
+            </h1>
+            <p>This code expires in 5 minutes. If you did not request this, please ignore this email.</p>
+          </div>
+        `
+      })
     });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('❌ Brevo API Error Details:', data);
+      return res.status(response.status).json({ success: false, message: data.message || 'Brevo API rejection.' });
+    }
+
+    console.log(`[OTP SENT] Code ${generatedOtp} sent successfully to ${email}`);
+    return res.json({ success: true, message: 'OTP sent successfully via Brevo API.' });
+
+  } catch (err) {
+    console.error('[SERVER API ERROR]', err);
+    return res.status(500).json({ success: false, message: 'Internal server error while sending OTP.' });
   }
 });
 
