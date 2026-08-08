@@ -12,9 +12,11 @@ app.use(express.static('public'));
 // In-memory OTP store
 const otpStore = {};
 
-// Endpoint: Send OTP via Brevo REST API (Bypasses Port Blocks)
+// Endpoint: Send OTP via Brevo REST API with Extended Error Logging
 app.post('/api/send-otp', async (req, res) => {
   const { email, purpose } = req.body;
+
+  console.log(`[OTP ATTEMPT] Received request for: ${email}`);
 
   if (!email || typeof email !== 'string' || !email.includes('@')) {
     return res.status(400).json({ success: false, message: 'Valid email required.' });
@@ -22,11 +24,12 @@ app.post('/api/send-otp', async (req, res) => {
 
   const senderEmail = 'karanamharish93@gmail.com'; 
   const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 mins expiration
+  const expiresAt = Date.now() + 5 * 60 * 1000; 
   
   otpStore[email.toLowerCase().trim()] = { otp: generatedOtp, expiresAt };
 
   try {
+    console.log(`[BREVO HTTP] Dispatching payload to Brevo API...`);
     const response = await fetch('https://brevo.com', {
       method: 'POST',
       headers: {
@@ -54,15 +57,15 @@ app.post('/api/send-otp', async (req, res) => {
     const data = await response.json();
 
     if (!response.ok) {
-      console.error('❌ Brevo API Error Details:', data);
+      console.error('❌ BREVO API ERROR DETAILS:', JSON.stringify(data));
       return res.status(response.status).json({ success: false, message: data.message || 'Brevo API rejection.' });
     }
 
-    console.log(`[OTP SENT] Code ${generatedOtp} sent successfully to ${email}`);
+    console.log(`[OTP SENT] Code ${generatedOtp} successfully accepted by Brevo. Message ID: ${data.messageId}`);
     return res.json({ success: true, message: 'OTP sent successfully via Brevo API.' });
 
   } catch (err) {
-    console.error('[SERVER API ERROR]', err);
+    console.error('❌ CRITICAL SERVER ERROR:', err.message);
     return res.status(500).json({ success: false, message: 'Internal server error while sending OTP.' });
   }
 });
