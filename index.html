@@ -799,8 +799,8 @@
                 <div class="form-group">
                   <label>Shift *</label>
                   <select id="milk-shift" required>
-                    <option value="Morning">Morning</option>
-                    <option value="Evening">Evening</option>
+                    <option value="Morning">Morning Shift</option>
+                    <option value="Evening">Evening Shift</option>
                   </select>
                 </div>
                 <div class="form-group">
@@ -921,7 +921,7 @@
         <div id="tab-bookings" class="tab-content hidden">
           <div class="card">
             <h3><i class="fa-solid fa-box-open"></i> Farmer Requirements & Supply Orders</h3>
-            <p style="color:#666; font-size:0.9em; margin-bottom:15px;">Review, Approve, or Decline cattle feed, mineral mixture, and fat powder requests. Status changes send emails to farmers.</p>
+            <p style="color:#666; font-size:0.9em; margin-bottom:15px;">Review, Approve, or Decline cattle feed, mineral mixture, and fat powder requests. Status changes send emails to farmers and reflect in their milk bills.</p>
 
             <table>
               <thead>
@@ -929,7 +929,9 @@
                   <th>Booking Date</th>
                   <th>Farmer Details</th>
                   <th>Item Requested</th>
-                  <th>Quantity</th>
+                  <th>Unit Price</th>
+                  <th>Qty</th>
+                  <th>Total Price</th>
                   <th>Status</th>
                   <th>Action</th>
                 </tr>
@@ -1060,12 +1062,13 @@
           <form id="farmer-booking-form" style="margin-top:15px;">
             <div class="grid">
               <div class="form-group">
-                <label>Select Requirement Item *</label>
+                <label>Select Requirement Item & Price *</label>
                 <select id="booking-item-type" required>
-                  <option value="Cattle Feed (50kg Bag)">Cattle Feed (50kg Bag)</option>
-                  <option value="Bypass FAT Powder (1kg)">Bypass FAT Powder (1kg)</option>
-                  <option value="Chelated Mineral Mixture (1kg)">Chelated Mineral Mixture (1kg)</option>
-                  <option value="Calcium Tonic / Supplement (5L)">Calcium Tonic / Supplement (5L)</option>
+                  <option value="Cattle Feed (10kg Bag)|320">Cattle Feed (10kg Bag) - ₹320</option>
+                  <option value="Cattle Feed (50kg Bag)|1600">Cattle Feed (50kg Bag) - ₹1,600</option>
+                  <option value="Chelated Mineral Mixture (1kg)|220">Chelated Mineral Mixture (1kg) - ₹220</option>
+                  <option value="Bypass FAT Powder (1kg)|350">Bypass FAT Powder (1kg) - ₹350</option>
+                  <option value="Calcium Tonic / Supplement (5L)|650">Calcium Tonic / Supplement (5L) - ₹650</option>
                 </select>
               </div>
 
@@ -1090,7 +1093,9 @@
                 <tr>
                   <th>Date</th>
                   <th>Item Requested</th>
+                  <th>Unit Price</th>
                   <th>Qty</th>
+                  <th>Total Cost</th>
                   <th>Status</th>
                 </tr>
               </thead>
@@ -1203,7 +1208,7 @@
           this.otpAttempts[email] = { count: 1, firstTime: now };
           return { allowed: true };
         }
-        if (record.count >= 5) { // Maximum 5 OTP requests per minute per email
+        if (record.count >= 5) {
           return { allowed: false, message: "Firewall Block: Too many OTP requests. Please wait 1 minute." };
         }
         record.count++;
@@ -1468,6 +1473,16 @@
       showAlert('Welcome to Agent Portal!');
     });
 
+    function initAppView() {
+      renderFarmers();
+      renderCollections();
+      populateDropdowns();
+      updateDashboardMetrics();
+      renderAgentBookings();
+      document.getElementById('milk-date').value = new Date().toISOString().split('T')[0];
+      document.getElementById('deduction-date').value = new Date().toISOString().split('T')[0];
+    }
+
     async function sendFarmerLoginOtp() {
       const email = document.getElementById('farmer-login-email').value.trim().toLowerCase();
       const farmerRecord = DB.farmers.find(f => f.email && f.email.toLowerCase() === email);
@@ -1626,14 +1641,22 @@
         e.preventDefault();
         if(!currentFarmer) return;
 
+        const itemVal = document.getElementById('booking-item-type').value.split('|');
+        const itemName = itemVal[0];
+        const unitPrice = parseFloat(itemVal[1]);
+        const qty = parseInt(document.getElementById('booking-qty').value);
+        const totalPrice = unitPrice * qty;
+
         const newBooking = {
           id: Date.now(),
           farmerId: currentFarmer.id,
           farmerEmail: currentFarmer.email,
           farmerMobile: currentFarmer.mobile,
           farmerName: currentFarmer.name,
-          item: document.getElementById('booking-item-type').value,
-          qty: document.getElementById('booking-qty').value,
+          item: itemName,
+          unitPrice: unitPrice,
+          qty: qty,
+          totalPrice: totalPrice,
           date: document.getElementById('booking-date').value,
           status: 'Pending Agent Review'
         };
@@ -1642,7 +1665,7 @@
         DB.bookings.unshift(newBooking);
         saveDB();
 
-        showAlert(`Requirement request placed for ${newBooking.item}!`);
+        showAlert(`Requirement request placed for ${newBooking.item}! Total: ₹${totalPrice}`);
         renderFarmerBookings();
         renderAgentBookings();
       });
@@ -1656,7 +1679,7 @@
       const myBookings = (DB.bookings || []).filter(b => b.farmerEmail === currentFarmer.email || b.farmerId === currentFarmer.id);
 
       if(myBookings.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#888;">No requirement requests placed yet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#888;">No requirement requests placed yet.</td></tr>`;
         return;
       }
 
@@ -1664,7 +1687,9 @@
         <tr>
           <td>${b.date}</td>
           <td><strong>${b.item}</strong></td>
+          <td>₹${b.unitPrice || 0}</td>
           <td>${b.qty}</td>
+          <td><strong>₹${b.totalPrice || (b.unitPrice * b.qty) || 0}</strong></td>
           <td><span class="water-badge ${b.status.includes('Approved') ? 'water-pure' : (b.status.includes('Declined') || b.status.includes('Rejected') ? 'water-warning' : '')}">${b.status}</span></td>
         </tr>
       `).join('');
@@ -1676,7 +1701,7 @@
 
       const list = DB.bookings || [];
       if(list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#888;">No farmer requirement orders pending.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#888;">No farmer requirement orders pending.</td></tr>`;
         return;
       }
 
@@ -1685,7 +1710,9 @@
           <td>${b.date}</td>
           <td><strong>${b.farmerId} - ${b.farmerName}</strong><br><small>${b.farmerEmail}</small></td>
           <td>${b.item}</td>
+          <td>₹${b.unitPrice || 0}</td>
           <td>${b.qty}</td>
+          <td><strong>₹${b.totalPrice || (b.unitPrice * b.qty) || 0}</strong></td>
           <td><span class="water-badge ${b.status.includes('Approved') ? 'water-pure' : 'water-warning'}">${b.status}</span></td>
           <td>
             ${b.status.includes('Pending') ? `
@@ -1705,13 +1732,28 @@
         saveDB();
         
         const booking = DB.bookings[idx];
+        
+        // IF APPROVED, ADD TO BILL DEDUCTIONS AUTOMATICALLY
+        if (statusState === 'Approved') {
+          if(!DB.deductions) DB.deductions = [];
+          DB.deductions.push({
+            id: Date.now(),
+            farmerId: booking.farmerId,
+            type: `Material Request: ${booking.item} (${booking.qty} qty)`,
+            date: booking.date,
+            amount: parseFloat(booking.totalPrice || (booking.unitPrice * booking.qty))
+          });
+          saveDB();
+        }
+
         renderAgentBookings();
         showAlert(`Order Request ${statusState}! Sending Gmail alert to farmer...`);
 
         // EMAIL NOTIFICATION TO FARMER UPON APPROVAL/DECLINE
         if (booking.farmerEmail) {
-          const emailSubject = `Requirement Request Update: ${booking.item} (${statusState})`;
-          const emailBody = `Dear ${booking.farmerName},\n\nYour request for ${booking.qty} x ${booking.item} dated ${booking.date} has been ${statusState.toUpperCase()} by the station Agent.\n\nThank you,\nDairy Vision Team`;
+          const emailSubject = `Material Requirement Status: ${booking.item} - ${statusState.toUpperCase()}`;
+          const stockNotice = statusState === 'Approved' ? 'The requested items are IN STOCK and your order has been ACCEPTED. The amount will be reflected in your milk bill slip.' : 'Regrettably, the requested items are CURRENTLY OUT OF STOCK or DECLINED by the agent.';
+          const emailBody = `Dear ${booking.farmerName},\n\nYour request for ${booking.qty} x ${booking.item} (Total: ₹${booking.totalPrice || 0}) requested for ${booking.date} has been ${statusState.toUpperCase()} by the Station Agent.\n\nNote: ${stockNotice}\n\nThank you,\nDairy Vision Center - Palamaner`;
           
           await DairyVisionAPI.sendEmailNotification(booking.farmerEmail, emailSubject, emailBody);
         }
@@ -1799,17 +1841,23 @@
 
       const ratePerLitre = (fat * 6.5) + (snf * 3.5);
       const totalAmount = qty * ratePerLitre;
+      const canNo = DB.agentCAN || "CAN-PLM-2026-01";
+      const collectionDate = document.getElementById('milk-date').value;
+      const shift = document.getElementById('milk-shift').value;
+      const place = farmer ? farmer.village : 'Palamaner Center';
 
       const record = {
         id: Date.now(),
-        date: document.getElementById('milk-date').value,
+        canNo: canNo,
+        date: collectionDate,
+        place: place,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
         farmerId: farmerId,
         farmerName: farmer ? farmer.name : 'Farmer',
         farmerEmail: farmer ? farmer.email : '',
         farmerMobile: farmer ? farmer.mobile : '',
         type: document.getElementById('milk-type').value,
-        shift: document.getElementById('milk-shift').value,
+        shift: shift,
         qty: qty,
         fat: fat,
         snf: snf,
@@ -1821,10 +1869,10 @@
       DB.collections.unshift(record);
       saveDB();
 
-      // SEND AUTOMATED MILK COLLECTION RECEIPT EMAIL TO FARMER
+      // SEND AUTOMATED MILK COLLECTION RECEIPT EMAIL TO FARMER WITH ALL DETAILS
       if (farmer && farmer.email) {
-        const mailSubject = `Milk Collection Slip - ${record.date} (${record.shift} Shift)`;
-        const mailBody = `Hello ${farmer.name},\n\nYour milk entry has been logged successfully.\n\nDetails:\nShift: ${record.shift}\nType: ${record.type}\nQuantity: ${record.qty} L\nFAT: ${record.fat}%\nSNF: ${record.snf}%\nRate/L: ₹${record.rate}\nTotal Amount: ₹${record.total}\n\nThank you for choosing Dairy Vision!`;
+        const mailSubject = `Milk Collection Details - CAN: ${canNo} (${collectionDate} ${shift})`;
+        const mailBody = `Dear ${farmer.name},\n\nYour milk entry details have been logged successfully.\n\nCOLLECTION DETAILS:\n-----------------------------\nCAN No: ${canNo}\nPlace: ${place}\nDate: ${collectionDate}\nShift: ${shift}\nMilk Type: ${record.type}\nQuantity: ${record.qty} Liters\nFAT: ${record.fat}%\nSNF: ${record.snf}%\nWater Adulteration: ${record.waterPct}%\nRate/Litre: ₹${record.rate}\nTotal Amount: ₹${record.total}\n-----------------------------\n\nThank you,\nDairy Vision Global Cloud Collection System`;
         
         await DairyVisionAPI.sendEmailNotification(farmer.email, mailSubject, mailBody);
       }
@@ -2174,12 +2222,19 @@
           `;
         }).join('');
 
-        let farmerDeductions = DB.deductions.filter(d => d.farmerId === farmerCode);
+        let farmerDeductions = DB.deductions ? DB.deductions.filter(d => d.farmerId === farmerCode) : [];
         if (startDate) farmerDeductions = farmerDeductions.filter(d => d.date >= startDate);
         if (endDate) farmerDeductions = farmerDeductions.filter(d => d.date <= endDate);
 
         const totalDeductionAmt = farmerDeductions.reduce((acc, d) => acc + parseFloat(d.amount), 0);
         const netPayable = grossAmount - totalDeductionAmt;
+
+        let deductionsRows = farmerDeductions.map(d => `
+          <tr style="color:var(--danger); font-size:0.88em;">
+            <td colspan="8" style="text-align:right;">Deduction (${d.date} - ${d.type}):</td>
+            <td>- ₹ ${parseFloat(d.amount).toFixed(2)}</td>
+          </tr>
+        `).join('');
 
         tfoot.innerHTML = `
           <tr style="border-top:2px solid #1b4332;">
@@ -2191,7 +2246,8 @@
             <td>Avg: ₹${(sumRate / list.length).toFixed(2)}</td>
             <td><strong>₹ ${grossAmount.toFixed(2)}</strong></td>
           </tr>
-          <tr style="color:var(--danger);">
+          ${deductionsRows}
+          <tr style="color:var(--danger); font-weight:bold;">
             <td colspan="8" style="text-align:right;">LESS: TOTAL PERIOD DEDUCTIONS:</td>
             <td><strong>- ₹ ${totalDeductionAmt.toFixed(2)}</strong></td>
           </tr>
@@ -2300,11 +2356,9 @@
       document.getElementById('farmer-total-qty').innerText = `${totalQty.toFixed(1)} L`;
       document.getElementById('farmer-total-earnings').innerText = `₹ ${totalEarnings.toFixed(2)}`;
 
-      renderFarmerBookings();
-
       const itemizedTbody = document.getElementById('farmer-itemized-tbody');
       if(records.length === 0) {
-        itemizedTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No milk collection records match selected date range.</td></tr>`;
+        itemizedTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No milk collection entries found for your account.</td></tr>`;
       } else {
         itemizedTbody.innerHTML = records.map(r => `
           <tr>
@@ -2314,77 +2368,14 @@
             <td>${r.qty} L</td>
             <td>${r.fat}%</td>
             <td>${r.snf}%</td>
-            <td><span class="water-badge ${r.waterPct > 0 ? 'water-warning' : 'water-pure'}">${r.waterPct}%</span></td>
+            <td>${r.waterPct}%</td>
             <td>₹${r.rate}</td>
             <td><strong>₹${r.total}</strong></td>
           </tr>
         `).join('');
       }
 
-      const imgTbody = document.getElementById('farmer-image-format-tbody');
-      if(!imgTbody) return;
-      if(records.length === 0) {
-        imgTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888; padding:20px;">No collection records match selected date range.</td></tr>`;
-        return;
-      }
-
-      const monthGroups = {};
-      records.forEach(r => {
-        const monthName = new Date(r.date).toLocaleString('default', { month: 'long' });
-        if(!monthGroups[monthName]) monthGroups[monthName] = [];
-        monthGroups[monthName].push(r);
-      });
-
-      let html = '';
-      for (const [month, list] of Object.entries(monthGroups)) {
-        html += `<tr class="month-header-row"><td colspan="5">${month}</td></tr>`;
-        
-        const bList = list.filter(r => r.type.includes('Buffalo'));
-        if(bList.length > 0) {
-          const bQty = bList.reduce((a, b) => a + parseFloat(b.qty), 0);
-          const bFat = (bList.reduce((a, b) => a + parseFloat(b.fat), 0) / bList.length).toFixed(1);
-          const bRate = (bList.reduce((a, b) => a + parseFloat(b.rate), 0) / bList.length).toFixed(2);
-          const bAmt = bList.reduce((a, b) => a + parseFloat(b.total), 0).toFixed(2);
-
-          html += `
-            <tr>
-              <td>B</td>
-              <td>${bQty.toFixed(2)}</td>
-              <td>${bFat}</td>
-              <td>${bRate}</td>
-              <td>${bAmt}</td>
-            </tr>
-          `;
-        }
-
-        const cList = list.filter(r => r.type.includes('Cow'));
-        if(cList.length > 0) {
-          const cQty = cList.reduce((a, b) => a + parseFloat(b.qty), 0);
-          const cFat = (cList.reduce((a, b) => a + parseFloat(b.fat), 0) / cList.length).toFixed(1);
-          const cRate = (cList.reduce((a, b) => a + parseFloat(b.rate), 0) / cList.length).toFixed(2);
-          const cAmt = cList.reduce((a, b) => a + parseFloat(b.total), 0).toFixed(2);
-
-          html += `
-            <tr>
-              <td>C</td>
-              <td>${cQty.toFixed(2)}</td>
-              <td>${cFat}</td>
-              <td>${cRate}</td>
-              <td>${cAmt}</td>
-            </tr>
-          `;
-        }
-      }
-
-      imgTbody.innerHTML = html;
-    }
-
-    function initAppView() {
-      renderFarmers();
-      renderCollections();
-      populateDropdowns();
-      updateDashboardMetrics();
-      document.getElementById('milk-date').value = new Date().toISOString().split('T')[0];
+      renderFarmerBookings();
     }
   </script>
 </body>
