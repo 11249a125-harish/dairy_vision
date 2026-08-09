@@ -1052,7 +1052,7 @@
       <!-- 3. FARMER PORTAL VIEW -->
       <div id="farmer-portal-section" class="hidden">
         <div class="card no-print" style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white;">
-          <h2><i class="fa-solid fa-globe"></i> Global Farmer Portal</h2>
+          2. Global Farmer Portal</h2>
           <p style="margin-top: 5px;">Farmer: <span id="farmer-portal-name">--</span> | Registered Gmail: <span id="farmer-portal-phone">--</span></p>
         </div>
 
@@ -2181,6 +2181,11 @@
         `;
       } 
       else if (type === 'MILK_BILL') {
+        if (!farmerId) {
+          showAlert('Please select a farmer code!', 'danger');
+          return;
+        }
+
         const farmer = DB.farmers.find(f => f.id === farmerId);
         titleEl.innerText = `INDIVIDUAL MILK RECEIPT / BILL (${farmer ? farmer.name : farmerId})`;
         rangeEl.innerText = `${startDate} to ${endDate || startDate}`;
@@ -2198,12 +2203,22 @@
           </tr>
         `;
 
-        const filtered = DB.collections.filter(c => c.farmerId === farmerId && c.date >= startDate && c.date <= (endDate || startDate));
+        const filtered = DB.collections.filter(c => {
+          const matchFarmer = c.farmerId === farmerId;
+          const matchDate = c.date >= startDate && c.date <= (endDate || startDate);
+          return matchFarmer && matchDate;
+        });
 
-        let totalQty = 0, grossAmt = 0;
+        if (filtered.length === 0) {
+          bodyEl.innerHTML = `<tr><td colspan="8" style="text-align:center;">No collections found for this farmer in the given period.</td></tr>`;
+          footEl.innerHTML = '';
+          return;
+        }
+
+        let totalQty = 0, totalGross = 0;
         bodyEl.innerHTML = filtered.map(c => {
           totalQty += c.qty;
-          grossAmt += parseFloat(c.total);
+          totalGross += parseFloat(c.total);
           return `
             <tr>
               <td>${c.date}</td>
@@ -2218,96 +2233,123 @@
           `;
         }).join('');
 
-        const farmerDeductions = DB.deductions.filter(d => d.farmerId === farmerId && d.date >= startDate && d.date <= (endDate || startDate));
-        const totalDeductions = farmerDeductions.reduce((acc, curr) => acc + curr.amount, 0);
-        const netPay = grossAmt - totalDeductions;
+        const farmerDeductions = (DB.deductions || []).filter(d => d.farmerId === farmerId && d.date >= startDate && d.date <= (endDate || startDate));
+        const totalDeductions = farmerDeductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+        const netPay = totalGross - totalDeductions;
 
         footEl.innerHTML = `
           <tr>
             <td colspan="3" style="text-align:right;"><strong>Gross Total:</strong></td>
             <td><strong>${totalQty.toFixed(1)} L</strong></td>
             <td colspan="3"></td>
-            <td><strong>₹${grossAmt.toFixed(2)}</strong></td>
+            <td><strong>₹${totalGross.toFixed(2)}</strong></td>
           </tr>
           <tr>
-            <td colspan="7" style="text-align:right; color:var(--danger);"><strong>Less Total Deductions / Feed Purchase:</strong></td>
+            <td colspan="7" style="text-align:right; color:var(--danger);"><strong>Total Deductions / Feed Adjustments:</strong></td>
             <td style="color:var(--danger);"><strong>- ₹${totalDeductions.toFixed(2)}</strong></td>
           </tr>
-          <tr style="background:#d8f3dc;">
-            <td colspan="7" style="text-align:right; font-size:1.1em; color:var(--primary);"><strong>NET PAYABLE AMOUNT:</strong></td>
-            <td style="font-size:1.1em; color:var(--primary);"><strong>₹${netPay.toFixed(2)}</strong></td>
+          <tr style="background:#e8f5e9;">
+            <td colspan="7" style="text-align:right; font-size:1.1em; color:var(--primary);"><strong>Net Payable Amount:</strong></td>
+            <td style="font-size:1.1em; color:#2e7d32;"><strong>₹${netPay.toFixed(2)}</strong></td>
           </tr>
         `;
       }
       else if (type === 'BILL_SUMMARY') {
-        titleEl.innerText = 'CONSOLIDATED BILL PERIOD SUMMARY';
+        titleEl.innerText = 'CONSOLIDATED BILL SUMMARY REPORT';
         rangeEl.innerText = `${startDate} to ${endDate || startDate}`;
 
         headEl.innerHTML = `
           <tr>
             <th>Farmer Code</th>
             <th>Farmer Name</th>
-            <th>Total Liters</th>
-            <th>Gross Amount</th>
-            <th>Deductions</th>
-            <th>Net Amount</th>
+            <th>Total Qty (L)</th>
+            <th>Gross Amount (₹)</th>
+            <th>Deductions (₹)</th>
+            <th>Net Payable (₹)</th>
           </tr>
         `;
 
-        bodyEl.innerHTML = DB.farmers.map(f => {
-          const fCollections = DB.collections.filter(c => c.farmerId === f.id && c.date >= startDate && c.date <= (endDate || startDate));
-          const fDeductions = DB.deductions.filter(d => d.farmerId === f.id && d.date >= startDate && d.date <= (endDate || startDate));
+        const periodCollections = DB.collections.filter(c => c.date >= startDate && c.date <= (endDate || startDate));
 
-          const totalLiters = fCollections.reduce((acc, c) => acc + c.qty, 0);
-          const gross = fCollections.reduce((acc, c) => acc + parseFloat(c.total), 0);
-          const ded = fDeductions.reduce((acc, d) => acc + d.amount, 0);
-          const net = gross - ded;
+        if (periodCollections.length === 0) {
+          bodyEl.innerHTML = `<tr><td colspan="6" style="text-align:center;">No records found for the selected period.</td></tr>`;
+          footEl.innerHTML = '';
+          return;
+        }
+
+        const summaryMap = {};
+
+        periodCollections.forEach(c => {
+          if (!summaryMap[c.farmerId]) {
+            summaryMap[c.farmerId] = { name: c.farmerName, qty: 0, gross: 0 };
+          }
+          summaryMap[c.farmerId].qty += c.qty;
+          summaryMap[c.farmerId].gross += parseFloat(c.total);
+        });
+
+        let grandQty = 0, grandGross = 0, grandDeductions = 0, grandNet = 0;
+
+        bodyEl.innerHTML = Object.keys(summaryMap).map(fId => {
+          const item = summaryMap[fId];
+          const farmerDeductions = (DB.deductions || []).filter(d => d.farmerId === fId && d.date >= startDate && d.date <= (endDate || startDate));
+          const dedAmt = farmerDeductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
+          const netAmt = item.gross - dedAmt;
+
+          grandQty += item.qty;
+          grandGross += item.gross;
+          grandDeductions += dedAmt;
+          grandNet += netAmt;
 
           return `
             <tr>
-              <td>${f.id}</td>
-              <td>${f.name}</td>
-              <td>${totalLiters.toFixed(1)} L</td>
-              <td>₹${gross.toFixed(2)}</td>
-              <td>₹${ded.toFixed(2)}</td>
-              <td><strong>₹${net.toFixed(2)}</strong></td>
+              <td>${fId}</td>
+              <td>${item.name}</td>
+              <td>${item.qty.toFixed(1)} L</td>
+              <td>₹${item.gross.toFixed(2)}</td>
+              <td style="color:var(--danger);">₹${dedAmt.toFixed(2)}</td>
+              <td><strong>₹${netAmt.toFixed(2)}</strong></td>
             </tr>
           `;
         }).join('');
 
-        footEl.innerHTML = '';
+        footEl.innerHTML = `
+          <tr>
+            <td colspan="2" style="text-align:right;"><strong>Grand Total:</strong></td>
+            <td><strong>${grandQty.toFixed(1)} L</strong></td>
+            <td><strong>₹${grandGross.toFixed(2)}</strong></td>
+            <td style="color:var(--danger);"><strong>₹${grandDeductions.toFixed(2)}</strong></td>
+            <td style="color:#2e7d32;"><strong>₹${grandNet.toFixed(2)}</strong></td>
+          </tr>
+        `;
       }
     }
 
     function renderFarmerPortal() {
-      if(!currentFarmer) return;
+      if (!currentFarmer) return;
 
       document.getElementById('farmer-portal-name').innerText = currentFarmer.name;
       document.getElementById('farmer-portal-phone').innerText = currentFarmer.email || currentFarmer.mobile;
 
-      const fromDate = document.getElementById('farmer-range-from')?.value;
-      const toDate = document.getElementById('farmer-range-to')?.value;
+      const fromDate = document.getElementById('farmer-range-from').value;
+      const toDate = document.getElementById('farmer-range-to').value;
 
-      let list = DB.collections.filter(c => 
-        (c.farmerEmail && currentFarmer.email && c.farmerEmail.toLowerCase() === currentFarmer.email.toLowerCase()) || 
-        c.farmerId === currentFarmer.id
-      );
+      let records = DB.collections.filter(c => c.farmerId === currentFarmer.id || (c.farmerEmail && c.farmerEmail.toLowerCase() === currentFarmer.email.toLowerCase()));
 
-      if (fromDate) list = list.filter(c => c.date >= fromDate);
-      if (toDate) list = list.filter(c => c.date <= toDate);
+      if (fromDate) records = records.filter(c => c.date >= fromDate);
+      if (toDate) records = records.filter(c => c.date <= toDate);
 
-      const totalQty = list.reduce((acc, c) => acc + c.qty, 0);
-      const totalEarned = list.reduce((acc, c) => acc + parseFloat(c.total), 0);
+      const totalQty = records.reduce((acc, c) => acc + c.qty, 0);
+      const totalEarnings = records.reduce((acc, c) => acc + parseFloat(c.total), 0);
 
       document.getElementById('farmer-total-qty').innerText = `${totalQty.toFixed(1)} L`;
-      document.getElementById('farmer-total-earnings').innerText = `₹ ${totalEarned.toFixed(2)}`;
+      document.getElementById('farmer-total-earnings').innerText = `₹ ${totalEarnings.toFixed(2)}`;
 
-      const itemizedBody = document.getElementById('farmer-itemized-tbody');
-      if (itemizedBody) {
-        if(list.length === 0) {
-          itemizedBody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No collection records found for this farmer.</td></tr>`;
+      const itemizedTbody = document.getElementById('farmer-itemized-tbody');
+      if (itemizedTbody) {
+        if (records.length === 0) {
+          itemizedTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No milk collection history found for the selected dates.</td></tr>`;
         } else {
-          itemizedBody.innerHTML = list.map(c => `
+          itemizedTbody.innerHTML = records.map(c => `
             <tr>
               <td>${c.date}</td>
               <td>${c.shift}</td>
@@ -2315,7 +2357,7 @@
               <td>${c.qty} L</td>
               <td>${c.fat}%</td>
               <td>${c.snf}%</td>
-              <td>${c.waterPct}%</td>
+              <td><span class="water-badge ${c.waterPct > 0 ? 'water-warning' : 'water-pure'}">${c.waterPct}%</span></td>
               <td>₹${c.rate}</td>
               <td><strong>₹${c.total}</strong></td>
             </tr>
@@ -2323,35 +2365,75 @@
         }
       }
 
-      renderFarmerImageFormat(list);
+      renderFarmerImageGrid(records);
       renderFarmerBookings();
     }
 
-    function renderFarmerImageFormat(collections) {
-      const tbody = document.getElementById('farmer-image-format-tbody');
-      if(!tbody) return;
+    function renderFarmerImageGrid(records) {
+      const gridTbody = document.getElementById('farmer-image-format-tbody');
+      if (!gridTbody) return;
 
-      if(collections.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:15px; color:#888;">No summary data recorded.</td></tr>`;
+      if (records.length === 0) {
+        gridTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:15px; color:#888;">No monthly records found.</td></tr>`;
         return;
       }
 
-      let html = `<tr class="month-header-row"><td colspan="5">Summary Statement</td></tr>`;
-      collections.forEach(c => {
+      const groupedByMonth = {};
+      records.forEach(c => {
+        const monthKey = c.date ? c.date.substring(0, 7) : '2026-01';
+        if (!groupedByMonth[monthKey]) groupedByMonth[monthKey] = [];
+        groupedByMonth[monthKey].push(c);
+      });
+
+      let html = '';
+      Object.keys(groupedByMonth).sort().reverse().forEach(month => {
+        const monthRecords = groupedByMonth[month];
+        const dateObj = new Date(month + "-01");
+        const monthName = dateObj.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+
+        html += `<tr class="month-header-row"><td colspan="5">${monthName}</td></tr>`;
+
+        let mQty = 0, mFatSum = 0, mAmt = 0;
+        monthRecords.forEach(c => {
+          const qty = c.qty;
+          const fat = c.fat;
+          const amt = parseFloat(c.total);
+          const rate = parseFloat(c.rate);
+
+          mQty += qty;
+          mFatSum += (fat * qty);
+          mAmt += amt;
+
+          const day = c.date ? c.date.split('-')[2] : '01';
+          const shiftLabel = c.shift === 'Morning' ? 'M' : 'E';
+
+          html += `
+            <tr>
+              <td>${day}/${shiftLabel}</td>
+              <td>${qty.toFixed(1)}</td>
+              <td>${fat.toFixed(1)}</td>
+              <td>${rate.toFixed(1)}</td>
+              <td>${amt.toFixed(0)}</td>
+            </tr>
+          `;
+        });
+
+        const avgFat = mQty > 0 ? (mFatSum / mQty).toFixed(1) : '0.0';
+        const avgRate = mQty > 0 ? (mAmt / mQty).toFixed(1) : '0.0';
+
         html += `
-          <tr>
-            <td>${c.date} (${c.shift ? c.shift[0] : ''})</td>
-            <td>${c.qty}</td>
-            <td>${c.fat}</td>
-            <td>${c.rate}</td>
-            <td>${c.total}</td>
+          <tr style="font-weight:bold; border-top: 1px solid #00b0f0; background: rgba(0, 176, 240, 0.05);">
+            <td style="color:#00b0f0;">TOT:</td>
+            <td style="color:#00b0f0;">${mQty.toFixed(1)}</td>
+            <td style="color:#00b0f0;">${avgFat}</td>
+            <td style="color:#00b0f0;">${avgRate}</td>
+            <td style="color:#00b0f0;">${mAmt.toFixed(0)}</td>
           </tr>
         `;
       });
 
-      tbody.innerHTML = html;
+      gridTbody.innerHTML = html;
     }
   </script>
-  <script src="script.js"></script>
 </body>
 </html>
