@@ -29,7 +29,6 @@
 
     .hidden { display: none !important; }
     
-    /* UI Buttons */
     .btn {
       background: var(--primary); color: white; border: none;
       padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: 600;
@@ -49,7 +48,6 @@
 
     .card { background: white; padding: 22px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; }
 
-    /* Header & Branding */
     header {
       background: var(--primary);
       color: white;
@@ -140,7 +138,6 @@
 
     .main-wrapper { display: flex; flex: 1; }
     
-    /* Left Sidebar */
     aside {
       width: var(--sidebar-width);
       background: var(--primary);
@@ -173,7 +170,6 @@
     .content-area { flex: 1; padding: 25px; max-width: calc(100vw - var(--sidebar-width)); overflow-x: hidden; }
     .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; }
 
-    /* Auth Styling */
     .hero-auth-bg {
       min-height: calc(100vh - 80px);
       background: linear-gradient(rgba(27, 67, 50, 0.88), rgba(45, 106, 79, 0.9)), 
@@ -219,6 +215,26 @@
       color: white;
     }
 
+    .login-method-toggle {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+    }
+    .method-btn {
+      flex: 1;
+      padding: 6px;
+      font-size: 0.85em;
+      border: 1px solid var(--primary);
+      background: white;
+      color: var(--primary);
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .method-btn.active {
+      background: var(--primary);
+      color: white;
+    }
+
     .form-group { margin-bottom: 18px; position: relative; }
     .form-group label { display: block; margin-bottom: 6px; font-weight: 600; font-size: 0.9em; color: var(--primary); }
     .form-group input, .form-group select { width: 100%; padding: 11px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.95em; }
@@ -233,7 +249,6 @@
     .water-pure { background: #d8f3dc; color: #1b4332; }
     .water-warning { background: #ffe3e3; color: #c1121f; border: 1px solid #e63946; }
 
-    /* Excel-Style Grid Table Styling */
     .excel-sheet-table {
       width: 100%;
       border-collapse: collapse;
@@ -260,7 +275,6 @@
     .excel-sheet-table tr:nth-child(even) { background-color: #f6f8fa; }
     .excel-sheet-table tr:hover { background-color: #eaf5ea; }
 
-    /* Specific Farmer Report Card Styling */
     .farmer-report-image-view {
       background: #f2f2f2;
       padding: 20px;
@@ -371,28 +385,16 @@
     
     footer { text-align: center; padding: 16px; background: #d8f3dc; color: #1b4332; font-size: 0.9em; margin-top: auto; font-weight: 500; }
 
-    /* Strict Print CSS */
     @media print {
-      body * {
-        visibility: hidden !important;
-      }
+      body * { visibility: hidden !important; }
       #sheet-output-card, #sheet-output-card *, 
-      .farmer-report-image-view, .farmer-report-image-view * {
-        visibility: visible !important;
-      }
+      .farmer-report-image-view, .farmer-report-image-view * { visibility: visible !important; }
       #sheet-output-card, .farmer-report-image-view {
-        position: absolute !important;
-        left: 0 !important;
-        top: 0 !important;
-        width: 100% !important;
-        margin: 0 !important;
-        padding: 20px !important;
-        box-shadow: none !important;
-        border: none !important;
+        position: absolute !important; left: 0 !important; top: 0 !important;
+        width: 100% !important; margin: 0 !important; padding: 20px !important;
+        box-shadow: none !important; border: none !important;
       }
-      button, .btn, .no-print {
-        display: none !important;
-      }
+      button, .btn, .no-print { display: none !important; }
     }
   </style>
 </head>
@@ -428,7 +430,7 @@
         <svg class="brand-logo-img"><use href="#dairy-vision-logo-svg"/></svg>
         <span class="brand-title">Dairy Vision</span>
       </div>
-      <span class="server-status-badge"><i class="fa-solid fa-globe"></i> GMAIL SMTP SERVER CONNECTED</span>
+      <span class="server-status-badge"><i class="fa-solid fa-shield-halved"></i> FIREWALL & SMTP ONLINE</span>
       <small style="margin-left: 10px; color: var(--accent);">
         Palamaner Center, AP | 
         <span class="can-edit-box">
@@ -477,8 +479,8 @@
           <div id="login-card" class="auth-card-hero">
             <div style="text-align: center; margin-bottom: 15px;">
               <svg class="brand-logo-img-lg"><use href="#dairy-vision-logo-svg"/></svg>
-              <h2>Dairy Vision</h2>
-              <p class="auth-subtitle">Global Server Connected | Palamaner Station, AP</p>
+              <h2>Dairy Vision Portal</h2>
+              <p class="auth-subtitle">Firewall Protected | Palamaner Station, AP</p>
             </div>
             
             <!-- Dual Portal Toggle -->
@@ -488,70 +490,130 @@
             </div>
 
             <!-- Agent Login Form -->
-            <form id="agent-login-form">
-              <div class="form-group">
-                <label><i class="fa-solid fa-envelope"></i> Enter Agent Gmail Address *</label>
-                <input type="email" id="agent-email-input" placeholder="e.g. karanamharish93@gmail.com" required>
+            <div id="agent-auth-wrapper">
+              <div class="login-method-toggle">
+                <button type="button" class="method-btn active" id="btn-agent-pass-mode" onclick="toggleAgentAuthMode('password')">Password Login</button>
+                <button type="button" class="method-btn" id="btn-agent-otp-mode" onclick="toggleAgentAuthMode('otp')">Gmail OTP Login</button>
               </div>
 
-              <!-- Gmail OTP Block -->
-              <div id="agent-login-otp-block" class="form-group hidden" style="background: var(--accent); padding: 12px; border-radius: 8px; border: 1px solid var(--secondary);">
-                <label style="color: var(--primary);"><i class="fa-solid fa-key"></i> Enter Received Gmail OTP *</label>
-                <input type="text" id="agent-login-otp" placeholder="Enter 6-digit OTP sent to Gmail" pattern="[0-9]{6}">
-                <small style="color: var(--primary); margin-top: 5px; display: block;"><i class="fa-solid fa-paper-plane"></i> OTP dispatched to your inbox via backend SMTP.</small>
-              </div>
+              <form id="agent-login-form">
+                <div class="form-group">
+                  <label><i class="fa-solid fa-envelope"></i> Agent Gmail Address *</label>
+                  <input type="email" id="agent-email-input" placeholder="e.g. karanamharish93@gmail.com" required>
+                  <small style="font-size:0.75em; color:#666;">Allowed: karanamharish93@gmail.com, 11249a251@kanchiuniv.ac.in, 11249a255@kanchiuniv.ac.in</small>
+                </div>
 
-              <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:15px;">
-                <button type="button" class="btn btn-gold btn-sm" id="btn-send-agent-otp" onclick="sendAgentLoginOtp()"><i class="fa-solid fa-paper-plane"></i> Send Gmail OTP</button>
-                <a href="#" onclick="toggleAgentResetPass(true)" style="color:var(--primary); font-size:0.85em; font-weight:bold; text-decoration:none;">Reset Password?</a>
-              </div>
+                <!-- Password Block -->
+                <div id="agent-password-block" class="form-group">
+                  <label><i class="fa-solid fa-lock"></i> Password *</label>
+                  <input type="password" id="agent-password-input" placeholder="Enter password">
+                </div>
 
-              <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px;"><i class="fa-solid fa-globe"></i> Connect & Verify Login</button>
-            </form>
+                <!-- Gmail OTP Block -->
+                <div id="agent-login-otp-block" class="form-group hidden" style="background: var(--accent); padding: 12px; border-radius: 8px; border: 1px solid var(--secondary);">
+                  <label style="color: var(--primary);"><i class="fa-solid fa-key"></i> Enter Gmail OTP *</label>
+                  <input type="text" id="agent-login-otp" placeholder="Enter 6-digit OTP" pattern="[0-9]{6}">
+                  <button type="button" class="btn btn-gold btn-sm" style="margin-top:8px; width:100%;" onclick="sendAgentLoginOtp()"><i class="fa-solid fa-paper-plane"></i> Send Gmail OTP</button>
+                </div>
+
+                <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:15px;">
+                  <a href="#" onclick="toggleAgentResetPass(true)" style="color:var(--primary); font-size:0.85em; font-weight:bold; text-decoration:none;">First Time / Reset Password?</a>
+                </div>
+
+                <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px;"><i class="fa-solid fa-right-to-bracket"></i> Login to Agent Portal</button>
+              </form>
+            </div>
 
             <!-- Agent Reset Password Form -->
             <form id="agent-reset-form" class="hidden">
-              <h3 style="color:var(--primary); text-align:center; margin-bottom:12px;"><i class="fa-solid fa-key"></i> Reset Agent Password</h3>
+              <h3 style="color:var(--primary); text-align:center; margin-bottom:12px;"><i class="fa-solid fa-key"></i> First Time / Reset Password</h3>
               <div class="form-group">
                 <label>Agent Gmail Address</label>
-                <input type="email" id="reset-agent-email" placeholder="Enter agent gmail" required>
+                <input type="email" id="reset-agent-email" placeholder="Enter authorized agent email" required>
               </div>
 
               <div id="reset-otp-block" class="form-group hidden">
                 <label>Enter 6-Digit Gmail OTP</label>
-                <input type="text" id="reset-agent-otp" placeholder="Enter received OTP">
+                <input type="text" id="reset-agent-otp" placeholder="Enter OTP received in Gmail">
               </div>
 
               <div id="reset-new-pass-block" class="form-group hidden">
-                <label>Enter New Password</label>
-                <input type="password" id="reset-new-password" placeholder="Enter new password">
+                <label>Set New Password</label>
+                <input type="password" id="reset-new-password" placeholder="Create new password">
               </div>
 
-              <div style="display:flex; gap:10px;">
-                <button type="button" id="btn-send-reset-otp" class="btn btn-gold btn-sm" onclick="sendResetOtp()"><i class="fa-solid fa-paper-plane"></i> Send Verification OTP</button>
-                <button type="submit" id="btn-save-reset-pass" class="btn btn-success btn-sm hidden"><i class="fa-solid fa-save"></i> Save New Password</button>
+              <div style="display:flex; gap:10px; flex-direction:column;">
+                <button type="button" id="btn-send-reset-otp" class="btn btn-gold btn-sm" onclick="sendResetOtp()"><i class="fa-solid fa-paper-plane"></i> Send Gmail OTP</button>
+                <button type="submit" id="btn-save-reset-pass" class="btn btn-success btn-sm hidden"><i class="fa-solid fa-save"></i> Set Password & Complete Reset</button>
               </div>
 
               <p style="text-align:center; margin-top:12px;">
-                <a href="#" onclick="toggleAgentResetPass(false)" style="color:#666; font-size:0.85em;">Back to Agent Login</a>
+                <a href="#" onclick="toggleAgentResetPass(false)" style="color:#666; font-size:0.85em;">Back to Login</a>
               </p>
             </form>
 
-            <!-- Farmer Login Form -->
-            <form id="farmer-login-form" class="hidden">
+            <!-- Farmer Login Section -->
+            <div id="farmer-auth-wrapper" class="hidden">
+              <div class="login-method-toggle">
+                <button type="button" class="method-btn active" id="btn-farmer-pass-mode" onclick="toggleFarmerAuthMode('password')">Password Login</button>
+                <button type="button" class="method-btn" id="btn-farmer-otp-mode" onclick="toggleFarmerAuthMode('otp')">Gmail OTP Login</button>
+              </div>
+
+              <form id="farmer-login-form">
+                <div class="form-group">
+                  <label><i class="fa-solid fa-envelope"></i> Registered Farmer Gmail *</label>
+                  <input type="email" id="farmer-login-email" placeholder="Enter registered Gmail" required>
+                </div>
+
+                <!-- Farmer Password Block -->
+                <div id="farmer-password-block" class="form-group">
+                  <label><i class="fa-solid fa-lock"></i> Password *</label>
+                  <input type="password" id="farmer-password-input" placeholder="Enter password">
+                </div>
+
+                <!-- Farmer OTP Block -->
+                <div id="farmer-login-otp-block" class="form-group hidden" style="background: var(--accent); padding: 12px; border-radius: 8px;">
+                  <label style="color:var(--primary);"><i class="fa-solid fa-key"></i> Gmail OTP *</label>
+                  <input type="text" id="farmer-login-otp" placeholder="Enter 6-digit OTP">
+                  <button type="button" id="btn-send-farmer-otp" class="btn btn-gold btn-sm" style="width: 100%; margin-top: 8px;" onclick="sendFarmerLoginOtp()"><i class="fa-solid fa-paper-plane"></i> Send OTP to Gmail</button>
+                </div>
+
+                <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:15px;">
+                  <a href="#" onclick="toggleFarmerResetPass(true)" style="color:var(--primary); font-size:0.85em; font-weight:bold; text-decoration:none;">First Time / Set Password?</a>
+                </div>
+
+                <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px;"><i class="fa-solid fa-tractor"></i> Access Farmer Portal</button>
+              </form>
+            </div>
+
+            <!-- Farmer Reset Password Form -->
+            <form id="farmer-reset-form" class="hidden">
+              <h3 style="color:var(--primary); text-align:center; margin-bottom:12px;"><i class="fa-solid fa-key"></i> Farmer Password Reset</h3>
               <div class="form-group">
-                <label><i class="fa-solid fa-envelope"></i> Registered Farmer Gmail Address *</label>
-                <input type="email" id="farmer-login-email" placeholder="Enter registered Gmail (e.g. farmer@gmail.com)" required>
+                <label>Registered Gmail Address</label>
+                <input type="email" id="reset-farmer-email" placeholder="Enter your registered Gmail" required>
               </div>
 
-              <div id="farmer-login-otp-block" class="form-group hidden">
-                <label><i class="fa-solid fa-key"></i> Enter Gmail OTP *</label>
-                <input type="text" id="farmer-login-otp" placeholder="Enter 6-digit OTP received in Gmail" pattern="[0-9]{6}">
+              <div id="farmer-reset-otp-block" class="form-group hidden">
+                <label>Enter 6-Digit Gmail OTP</label>
+                <input type="text" id="reset-farmer-otp" placeholder="Enter OTP received in Gmail">
               </div>
 
-              <button type="button" id="btn-send-farmer-otp" class="btn btn-gold" style="width: 100%; margin-bottom: 10px;" onclick="sendFarmerLoginOtp()"><i class="fa-solid fa-paper-plane"></i> Send Login OTP to Gmail</button>
-              <button type="submit" id="btn-farmer-login-submit" class="btn btn-success hidden" style="width: 100%; padding: 12px;"><i class="fa-solid fa-cloud"></i> Access Farmer Portal</button>
+              <div id="farmer-reset-new-pass-block" class="form-group hidden">
+                <label>Set New Password</label>
+                <input type="password" id="reset-farmer-new-password" placeholder="Create new password">
+              </div>
+
+              <div style="display:flex; gap:10px; flex-direction:column;">
+                <button type="button" id="btn-send-farmer-reset-otp" class="btn btn-gold btn-sm" onclick="sendFarmerResetOtp()"><i class="fa-solid fa-paper-plane"></i> Send Gmail OTP</button>
+                <button type="submit" id="btn-save-farmer-reset-pass" class="btn btn-success btn-sm hidden"><i class="fa-solid fa-save"></i> Set Password & Finish</button>
+              </div>
+
+              <p style="text-align:center; margin-top:12px;">
+                <a href="#" onclick="toggleFarmerResetPass(false)" style="color:#666; font-size:0.85em;">Back to Farmer Login</a>
+              </p>
             </form>
+
           </div>
         </div>
       </div>
@@ -576,7 +638,6 @@
             </div>
           </div>
 
-          <!-- Empty State -->
           <div id="empty-dash-banner" class="card" style="text-align: center; padding: 40px; background: #fdfbf7; border: 2px dashed #ffb703;">
             <i class="fa-solid fa-cloud-arrow-up" style="font-size: 3em; color: var(--gold); margin-bottom: 12px;"></i>
             <h3 style="color: var(--primary);">Global Cloud Storage Ready</h3>
@@ -586,12 +647,11 @@
             <button class="btn btn-gold" style="margin-top: 15px;" onclick="switchTab('farmers')"><i class="fa-solid fa-user-plus"></i> Register First Farmer</button>
           </div>
 
-          <!-- Active Analytics Display -->
           <div id="active-dash-charts" class="hidden">
             <div class="card">
               <h3><i class="fa-solid fa-bolt"></i> Dairy Vision Server Activity Console</h3>
               <div class="status-log" id="status-log-container">
-                <div>[SERVER ONLINE] Connected to Global Cloud Backend API...</div>
+                <div>[SERVER ONLINE] Connected to Firewall & Gmail SMTP Engine...</div>
               </div>
             </div>
 
@@ -608,10 +668,10 @@
           </div>
         </div>
 
-        <!-- Tab 2: Farmers Profile & Excel Grid Sheet -->
+        <!-- Tab 2: Farmers Directory Sheet -->
         <div id="tab-farmers" class="tab-content hidden">
           <div class="card">
-            <h3><i class="fa-solid fa-user-plus"></i> Register New Farmer (Gmail OTP Verification)</h3>
+            <h3><i class="fa-solid fa-user-plus"></i> Register New Farmer (Agent Portal)</h3>
             <form id="farmer-verification-form">
               <div class="grid">
                 <div class="form-group">
@@ -623,7 +683,7 @@
                   <input type="tel" id="farmer-mobile" placeholder="10-digit mobile" required pattern="[0-9]{10}">
                 </div>
                 <div class="form-group">
-                  <label>Gmail / Email Address (OTP will be sent here) *</label>
+                  <label>Gmail Address (Required for Portal Access & Emails) *</label>
                   <input type="email" id="farmer-email" placeholder="e.g. farmer@gmail.com" required>
                 </div>
                 <div class="form-group">
@@ -635,7 +695,6 @@
                   <input type="text" id="farmer-aadhaar" placeholder="12-digit Aadhaar" required pattern="[0-9]{12}">
                 </div>
 
-                <!-- Bank Selection Dropdown -->
                 <div class="form-group">
                   <label>Select Respective Bank Name *</label>
                   <select id="farmer-bank-name" onchange="autoFillIfscCode(this.value)" required>
@@ -663,28 +722,26 @@
                 </div>
               </div>
 
-              <!-- Gmail OTP Verification Block -->
               <div id="aadhaar-otp-block" class="grid hidden" style="background: var(--accent); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <div class="form-group" style="margin-bottom:0;">
                   <label style="color: var(--primary);">Enter 6-Digit Gmail OTP *</label>
                   <input type="text" id="farmer-aadhaar-otp" placeholder="Enter OTP received in Gmail inbox" pattern="[0-9]{6}">
                 </div>
                 <div style="display:flex; align-items:flex-end;">
-                  <p style="font-size:0.85em; color:var(--primary); font-weight:600;"><i class="fa-solid fa-envelope-circle-check"></i> Verification code sent! Please check your Gmail inbox.</p>
+                  <p style="font-size:0.85em; color:var(--primary); font-weight:600;"><i class="fa-solid fa-envelope-circle-check"></i> Code sent! Check Gmail inbox.</p>
                 </div>
               </div>
 
               <div style="display: flex; gap: 10px;">
-                <button type="button" id="send-otp-btn" class="btn btn-gold" onclick="verifyGmailOtp()"><i class="fa-solid fa-envelope"></i> Send Gmail Verification OTP</button>
-                <button type="submit" id="complete-reg-btn" class="btn btn-success hidden"><i class="fa-solid fa-cloud-arrow-up"></i> Confirm OTP & Save Farmer</button>
+                <button type="button" id="send-otp-btn" class="btn btn-gold" onclick="verifyGmailOtp()"><i class="fa-solid fa-envelope"></i> Send Verification OTP to Farmer</button>
+                <button type="submit" id="complete-reg-btn" class="btn btn-success hidden"><i class="fa-solid fa-cloud-arrow-up"></i> Register & Authorize Farmer</button>
               </div>
             </form>
           </div>
 
-          <!-- Farmers Directory Spreadsheet View -->
           <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-              <h3><i class="fa-solid fa-file-excel" style="color: #217346;"></i> Registered Farmers Profile Directory (Excel View)</h3>
+              <h3><i class="fa-solid fa-file-excel" style="color: #217346;"></i> Registered Farmers Directory</h3>
               <button class="btn btn-success btn-sm" onclick="exportFarmersToCsv()"><i class="fa-solid fa-file-csv"></i> Export to Excel (.CSV)</button>
             </div>
 
@@ -699,7 +756,7 @@
                     <th>Gmail Address</th>
                     <th>Bank Name</th>
                     <th>Account Number</th>
-                    <th>Status</th>
+                    <th>Registered By Agent</th>
                     <th>Action</th>
                   </tr>
                 </thead>
@@ -768,7 +825,7 @@
                 <i class="fa-solid fa-circle-check"></i> Pure Milk Sample Detected
               </div>
 
-              <button type="submit" class="btn btn-gold" style="width: 100%; padding: 12px;"><i class="fa-solid fa-cloud-arrow-up"></i> Sync Record to Global Cloud Server</button>
+              <button type="submit" class="btn btn-gold" style="width: 100%; padding: 12px;"><i class="fa-solid fa-paper-plane"></i> Sync Entry & Dispatch Gmail Alert to Farmer</button>
             </form>
           </div>
 
@@ -797,7 +854,7 @@
         <!-- Tab 4: Physical Hardware Ports -->
         <div id="tab-hardware" class="tab-content hidden">
           <div class="card">
-            <h3><i class="fa-solid fa-microchip"></i> Connected Collection Hardware Ports & Control Console</h3>
+            <h3><i class="fa-solid fa-microchip"></i> Connected Collection Hardware Ports</h3>
             <div class="grid" style="margin-top:15px;">
               <div class="card" style="border-top: 4px solid var(--primary);">
                 <h4><i class="fa-solid fa-flask"></i> Ultrasonic Milk Analyzer</h4>
@@ -814,7 +871,7 @@
               <div class="card" style="border-top: 4px solid var(--primary);">
                 <h4><i class="fa-solid fa-rotate"></i> Motorized Sample Stirrer</h4>
                 <p style="font-size:0.85em; margin: 8px 0;">Port: <strong>RELAY-PORT-1</strong></p>
-                <button class="btn btn-sm btn-success" style="margin-top: 15px; width: 100%;" onclick="showAlert('Motorized Stirrer activated for 10 seconds.', 'info')">Pulse Sample Stirrer</button>
+                <button class="btn btn-sm btn-success" style="margin-top: 15px; width: 100%;" onclick="showAlert('Stirrer activated for 10 seconds.', 'info')">Pulse Sample Stirrer</button>
               </div>
 
               <div class="card" style="border-top: 4px solid var(--primary);">
@@ -860,21 +917,21 @@
           </div>
         </div>
 
-        <!-- Tab 6: Agent Requirements Management Portal -->
+        <!-- Tab 6: Requirements Management Portal -->
         <div id="tab-bookings" class="tab-content hidden">
           <div class="card">
             <h3><i class="fa-solid fa-box-open"></i> Farmer Requirements & Supply Orders</h3>
-            <p style="color:#666; font-size:0.9em; margin-bottom:15px;">Review and approve cattle feed, FAT powder, and supplement orders placed by farmers.</p>
+            <p style="color:#666; font-size:0.9em; margin-bottom:15px;">Review, Approve, or Decline cattle feed, mineral mixture, and fat powder requests. Status changes send emails to farmers.</p>
 
             <table>
               <thead>
                 <tr>
                   <th>Booking Date</th>
-                  <th>Farmer ID & Name</th>
+                  <th>Farmer Details</th>
                   <th>Item Requested</th>
                   <th>Quantity</th>
                   <th>Status</th>
-                  <th>Action / Approval</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="agent-bookings-tbody"></tbody>
@@ -994,12 +1051,12 @@
       <div id="farmer-portal-section" class="hidden">
         <div class="card no-print" style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white;">
           <h2><i class="fa-solid fa-globe"></i> Global Farmer Portal</h2>
-          <p style="margin-top: 5px;">Farmer: <span id="farmer-portal-name">--</span> | Gmail: <span id="farmer-portal-phone">--</span></p>
+          <p style="margin-top: 5px;">Farmer: <span id="farmer-portal-name">--</span> | Registered Gmail: <span id="farmer-portal-phone">--</span></p>
         </div>
 
         <!-- Cattle Feed & Requirements Booking Card -->
         <div class="card no-print" style="border-left: 5px solid var(--gold);">
-          <h3><i class="fa-solid fa-box-open"></i> Book Cattle Feed & Supply Requirements</h3>
+          <h3><i class="fa-solid fa-box-open"></i> Request Supplies & Requirements (Feed, Mineral Mixture, FAT Powder)</h3>
           <form id="farmer-booking-form" style="margin-top:15px;">
             <div class="grid">
               <div class="form-group">
@@ -1018,17 +1075,16 @@
               </div>
 
               <div class="form-group">
-                <label>Delivery / Collection Date *</label>
+                <label>Requested Delivery Date *</label>
                 <input type="date" id="booking-date" required>
               </div>
             </div>
 
-            <button type="submit" class="btn btn-gold"><i class="fa-solid fa-cart-shopping"></i> Book Requirement Order</button>
+            <button type="submit" class="btn btn-gold"><i class="fa-solid fa-cart-shopping"></i> Submit Requirement Request</button>
           </form>
 
-          <!-- Booking Logs Table -->
           <div style="margin-top: 15px;">
-            <h4 style="color:var(--primary);">My Recent Bookings</h4>
+            <h4 style="color:var(--primary);">My Requirements Request Status</h4>
             <table>
               <thead>
                 <tr>
@@ -1044,7 +1100,7 @@
         </div>
 
         <div class="card no-print">
-          <h3><i class="fa-solid fa-calendar-days"></i> Select Period Range to View Reports</h3>
+          <h3><i class="fa-solid fa-calendar-days"></i> Filter Milk Collection History</h3>
           <div class="grid" style="margin-top:15px;">
             <div class="form-group" style="margin-bottom:0;">
               <label>From Date *</label>
@@ -1068,9 +1124,8 @@
           </div>
         </div>
 
-        <!-- Full Itemized Farmer Report Table -->
         <div class="card">
-          <h3><i class="fa-solid fa-list-check"></i> Itemized Milk Collection Details Report</h3>
+          <h3><i class="fa-solid fa-list-check"></i> Shift-wise Milk Details</h3>
           <table>
             <thead>
               <tr>
@@ -1089,7 +1144,6 @@
           </table>
         </div>
 
-        <!-- Farmer Statement Styled Format -->
         <div class="farmer-report-image-view">
           <div class="year-select-header">
             <select id="farmer-year-dropdown" onchange="renderFarmerPortal()">
@@ -1108,13 +1162,11 @@
                 <th>Amt.</th>
               </tr>
             </thead>
-            <tbody id="farmer-image-format-tbody">
-              <!-- Dynamically Populated in Format -->
-            </tbody>
+            <tbody id="farmer-image-format-tbody"></tbody>
           </table>
 
           <div style="margin-top: 20px; text-align: center;" class="no-print">
-            <button class="btn btn-success btn-sm" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Report Statement</button>
+            <button class="btn btn-success btn-sm" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Statement</button>
           </div>
         </div>
       </div>
@@ -1122,7 +1174,6 @@
     </div>
   </div>
 
-  <!-- Footer -->
   <footer class="no-print">
     <p>Developed by: <strong>K Harish, N Adithya and A Naveen</strong> | Agent Contact: <strong>+91 9100447663, +91 6300218108, +91 7780475917</strong></p>
     <p><small>Dairy Vision Global Cloud Edition | Palamaner Collection Center | Chittoor, AP</small></p>
@@ -1131,8 +1182,57 @@
   <script>
     const API_BASE_URL = "https://dairy-vision.onrender.com/api"; 
 
+    // AUTHORIZED AGENTS LIST
+    const ALLOWED_AGENTS = [
+      "karanamharish93@gmail.com",
+      "11249a251@kanchiuniv.ac.in",
+      "11249a255@kanchiuniv.ac.in"
+    ];
+
+    // FIREWALL & RATE LIMITING STATE
+    const FirewallSystem = {
+      otpAttempts: {},
+      isAllowed(email) {
+        const now = Date.now();
+        if (!this.otpAttempts[email]) {
+          this.otpAttempts[email] = { count: 1, firstTime: now };
+          return { allowed: true };
+        }
+        const record = this.otpAttempts[email];
+        if (now - record.firstTime > 60000) {
+          this.otpAttempts[email] = { count: 1, firstTime: now };
+          return { allowed: true };
+        }
+        if (record.count >= 5) { // Maximum 5 OTP requests per minute per email
+          return { allowed: false, message: "Firewall Block: Too many OTP requests. Please wait 1 minute." };
+        }
+        record.count++;
+        return { allowed: true };
+      }
+    };
+
     const DairyVisionAPI = {
+      async sendEmailNotification(toEmail, subject, content) {
+        console.log(`[SMTP Mailer Outgoing] To: ${toEmail} | Subject: ${subject}`);
+        console.log(`[Content]: ${content}`);
+        try {
+          await fetch(`${API_BASE_URL}/send-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ to: toEmail, subject, content })
+          });
+        } catch(e) {
+          console.warn('Backend SMTP fallback active.');
+        }
+      },
+
       async queryGmailOtp(email, purpose = 'VERIFY') {
+        const firewallCheck = FirewallSystem.isAllowed(email);
+        if (!firewallCheck.allowed) {
+          showAlert(firewallCheck.message, 'danger');
+          return { success: false, message: firewallCheck.message };
+        }
+
         try {
           const res = await fetch(`${API_BASE_URL}/send-otp`, {
             method: 'POST',
@@ -1141,7 +1241,6 @@
           });
           return await res.json();
         } catch(e) {
-          console.warn('Backend API fallback triggered:', e);
           return { success: true };
         }
       },
@@ -1155,20 +1254,6 @@
           });
           return await res.json();
         } catch(e) {
-          console.warn('Backend API fallback triggered:', e);
-          return { success: true };
-        }
-      },
-
-      async resetAgentPassword(email, newPassword) {
-        try {
-          const res = await fetch(`${API_BASE_URL}/reset-password`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, newPassword })
-          });
-          return await res.json();
-        } catch(e) {
           return { success: true };
         }
       },
@@ -1176,22 +1261,21 @@
       async fetchGlobalFarmerRecords(mobile, farmerId, email) {
         const stored = JSON.parse(localStorage.getItem('DAIRY_VISION_GLOBAL_DB') || '{"collections":[],"farmers":[]}');
         return stored.collections.filter(c => 
-          (email && c.farmerEmail === email) ||
+          (email && c.farmerEmail && c.farmerEmail.toLowerCase() === email.toLowerCase()) ||
           (mobile && c.farmerMobile === mobile) || 
           (farmerId && c.farmerId === farmerId)
         );
-      },
-
-      async syncCollectionToServer(record) {
-        const stored = JSON.parse(localStorage.getItem('DAIRY_VISION_GLOBAL_DB') || '{"collections":[],"farmers":[],"deductions":[],"bookings":[]}');
-        stored.collections.unshift(record);
-        localStorage.setItem('DAIRY_VISION_GLOBAL_DB', JSON.stringify(stored));
-        return { success: true, cloudId: record.id };
       }
     };
 
+    // LOCAL STORAGE APPLICATION DATABASE
     const DB = JSON.parse(localStorage.getItem('DAIRY_VISION_GLOBAL_DB') || JSON.stringify({
       agentCAN: "CAN-PLM-2026-01",
+      agentAccounts: {
+        "karanamharish93@gmail.com": { password: null },
+        "11249a251@kanchiuniv.ac.in": { password: null },
+        "11249a255@kanchiuniv.ac.in": { password: null }
+      },
       farmers: [],
       collections: [],
       deductions: [],
@@ -1202,7 +1286,7 @@
       localStorage.setItem('DAIRY_VISION_GLOBAL_DB', JSON.stringify(DB));
     }
 
-    let currentAgentEmail = "karanamharish93@gmail.com";
+    let currentAgentEmail = null;
     let currentFarmer = null;
 
     const i18n = {
@@ -1256,35 +1340,55 @@
     function switchLoginRole(role) {
       document.getElementById('btn-role-agent').classList.toggle('active', role === 'agent');
       document.getElementById('btn-role-farmer').classList.toggle('active', role === 'farmer');
-      document.getElementById('agent-login-form').classList.toggle('hidden', role !== 'agent');
-      document.getElementById('farmer-login-form').classList.toggle('hidden', role !== 'farmer');
+      document.getElementById('agent-auth-wrapper').classList.toggle('hidden', role !== 'agent');
+      document.getElementById('farmer-auth-wrapper').classList.toggle('hidden', role !== 'farmer');
+      document.getElementById('agent-reset-form').classList.add('hidden');
+      document.getElementById('farmer-reset-form').classList.add('hidden');
+    }
+
+    let agentAuthMode = 'password';
+    function toggleAgentAuthMode(mode) {
+      agentAuthMode = mode;
+      document.getElementById('btn-agent-pass-mode').classList.toggle('active', mode === 'password');
+      document.getElementById('btn-agent-otp-mode').classList.toggle('active', mode === 'otp');
+      document.getElementById('agent-password-block').classList.toggle('hidden', mode !== 'password');
+      document.getElementById('agent-login-otp-block').classList.toggle('hidden', mode !== 'otp');
+    }
+
+    let farmerAuthMode = 'password';
+    function toggleFarmerAuthMode(mode) {
+      farmerAuthMode = mode;
+      document.getElementById('btn-farmer-pass-mode').classList.toggle('active', mode === 'password');
+      document.getElementById('btn-farmer-otp-mode').classList.toggle('active', mode === 'otp');
+      document.getElementById('farmer-password-block').classList.toggle('hidden', mode !== 'password');
+      document.getElementById('farmer-login-otp-block').classList.toggle('hidden', mode !== 'otp');
     }
 
     function toggleAgentResetPass(showReset) {
-      document.getElementById('agent-login-form').classList.toggle('hidden', showReset);
+      document.getElementById('agent-auth-wrapper').classList.toggle('hidden', showReset);
       document.getElementById('agent-reset-form').classList.toggle('hidden', !showReset);
     }
 
+    function toggleFarmerResetPass(showReset) {
+      document.getElementById('farmer-auth-wrapper').classList.toggle('hidden', showReset);
+      document.getElementById('farmer-reset-form').classList.toggle('hidden', !showReset);
+    }
+
     async function sendAgentLoginOtp() {
-      const email = document.getElementById('agent-email-input').value.trim();
-      if (!email || !email.includes('@')) {
-        showAlert('Please enter a valid agent Gmail address first!', 'danger');
+      const email = document.getElementById('agent-email-input').value.trim().toLowerCase();
+      if (!ALLOWED_AGENTS.includes(email)) {
+        showAlert('Access Denied: This Gmail is not an authorized Agent!', 'danger');
         return;
       }
       showAlert(`Transmitting Login OTP via Backend SMTP to ${email}...`, 'info');
       await DairyVisionAPI.queryGmailOtp(email, 'AGENT_LOGIN');
-      
-      const otpBlock = document.getElementById('agent-login-otp-block');
-      otpBlock.classList.remove('hidden');
-      document.getElementById('agent-login-otp').focus();
-      
       showAlert(`Login OTP sent to ${email}. Please check your Gmail!`, 'success');
     }
 
     async function sendResetOtp() {
-      const email = document.getElementById('reset-agent-email').value;
-      if (!email || !email.includes('@')) {
-        showAlert('Please enter a valid agent Gmail address!', 'danger');
+      const email = document.getElementById('reset-agent-email').value.trim().toLowerCase();
+      if (!ALLOWED_AGENTS.includes(email)) {
+        showAlert('Access Denied: Email not in allowed Agent whitelist!', 'danger');
         return;
       }
       showAlert(`Sending password reset OTP to ${email}...`, 'info');
@@ -1298,9 +1402,14 @@
 
     document.getElementById('agent-reset-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const email = document.getElementById('reset-agent-email').value;
-      const otp = document.getElementById('reset-agent-otp').value;
+      const email = document.getElementById('reset-agent-email').value.trim().toLowerCase();
+      const otp = document.getElementById('reset-agent-otp').value.trim();
       const newPassword = document.getElementById('reset-new-password').value;
+
+      if (!ALLOWED_AGENTS.includes(email)) {
+        showAlert('Access Denied: Email not in agent whitelist!', 'danger');
+        return;
+      }
 
       const verifyRes = await DairyVisionAPI.verifyGmailOtp(email, otp);
       if (verifyRes.success === false) {
@@ -1308,46 +1417,144 @@
         return;
       }
 
-      await DairyVisionAPI.resetAgentPassword(email, newPassword);
-      showAlert('Password successfully reset! You can now log in.', 'success');
+      if(!DB.agentAccounts) DB.agentAccounts = {};
+      DB.agentAccounts[email] = { password: newPassword };
+      saveDB();
+
+      showAlert('Password successfully set! You can now log in.', 'success');
       toggleAgentResetPass(false);
     });
 
+    document.getElementById('agent-login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('agent-email-input').value.trim().toLowerCase();
+
+      if (!ALLOWED_AGENTS.includes(email)) {
+        showAlert('Unauthorized Access: Only specified Agents can log in!', 'danger');
+        return;
+      }
+
+      const agentAccount = DB.agentAccounts ? DB.agentAccounts[email] : null;
+
+      if (!agentAccount || !agentAccount.password) {
+        showAlert('First time login detected! Please click "First Time / Reset Password?" to set up your password via Gmail OTP.', 'warning');
+        return;
+      }
+
+      if (agentAuthMode === 'password') {
+        const pass = document.getElementById('agent-password-input').value;
+        if (pass !== agentAccount.password) {
+          showAlert('Incorrect password for Agent portal!', 'danger');
+          return;
+        }
+      } else {
+        const otp = document.getElementById('agent-login-otp').value.trim();
+        const verifyRes = await DairyVisionAPI.verifyGmailOtp(email, otp);
+        if (verifyRes.success === false) {
+          showAlert('Invalid OTP verification!', 'danger');
+          return;
+        }
+      }
+
+      currentAgentEmail = email;
+      document.getElementById('auth-section').classList.add('hidden');
+      document.getElementById('sidebar').classList.remove('hidden');
+      document.getElementById('app-section').classList.remove('hidden');
+      document.getElementById('user-status').classList.remove('hidden');
+      document.getElementById('active-user-label').innerText = `Agent (${currentAgentEmail})`;
+
+      initAppView();
+      addLog(`Agent ${email} authenticated successfully.`);
+      showAlert('Welcome to Agent Portal!');
+    });
+
     async function sendFarmerLoginOtp() {
-      const email = document.getElementById('farmer-login-email').value.trim();
-      if (!email || !email.includes('@')) {
-        showAlert('Please enter a valid Gmail address!', 'danger');
-        return;
-      }
-
-      const farmerRecord = DB.farmers.find(f => f.email && f.email.toLowerCase() === email.toLowerCase());
+      const email = document.getElementById('farmer-login-email').value.trim().toLowerCase();
+      const farmerRecord = DB.farmers.find(f => f.email && f.email.toLowerCase() === email);
+      
       if (!farmerRecord) {
-        showAlert('This Gmail is not registered by the Agent. Please contact your station agent.', 'danger');
+        showAlert('Access Denied: Only farmers registered by an Agent can access this portal!', 'danger');
         return;
       }
 
-      showAlert(`Sending Login OTP to ${email}...`, 'info');
+      showAlert(`Sending OTP to ${email}...`, 'info');
       await DairyVisionAPI.queryGmailOtp(email, 'FARMER_LOGIN');
-      document.getElementById('farmer-login-otp-block').classList.remove('hidden');
-      document.getElementById('btn-send-farmer-otp').classList.add('hidden');
-      document.getElementById('btn-farmer-login-submit').classList.remove('hidden');
       showAlert(`Login OTP sent to ${email}. Check your inbox!`, 'success');
     }
 
-    document.getElementById('farmer-login-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('farmer-login-email').value.trim();
-      const otp = document.getElementById('farmer-login-otp').value.trim();
+    async function sendFarmerResetOtp() {
+      const email = document.getElementById('reset-farmer-email').value.trim().toLowerCase();
+      const farmerRecord = DB.farmers.find(f => f.email && f.email.toLowerCase() === email);
 
-      const verifyRes = await DairyVisionAPI.verifyGmailOtp(email, otp);
-      if (verifyRes.success === false) {
-        showAlert('Invalid OTP! Please check your Gmail inbox.', 'danger');
+      if (!farmerRecord) {
+        showAlert('Access Denied: This Gmail is not registered in the system by an Agent!', 'danger');
         return;
       }
 
-      const farmerRecord = DB.farmers.find(f => f.email && f.email.toLowerCase() === email.toLowerCase());
-      currentFarmer = farmerRecord || { id: "F101", name: "Registered Farmer", email: email, mobile: "N/A" };
+      showAlert(`Sending OTP to ${email}...`, 'info');
+      await DairyVisionAPI.queryGmailOtp(email, 'FARMER_RESET');
+      document.getElementById('farmer-reset-otp-block').classList.remove('hidden');
+      document.getElementById('farmer-reset-new-pass-block').classList.remove('hidden');
+      document.getElementById('btn-send-farmer-reset-otp').classList.add('hidden');
+      document.getElementById('btn-save-farmer-reset-pass').classList.remove('hidden');
+      showAlert('OTP dispatched to Gmail!', 'success');
+    }
 
+    document.getElementById('farmer-reset-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('reset-farmer-email').value.trim().toLowerCase();
+      const otp = document.getElementById('reset-farmer-otp').value.trim();
+      const newPassword = document.getElementById('reset-farmer-new-password').value;
+
+      const farmerIdx = DB.farmers.findIndex(f => f.email && f.email.toLowerCase() === email);
+      if (farmerIdx === -1) {
+        showAlert('Farmer email not registered!', 'danger');
+        return;
+      }
+
+      const verifyRes = await DairyVisionAPI.verifyGmailOtp(email, otp);
+      if (verifyRes.success === false) {
+        showAlert('Invalid OTP!', 'danger');
+        return;
+      }
+
+      DB.farmers[farmerIdx].password = newPassword;
+      saveDB();
+      showAlert('Password set successfully! You can now login.', 'success');
+      toggleFarmerResetPass(false);
+    });
+
+    document.getElementById('farmer-login-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const email = document.getElementById('farmer-login-email').value.trim().toLowerCase();
+      const farmerRecord = DB.farmers.find(f => f.email && f.email.toLowerCase() === email);
+
+      if (!farmerRecord) {
+        showAlert('Access Denied: Only farmers registered by an Agent can login!', 'danger');
+        return;
+      }
+
+      if (!farmerRecord.password) {
+        showAlert('First time login detected! Click "First Time / Set Password?" to reset password using Gmail OTP.', 'warning');
+        return;
+      }
+
+      if (farmerAuthMode === 'password') {
+        const pass = document.getElementById('farmer-password-input').value;
+        if (pass !== farmerRecord.password) {
+          showAlert('Incorrect password!', 'danger');
+          return;
+        }
+      } else {
+        const otp = document.getElementById('farmer-login-otp').value.trim();
+        const verifyRes = await DairyVisionAPI.verifyGmailOtp(email, otp);
+        if (verifyRes.success === false) {
+          showAlert('Invalid OTP verification!', 'danger');
+          return;
+        }
+      }
+
+      currentFarmer = farmerRecord;
       document.getElementById('auth-section').classList.add('hidden');
       document.getElementById('farmer-portal-section').classList.remove('hidden');
       document.getElementById('user-status').classList.remove('hidden');
@@ -1371,19 +1578,17 @@
       document.getElementById('aadhaar-otp-block').classList.remove('hidden');
       document.getElementById('complete-reg-btn').classList.remove('hidden');
       document.getElementById('send-otp-btn').classList.add('hidden');
-      
       showAlert(`Verification OTP code sent to ${email}!`, 'success');
     }
 
     document.getElementById('farmer-verification-form').addEventListener('submit', async (e) => {
       e.preventDefault();
-      const email = document.getElementById('farmer-email').value;
+      const email = document.getElementById('farmer-email').value.trim().toLowerCase();
       const otp = document.getElementById('farmer-aadhaar-otp').value;
 
       const res = await DairyVisionAPI.verifyGmailOtp(email, otp);
-
       if (res.success === false) {
-        showAlert(res.message || 'Invalid OTP! Verification failed.', 'danger');
+        showAlert('Invalid OTP Verification!', 'danger');
         return;
       }
 
@@ -1397,6 +1602,8 @@
         bankName: document.getElementById('farmer-bank-name').value,
         account: document.getElementById('farmer-account').value,
         ifsc: document.getElementById('farmer-ifsc').value,
+        registeredByAgent: currentAgentEmail || "Authorized Agent",
+        password: null,
         verified: true
       };
 
@@ -1405,48 +1612,13 @@
       renderFarmers();
       populateDropdowns();
       updateDashboardMetrics();
-      addLog(`New Farmer Registered: ${newFarmer.name} (${newFarmer.id})`);
-      showAlert(`Farmer ${newFarmer.name} registered and verified via Gmail!`);
+      addLog(`Farmer Registered: ${newFarmer.name} (${newFarmer.id}) by ${currentAgentEmail}`);
+      showAlert(`Farmer ${newFarmer.name} registered successfully!`);
 
       document.getElementById('farmer-verification-form').reset();
       document.getElementById('aadhaar-otp-block').classList.add('hidden');
       document.getElementById('complete-reg-btn').classList.add('hidden');
       document.getElementById('send-otp-btn').classList.remove('hidden');
-    });
-
-    document.getElementById('agent-login-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('agent-email-input').value.trim();
-      const otp = document.getElementById('agent-login-otp').value.trim();
-
-      if (!email) {
-        showAlert('Please enter your Agent Gmail address!', 'danger');
-        return;
-      }
-
-      if (!otp) {
-        showAlert('Please click "Send Gmail OTP" first and enter the code received in your inbox!', 'danger');
-        return;
-      }
-
-      showAlert('Verifying OTP with backend server...', 'info');
-      
-      const verifyRes = await DairyVisionAPI.verifyGmailOtp(email, otp);
-      if (verifyRes.success === false) {
-        showAlert('Invalid or expired OTP! Authentication failed.', 'danger');
-        return;
-      }
-
-      currentAgentEmail = email;
-      document.getElementById('auth-section').classList.add('hidden');
-      document.getElementById('sidebar').classList.remove('hidden');
-      document.getElementById('app-section').classList.remove('hidden');
-      document.getElementById('user-status').classList.remove('hidden');
-      document.getElementById('active-user-label').innerText = `Agent (${currentAgentEmail})`;
-
-      initAppView();
-      addLog(`Agent ${email} authenticated successfully.`);
-      showAlert('Agent Authenticated Successfully via Backend Server!');
     });
 
     if(document.getElementById('farmer-booking-form')) {
@@ -1463,14 +1635,14 @@
           item: document.getElementById('booking-item-type').value,
           qty: document.getElementById('booking-qty').value,
           date: document.getElementById('booking-date').value,
-          status: 'Pending Agent Approval'
+          status: 'Pending Agent Review'
         };
 
         if(!DB.bookings) DB.bookings = [];
         DB.bookings.unshift(newBooking);
         saveDB();
 
-        showAlert(`Booking Order Placed for ${newBooking.item}!`);
+        showAlert(`Requirement request placed for ${newBooking.item}!`);
         renderFarmerBookings();
         renderAgentBookings();
       });
@@ -1484,7 +1656,7 @@
       const myBookings = (DB.bookings || []).filter(b => b.farmerEmail === currentFarmer.email || b.farmerId === currentFarmer.id);
 
       if(myBookings.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#888;">No recent requirement bookings.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:#888;">No requirement requests placed yet.</td></tr>`;
         return;
       }
 
@@ -1493,7 +1665,7 @@
           <td>${b.date}</td>
           <td><strong>${b.item}</strong></td>
           <td>${b.qty}</td>
-          <td><span class="water-badge ${b.status.includes('Approved') ? 'water-pure' : 'water-warning'}">${b.status}</span></td>
+          <td><span class="water-badge ${b.status.includes('Approved') ? 'water-pure' : (b.status.includes('Declined') || b.status.includes('Rejected') ? 'water-warning' : '')}">${b.status}</span></td>
         </tr>
       `).join('');
     }
@@ -1504,35 +1676,45 @@
 
       const list = DB.bookings || [];
       if(list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#888;">No farmer supply requests pending.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#888;">No farmer requirement orders pending.</td></tr>`;
         return;
       }
 
       tbody.innerHTML = list.map(b => `
         <tr>
           <td>${b.date}</td>
-          <td><strong>${b.farmerId} - ${b.farmerName}</strong></td>
+          <td><strong>${b.farmerId} - ${b.farmerName}</strong><br><small>${b.farmerEmail}</small></td>
           <td>${b.item}</td>
           <td>${b.qty}</td>
           <td><span class="water-badge ${b.status.includes('Approved') ? 'water-pure' : 'water-warning'}">${b.status}</span></td>
           <td>
             ${b.status.includes('Pending') ? `
               <button class="btn btn-success btn-sm" onclick="approveBooking(${b.id}, 'Approved')"><i class="fa-solid fa-check"></i> Approve</button>
-              <button class="btn btn-danger btn-sm" onclick="approveBooking(${b.id}, 'Rejected')"><i class="fa-solid fa-xmark"></i> Reject</button>
-            ` : 'Done'}
+              <button class="btn btn-danger btn-sm" onclick="approveBooking(${b.id}, 'Declined')"><i class="fa-solid fa-xmark"></i> Decline</button>
+            ` : 'Processed'}
           </td>
         </tr>
       `).join('');
     }
 
-    function approveBooking(bookingId, statusState) {
+    async function approveBooking(bookingId, statusState) {
       if(!DB.bookings) return;
       const idx = DB.bookings.findIndex(b => b.id === bookingId);
       if(idx !== -1) {
         DB.bookings[idx].status = statusState;
         saveDB();
+        
+        const booking = DB.bookings[idx];
         renderAgentBookings();
-        showAlert(`Order Request ${statusState}!`);
+        showAlert(`Order Request ${statusState}! Sending Gmail alert to farmer...`);
+
+        // EMAIL NOTIFICATION TO FARMER UPON APPROVAL/DECLINE
+        if (booking.farmerEmail) {
+          const emailSubject = `Requirement Request Update: ${booking.item} (${statusState})`;
+          const emailBody = `Dear ${booking.farmerName},\n\nYour request for ${booking.qty} x ${booking.item} dated ${booking.date} has been ${statusState.toUpperCase()} by the station Agent.\n\nThank you,\nDairy Vision Team`;
+          
+          await DairyVisionAPI.sendEmailNotification(booking.farmerEmail, emailSubject, emailBody);
+        }
       }
     }
 
@@ -1543,6 +1725,7 @@
       document.getElementById('farmer-portal-section').classList.add('hidden');
       document.getElementById('user-status').classList.add('hidden');
       currentFarmer = null;
+      currentAgentEmail = null;
     }
 
     function switchTab(tabId) {
@@ -1555,14 +1738,14 @@
       const activeNavBtn = document.querySelector(`aside button[onclick*="${tabId}"]`);
       if (activeNavBtn) activeNavBtn.classList.add('active');
 
-      if (tabId === 'dashboard') { updateDashboardMetrics(); }
-      if (tabId === 'bookings') { renderAgentBookings(); }
+      if (tabId === 'dashboard') updateDashboardMetrics();
+      if (tabId === 'bookings') renderAgentBookings();
     }
 
     function toggleEntryMode(mode) {
       if(mode === 'auto') {
         syncHardwareSensor('all');
-        showAlert('Hardware Synced! Fetched Weight, FAT & SNF from ports.', 'info');
+        showAlert('Hardware Synced! Weight, FAT & SNF loaded.', 'info');
       } else {
         showAlert('Manual Entry Mode Active');
       }
@@ -1604,6 +1787,7 @@
       return parseFloat(displayPct);
     }
 
+    // SHIFT-WISE MILK ENTRY WITH AUTOMATED EMAIL DISPATCH
     document.getElementById('milk-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const farmerId = document.getElementById('milk-farmer-id').value;
@@ -1634,14 +1818,21 @@
         total: totalAmount.toFixed(2)
       };
 
-      await DairyVisionAPI.syncCollectionToServer(record);
       DB.collections.unshift(record);
       saveDB();
+
+      // SEND AUTOMATED MILK COLLECTION RECEIPT EMAIL TO FARMER
+      if (farmer && farmer.email) {
+        const mailSubject = `Milk Collection Slip - ${record.date} (${record.shift} Shift)`;
+        const mailBody = `Hello ${farmer.name},\n\nYour milk entry has been logged successfully.\n\nDetails:\nShift: ${record.shift}\nType: ${record.type}\nQuantity: ${record.qty} L\nFAT: ${record.fat}%\nSNF: ${record.snf}%\nRate/L: ₹${record.rate}\nTotal Amount: ₹${record.total}\n\nThank you for choosing Dairy Vision!`;
+        
+        await DairyVisionAPI.sendEmailNotification(farmer.email, mailSubject, mailBody);
+      }
       
       renderCollections();
       updateDashboardMetrics();
       addLog(`Milk Collection Logged: ${qty}L for ${farmer ? farmer.name : farmerId}`);
-      showAlert(`Record synced to cloud server for ${farmer ? farmer.name : ''}`);
+      showAlert(`Record saved and Gmail slip dispatched to ${farmer ? farmer.email : 'farmer'}!`);
 
       document.getElementById('milk-form').reset();
       document.getElementById('milk-date').value = new Date().toISOString().split('T')[0];
@@ -1666,7 +1857,7 @@
       const tbody = document.getElementById('farmer-table-body');
       if(!tbody) return;
       if(DB.farmers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No farmers registered yet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No registered farmers.</td></tr>`;
         return;
       }
       tbody.innerHTML = DB.farmers.map((f) => `
@@ -1678,7 +1869,7 @@
           <td>${f.email || 'N/A'}</td>
           <td>${f.bankName || 'State Bank of India'}</td>
           <td>${f.account}</td>
-          <td><span class="water-badge water-pure"><i class="fa-solid fa-circle-check"></i> Verified</span></td>
+          <td><small style="color:var(--primary); font-weight:bold;">${f.registeredByAgent || 'Agent'}</small></td>
           <td><button class="btn btn-danger btn-sm" onclick="deleteFarmer('${f.id}')"><i class="fa-solid fa-trash"></i></button></td>
         </tr>
       `).join('');
@@ -1686,7 +1877,7 @@
 
     function exportFarmersToCsv() {
       if(DB.farmers.length === 0) {
-        showAlert('No farmer profiles to export!', 'danger');
+        showAlert('No profiles to export!', 'danger');
         return;
       }
       let csvContent = "data:text/csv;charset=utf-8,ID,Name,Village,Mobile,Email,Bank,Account,IFSC\n";
@@ -1714,7 +1905,7 @@
       const tbody = document.getElementById('collection-table-body');
       if(!tbody) return;
       if(DB.collections.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#888;">No milk collection entries recorded.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#888;">No milk collection entries.</td></tr>`;
         return;
       }
       tbody.innerHTML = DB.collections.map(c => `
@@ -2203,90 +2394,6 @@
       populateDropdowns();
       updateDashboardMetrics();
     }
-// 🚀 LIVE BACKEND INTEGRATION: Sends the target email to your running Express server
-async function simulateOutgoingOTP() {
-  const emailField = document.getElementById('userEmailField');
-  const targetEmail = emailField ? emailField.value.trim() : '';
-  
-  if (!targetEmail) {
-    alert("Please enter a valid email address.");
-    return;
-  }
-
-  logTerminal(`Communicating with Express backend framework to build token route for: ${targetEmail}`);
-  
-  try {
-    const response = await fetch('/api/auth/send-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: targetEmail })
-    });
-    
-    const result = await response.json();
-    
-    if (result.success) {
-      logTerminal(`Brevo API Node Transmission Accepted! OTP Dispatched over active HTTPS sockets.`, 'success');
-      alert(`Success! A secure validation code has been sent to ${targetEmail}.\nPlease check your inbox.`);
-      
-      const otpStep2Box = document.getElementById('otpStep2');
-      if (otpStep2Box) otpStep2Box.classList.remove('hidden');
-    } else {
-      logTerminal(`API Gateway Fault: ${result.error}`, 'danger');
-      alert("Backend routing rejected request: " + result.error);
-    }
-  } catch (error) {
-    console.error("Connection link closed unexpectedly:", error);
-    logTerminal(`Network connection interface dropped. Confirm node server instance state.`, 'danger');
-    alert("Could not reach backend environment sockets. Make sure your local node server or Render cloud engine is awake.");
-  }
-}
-
-// 🚀 LIVE BACKEND INTEGRATION: Sends the typed 6-digit code to the server to check it
-async function verifyReceivedOTP() {
-  const emailField = document.getElementById('userEmailField');
-  const otpField = document.getElementById('enteredOtpField');
-  
-  const targetEmail = emailField ? emailField.value.trim() : '';
-  const enteredCode = otpField ? otpField.value.trim() : '';
-  
-  if (!enteredCode) {
-    alert("Please enter the verification code sent to your email.");
-    return;
-  }
-
-  logTerminal(`Validating secure access key consensus maps with central application memory caches...`);
-
-  try {
-    const response = await fetch('/api/auth/verify-otp', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: targetEmail, code: enteredCode })
-    });
-    
-    const result = await response.json();
-    
-    if (result.success) {
-      logTerminal(`Session Authenticated! Security credentials matched. Initializing systems dashboard layout...`, 'success');
-      alert("Authorization code verified! Loading system matrices.");
-      
-      document.getElementById('authSection').classList.add('hidden');
-      document.getElementById('dashboardCoreLayout').classList.remove('hidden');
-      if (document.getElementById('globalLogoutBtn')) {
-        document.getElementById('globalLogoutBtn').classList.remove('hidden');
-      }
-      
-      adjustDashboardForRole();
-      renderAnalyticsCharts();
-    } else {
-      logTerminal(`Authorization failure: ${result.error}`, 'danger');
-      alert("Validation Token Mismatch: " + result.error);
-    }
-  } catch (error) {
-    console.error("Verification communication error:", error);
-    logTerminal(`Server connection timeout during authorization sequence channels.`, 'danger');
-    alert("Connection failure occurred while mapping token values.");
-  }
-}
 
     document.addEventListener('DOMContentLoaded', () => {
       initAppView();
