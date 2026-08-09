@@ -1218,16 +1218,26 @@
 
     const DairyVisionAPI = {
       async sendEmailNotification(toEmail, subject, content) {
-        console.log(`[SMTP Mailer Outgoing] To: ${toEmail} | Subject: ${subject}`);
+        console.log(`[Brevo SMTP Mailer Outgoing] To: ${toEmail} | Subject: ${subject}`);
         console.log(`[Content]: ${content}`);
         try {
-          await fetch(`${API_BASE_URL}/send-email`, {
+          await fetch(`${API_BASE_URL}/send-milk-bill`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ to: toEmail, subject, content })
+            body: JSON.stringify({ 
+              farmerEmail: toEmail, 
+              farmerName: "Dairy Vision Member", 
+              milkType: subject, 
+              shift: "Notification", 
+              liters: 0, 
+              fat: 0, 
+              snf: 0, 
+              water: 0, 
+              totalAmount: 0 
+            })
           });
         } catch(e) {
-          console.warn('Backend SMTP fallback active.');
+          console.warn('Backend Brevo fallback active.');
         }
       },
 
@@ -1385,7 +1395,7 @@
         showAlert('Access Denied: This Gmail is not an authorized Agent!', 'danger');
         return;
       }
-      showAlert(`Transmitting Login OTP via Backend SMTP to ${email}...`, 'info');
+      showAlert(`Transmitting Login OTP via Brevo API to ${email}...`, 'info');
       await DairyVisionAPI.queryGmailOtp(email, 'AGENT_LOGIN');
       showAlert(`Login OTP sent to ${email}. Please check your Gmail!`, 'success');
     }
@@ -1869,12 +1879,27 @@
       DB.collections.unshift(record);
       saveDB();
 
-      // SEND AUTOMATED MILK COLLECTION RECEIPT EMAIL TO FARMER WITH ALL DETAILS
+      // SEND AUTOMATED MILK COLLECTION RECEIPT EMAIL TO FARMER WITH ALL DETAILS VIA BREVO API
       if (farmer && farmer.email) {
-        const mailSubject = `Milk Collection Details - CAN: ${canNo} (${collectionDate} ${shift})`;
-        const mailBody = `Dear ${farmer.name},\n\nYour milk entry details have been logged successfully.\n\nCOLLECTION DETAILS:\n-----------------------------\nCAN No: ${canNo}\nPlace: ${place}\nDate: ${collectionDate}\nShift: ${shift}\nMilk Type: ${record.type}\nQuantity: ${record.qty} Liters\nFAT: ${record.fat}%\nSNF: ${record.snf}%\nWater Adulteration: ${record.waterPct}%\nRate/Litre: ₹${record.rate}\nTotal Amount: ₹${record.total}\n-----------------------------\n\nThank you,\nDairy Vision Global Cloud Collection System`;
-        
-        await DairyVisionAPI.sendEmailNotification(farmer.email, mailSubject, mailBody);
+        try {
+          await fetch(`${API_BASE_URL}/send-milk-bill`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              farmerName: farmer.name,
+              farmerEmail: farmer.email,
+              milkType: record.type,
+              shift: record.shift,
+              liters: record.qty,
+              fat: record.fat,
+              snf: record.snf,
+              water: record.waterPct,
+              totalAmount: record.total
+            })
+          });
+        } catch(err) {
+          console.error("Failed to send milk bill receipt via Brevo:", err);
+        }
       }
       
       renderCollections();
@@ -2063,151 +2088,226 @@
       const labelDate = document.getElementById('label-report-date');
 
       if (type === 'SHIFT_SUMMARY') {
-        labelDate.innerText = "Select Date *";
         groupEndDate.classList.add('hidden');
         groupShift.classList.remove('hidden');
         groupFarmer.classList.add('hidden');
+        labelDate.innerText = 'Select Date *';
       } else if (type === 'MILK_BILL') {
-        labelDate.innerText = "From Date *";
         groupEndDate.classList.remove('hidden');
         groupShift.classList.add('hidden');
         groupFarmer.classList.remove('hidden');
+        labelDate.innerText = 'From Date *';
       } else if (type === 'BILL_SUMMARY') {
-        labelDate.innerText = "From Date *";
         groupEndDate.classList.remove('hidden');
         groupShift.classList.add('hidden');
         groupFarmer.classList.add('hidden');
+        labelDate.innerText = 'From Date *';
       }
     }
 
     function generateSelectedReport() {
-      const reportType = document.getElementById('report-type-select').value;
+      const type = document.getElementById('report-type-select').value;
       const startDate = document.getElementById('report-start-date').value;
       const endDate = document.getElementById('report-end-date').value;
-      const shiftVal = document.getElementById('report-shift-select').value;
-      const farmerCode = document.getElementById('report-farmer-code').value;
+      const shift = document.getElementById('report-shift-select').value;
+      const farmerId = document.getElementById('report-farmer-code').value;
 
       const outputCard = document.getElementById('sheet-output-card');
-      const reportTitle = document.getElementById('sheet-report-title');
-      const detailSpan = document.getElementById('sheet-sub-detail');
-      const rangeSpan = document.getElementById('sheet-range-display');
-      
-      const thead = document.getElementById('sheet-table-head');
-      const tbody = document.getElementById('sheet-table-body');
-      const tfoot = document.getElementById('sheet-table-footer');
+      const titleEl = document.getElementById('sheet-report-title');
+      const rangeEl = document.getElementById('sheet-range-display');
+      const headEl = document.getElementById('sheet-table-head');
+      const bodyEl = document.getElementById('sheet-table-body');
+      const footEl = document.getElementById('sheet-table-footer');
+
+      if (!startDate) {
+        showAlert('Please select a valid date range!', 'danger');
+        return;
+      }
 
       outputCard.classList.remove('hidden');
 
-      if (reportType === 'SHIFT_SUMMARY') {
-        reportTitle.innerText = "SHIFT SUMMARY REPORT (CURRENT DAY POURING LIST)";
-        rangeSpan.innerText = `${startDate || 'Today'} (${shiftVal} Shift)`;
-        detailSpan.innerHTML = `<strong>Total Poured Farmers:</strong> <span id="pouring-count">0</span>`;
+      if (type === 'SHIFT_SUMMARY') {
+        titleEl.innerText = 'SHIFT SUMMARY REPORT';
+        rangeEl.innerText = `${startDate} (${shift})`;
 
-        let list = DB.collections;
-        if (startDate) list = list.filter(c => c.date === startDate);
-        if (shiftVal !== 'ALL') list = list.filter(c => c.shift === shiftVal);
-
-        thead.innerHTML = `
+        headEl.innerHTML = `
           <tr>
-            <th>Time</th>
-            <th>Farmer Code & Name</th>
+            <th>Code</th>
+            <th>Farmer Name</th>
             <th>Milk Type</th>
             <th>Shift</th>
             <th>Qty (L)</th>
             <th>FAT %</th>
             <th>SNF %</th>
-            <th>Rate/L (₹)</th>
-            <th>Total (₹)</th>
+            <th>Rate (₹)</th>
+            <th>Amount (₹)</th>
           </tr>
         `;
 
-        if (list.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No farmers poured milk for this shift/date.</td></tr>`;
-          tfoot.innerHTML = '';
+        const filtered = DB.collections.filter(c => c.date === startDate && (shift === 'ALL' || c.shift === shift));
+
+        if (filtered.length === 0) {
+          bodyEl.innerHTML = `<tr><td colspan="9" style="text-align:center;">No collections logged for this shift/date.</td></tr>`;
+          footEl.innerHTML = '';
           return;
         }
 
-        document.getElementById('pouring-count').innerText = list.length;
-        let sumQty = 0, sumFat = 0, sumSnf = 0, sumRate = 0, sumAmount = 0;
-
-        tbody.innerHTML = list.map(c => {
-          sumQty += parseFloat(c.qty);
-          sumFat += parseFloat(c.fat);
-          sumSnf += parseFloat(c.snf);
-          sumRate += parseFloat(c.rate);
-          sumAmount += parseFloat(c.total);
-
+        let totalQty = 0, totalAmt = 0;
+        bodyEl.innerHTML = filtered.map(c => {
+          totalQty += c.qty;
+          totalAmt += parseFloat(c.total);
           return `
             <tr>
-              <td>${c.time}</td>
-              <td><strong>${c.farmerId} - ${c.farmerName}</strong></td>
+              <td>${c.farmerId}</td>
+              <td>${c.farmerName}</td>
               <td>${c.type}</td>
               <td>${c.shift}</td>
               <td>${c.qty} L</td>
               <td>${c.fat}%</td>
               <td>${c.snf}%</td>
               <td>₹${c.rate}</td>
-              <td><strong>₹${c.total}</strong></td>
+              <td>₹${c.total}</td>
             </tr>
           `;
         }).join('');
 
-        tfoot.innerHTML = `
-          <tr style="border-top:2px solid #1b4332;">
-            <td colspan="4" style="text-align:right;">SHIFT TOTALS & AVERAGES:</td>
-            <td>${sumQty.toFixed(1)} L</td>
-            <td>Avg: ${(sumFat / list.length).toFixed(2)}%</td>
-            <td>Avg: ${(sumSnf / list.length).toFixed(2)}%</td>
-            <td>Avg: ₹${(sumRate / list.length).toFixed(2)}</td>
-            <td><strong>₹ ${sumAmount.toFixed(2)}</strong></td>
+        footEl.innerHTML = `
+          <tr>
+            <td colspan="4" style="text-align:right;"><strong>Total:</strong></td>
+            <td><strong>${totalQty.toFixed(1)} L</strong></td>
+            <td colspan="3"></td>
+            <td><strong>₹${totalAmt.toFixed(2)}</strong></td>
           </tr>
         `;
-      }
-      else if (reportType === 'MILK_BILL') {
-        if (!farmerCode) {
-          showAlert('Please select a Farmer Code / ID for Milk Bill!', 'danger');
-          return;
-        }
+      } 
+      else if (type === 'MILK_BILL') {
+        const farmer = DB.farmers.find(f => f.id === farmerId);
+        titleEl.innerText = `INDIVIDUAL MILK RECEIPT / BILL (${farmer ? farmer.name : farmerId})`;
+        rangeEl.innerText = `${startDate} to ${endDate || startDate}`;
 
-        const farmerObj = DB.farmers.find(f => f.id === farmerCode) || { name: 'Farmer', account: '--', bankName: 'SBI' };
-        reportTitle.innerText = `INDIVIDUAL FARMER MILK BILL STATEMENT (${farmerCode})`;
-        rangeSpan.innerText = `${startDate || 'Start'} to ${endDate || 'End'}`;
-        detailSpan.innerHTML = `<strong>Farmer Name:</strong> ${farmerObj.name} | <strong>Bank:</strong> ${farmerObj.bankName || 'SBI'} (${farmerObj.account})`;
-
-        let list = DB.collections.filter(c => c.farmerId === farmerCode);
-        if (startDate) list = list.filter(c => c.date >= startDate);
-        if (endDate) list = list.filter(c => c.date <= endDate);
-
-        thead.innerHTML = `
+        headEl.innerHTML = `
           <tr>
             <th>Date</th>
             <th>Shift</th>
-            <th>Milk Type</th>
+            <th>Type</th>
             <th>Qty (L)</th>
             <th>FAT %</th>
             <th>SNF %</th>
-            <th>Water %</th>
-            <th>Rate/L (₹)</th>
-            <th>Gross Amount (₹)</th>
+            <th>Rate (₹)</th>
+            <th>Amount (₹)</th>
           </tr>
         `;
 
-        if (list.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No milk collection entries found for this farmer in this cycle.</td></tr>`;
-          tfoot.innerHTML = '';
-          return;
-        }
+        const filtered = DB.collections.filter(c => c.farmerId === farmerId && c.date >= startDate && c.date <= (endDate || startDate));
 
-        let sumQty = 0, sumFat = 0, sumSnf = 0, sumRate = 0, grossAmount = 0;
+        let totalQty = 0, grossAmt = 0;
+        bodyEl.innerHTML = filtered.map(c => {
+          totalQty += c.qty;
+          grossAmt += parseFloat(c.total);
+          return `
+            <tr>
+              <td>${c.date}</td>
+              <td>${c.shift}</td>
+              <td>${c.type}</td>
+              <td>${c.qty} L</td>
+              <td>${c.fat}%</td>
+              <td>${c.snf}%</td>
+              <td>₹${c.rate}</td>
+              <td>₹${c.total}</td>
+            </tr>
+          `;
+        }).join('');
 
-        tbody.innerHTML = list.map(c => {
-          sumQty += parseFloat(c.qty);
-          sumFat += parseFloat(c.fat);
-          sumSnf += parseFloat(c.snf);
-          sumRate += parseFloat(c.rate);
-          grossAmount += parseFloat(c.total);
+        const farmerDeductions = DB.deductions.filter(d => d.farmerId === farmerId && d.date >= startDate && d.date <= (endDate || startDate));
+        const totalDeductions = farmerDeductions.reduce((acc, curr) => acc + curr.amount, 0);
+        const netPay = grossAmt - totalDeductions;
+
+        footEl.innerHTML = `
+          <tr>
+            <td colspan="3" style="text-align:right;"><strong>Gross Total:</strong></td>
+            <td><strong>${totalQty.toFixed(1)} L</strong></td>
+            <td colspan="3"></td>
+            <td><strong>₹${grossAmt.toFixed(2)}</strong></td>
+          </tr>
+          <tr>
+            <td colspan="7" style="text-align:right; color:var(--danger);"><strong>Less Total Deductions / Feed Purchase:</strong></td>
+            <td style="color:var(--danger);"><strong>- ₹${totalDeductions.toFixed(2)}</strong></td>
+          </tr>
+          <tr style="background:#d8f3dc;">
+            <td colspan="7" style="text-align:right; font-size:1.1em; color:var(--primary);"><strong>NET PAYABLE AMOUNT:</strong></td>
+            <td style="font-size:1.1em; color:var(--primary);"><strong>₹${netPay.toFixed(2)}</strong></td>
+          </tr>
+        `;
+      }
+      else if (type === 'BILL_SUMMARY') {
+        titleEl.innerText = 'CONSOLIDATED BILL PERIOD SUMMARY';
+        rangeEl.innerText = `${startDate} to ${endDate || startDate}`;
+
+        headEl.innerHTML = `
+          <tr>
+            <th>Farmer Code</th>
+            <th>Farmer Name</th>
+            <th>Total Liters</th>
+            <th>Gross Amount</th>
+            <th>Deductions</th>
+            <th>Net Amount</th>
+          </tr>
+        `;
+
+        bodyEl.innerHTML = DB.farmers.map(f => {
+          const fCollections = DB.collections.filter(c => c.farmerId === f.id && c.date >= startDate && c.date <= (endDate || startDate));
+          const fDeductions = DB.deductions.filter(d => d.farmerId === f.id && d.date >= startDate && d.date <= (endDate || startDate));
+
+          const totalLiters = fCollections.reduce((acc, c) => acc + c.qty, 0);
+          const gross = fCollections.reduce((acc, c) => acc + parseFloat(c.total), 0);
+          const ded = fDeductions.reduce((acc, d) => acc + d.amount, 0);
+          const net = gross - ded;
 
           return `
+            <tr>
+              <td>${f.id}</td>
+              <td>${f.name}</td>
+              <td>${totalLiters.toFixed(1)} L</td>
+              <td>₹${gross.toFixed(2)}</td>
+              <td>₹${ded.toFixed(2)}</td>
+              <td><strong>₹${net.toFixed(2)}</strong></td>
+            </tr>
+          `;
+        }).join('');
+
+        footEl.innerHTML = '';
+      }
+    }
+
+    function renderFarmerPortal() {
+      if(!currentFarmer) return;
+
+      document.getElementById('farmer-portal-name').innerText = currentFarmer.name;
+      document.getElementById('farmer-portal-phone').innerText = currentFarmer.email || currentFarmer.mobile;
+
+      const fromDate = document.getElementById('farmer-range-from')?.value;
+      const toDate = document.getElementById('farmer-range-to')?.value;
+
+      let list = DB.collections.filter(c => 
+        (c.farmerEmail && currentFarmer.email && c.farmerEmail.toLowerCase() === currentFarmer.email.toLowerCase()) || 
+        c.farmerId === currentFarmer.id
+      );
+
+      if (fromDate) list = list.filter(c => c.date >= fromDate);
+      if (toDate) list = list.filter(c => c.date <= toDate);
+
+      const totalQty = list.reduce((acc, c) => acc + c.qty, 0);
+      const totalEarned = list.reduce((acc, c) => acc + parseFloat(c.total), 0);
+
+      document.getElementById('farmer-total-qty').innerText = `${totalQty.toFixed(1)} L`;
+      document.getElementById('farmer-total-earnings').innerText = `₹ ${totalEarned.toFixed(2)}`;
+
+      const itemizedBody = document.getElementById('farmer-itemized-tbody');
+      if (itemizedBody) {
+        if(list.length === 0) {
+          itemizedBody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No collection records found for this farmer.</td></tr>`;
+        } else {
+          itemizedBody.innerHTML = list.map(c => `
             <tr>
               <td>${c.date}</td>
               <td>${c.shift}</td>
@@ -2219,164 +2319,39 @@
               <td>₹${c.rate}</td>
               <td><strong>₹${c.total}</strong></td>
             </tr>
-          `;
-        }).join('');
-
-        let farmerDeductions = DB.deductions ? DB.deductions.filter(d => d.farmerId === farmerCode) : [];
-        if (startDate) farmerDeductions = farmerDeductions.filter(d => d.date >= startDate);
-        if (endDate) farmerDeductions = farmerDeductions.filter(d => d.date <= endDate);
-
-        const totalDeductionAmt = farmerDeductions.reduce((acc, d) => acc + parseFloat(d.amount), 0);
-        const netPayable = grossAmount - totalDeductionAmt;
-
-        let deductionsRows = farmerDeductions.map(d => `
-          <tr style="color:var(--danger); font-size:0.88em;">
-            <td colspan="8" style="text-align:right;">Deduction (${d.date} - ${d.type}):</td>
-            <td>- ₹ ${parseFloat(d.amount).toFixed(2)}</td>
-          </tr>
-        `).join('');
-
-        tfoot.innerHTML = `
-          <tr style="border-top:2px solid #1b4332;">
-            <td colspan="3" style="text-align:right;">PERIOD GROSS TOTAL:</td>
-            <td>${sumQty.toFixed(1)} L</td>
-            <td>Avg: ${(sumFat / list.length).toFixed(2)}%</td>
-            <td>Avg: ${(sumSnf / list.length).toFixed(2)}%</td>
-            <td>--</td>
-            <td>Avg: ₹${(sumRate / list.length).toFixed(2)}</td>
-            <td><strong>₹ ${grossAmount.toFixed(2)}</strong></td>
-          </tr>
-          ${deductionsRows}
-          <tr style="color:var(--danger); font-weight:bold;">
-            <td colspan="8" style="text-align:right;">LESS: TOTAL PERIOD DEDUCTIONS:</td>
-            <td><strong>- ₹ ${totalDeductionAmt.toFixed(2)}</strong></td>
-          </tr>
-          <tr style="background:#d8f3dc; color:#1b4332; font-size:1.05em;">
-            <td colspan="8" style="text-align:right;">NET PAYABLE AMOUNT:</td>
-            <td><strong>₹ ${netPayable.toFixed(2)}</strong></td>
-          </tr>
-        `;
-      }
-      else if (reportType === 'BILL_SUMMARY') {
-        reportTitle.innerText = "CONSOLIDATED PERIOD BILL SUMMARY (ALL FARMERS)";
-        rangeSpan.innerText = `${startDate || 'Start'} to ${endDate || 'End'}`;
-        detailSpan.innerHTML = `<strong>Total Center Farmers:</strong> ${DB.farmers.length}`;
-
-        let list = DB.collections;
-        if (startDate) list = list.filter(c => c.date >= startDate);
-        if (endDate) list = list.filter(c => c.date <= endDate);
-
-        thead.innerHTML = `
-          <tr>
-            <th>Farmer Code</th>
-            <th>Farmer Name</th>
-            <th>Total Qty (L)</th>
-            <th>Avg FAT %</th>
-            <th>Avg SNF %</th>
-            <th>Avg Rate (₹/L)</th>
-            <th>Total Amount (₹)</th>
-          </tr>
-        `;
-
-        if (list.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#888;">No collection records found for the period.</td></tr>`;
-          tfoot.innerHTML = '';
-          return;
+          `).join('');
         }
-
-        const grouped = {};
-        list.forEach(c => {
-          if (!grouped[c.farmerId]) {
-            grouped[c.farmerId] = { id: c.farmerId, name: c.farmerName, count: 0, qty: 0, fatSum: 0, snfSum: 0, rateSum: 0, totalAmt: 0 };
-          }
-          grouped[c.farmerId].count++;
-          grouped[c.farmerId].qty += parseFloat(c.qty);
-          grouped[c.farmerId].fatSum += parseFloat(c.fat);
-          grouped[c.farmerId].snfSum += parseFloat(c.snf);
-          grouped[c.farmerId].rateSum += parseFloat(c.rate);
-          grouped[c.farmerId].totalAmt += parseFloat(c.total);
-        });
-
-        let grandQty = 0, grandFatSum = 0, grandSnfSum = 0, grandRateSum = 0, grandTotalAmt = 0, totalEntries = 0;
-
-        tbody.innerHTML = Object.values(grouped).map(g => {
-          const avgFat = (g.fatSum / g.count).toFixed(2);
-          const avgSnf = (g.snfSum / g.count).toFixed(2);
-          const avgRate = (g.rateSum / g.count).toFixed(2);
-
-          grandQty += g.qty;
-          grandFatSum += g.fatSum;
-          grandSnfSum += g.snfSum;
-          grandRateSum += g.rateSum;
-          grandTotalAmt += g.totalAmt;
-          totalEntries += g.count;
-
-          return `
-            <tr>
-              <td><strong>${g.id}</strong></td>
-              <td>${g.name}</td>
-              <td>${g.qty.toFixed(1)} L</td>
-              <td>${avgFat}%</td>
-              <td>${avgSnf}%</td>
-              <td>₹${avgRate}</td>
-              <td><strong>₹ ${g.totalAmt.toFixed(2)}</strong></td>
-            </tr>
-          `;
-        }).join('');
-
-        tfoot.innerHTML = `
-          <tr style="border-top:2px solid #1b4332; background:#d8f3dc; color:#1b4332;">
-            <td colspan="2" style="text-align:right;"><strong>CENTER CONSOLIDATED TOTALS:</strong></td>
-            <td><strong>${grandQty.toFixed(1)} L</strong></td>
-            <td>Avg: ${(grandFatSum / totalEntries).toFixed(2)}%</td>
-            <td>Avg: ${(grandSnfSum / totalEntries).toFixed(2)}%</td>
-            <td>Avg: ₹${(grandRateSum / totalEntries).toFixed(2)}</td>
-            <td><strong>₹ ${grandTotalAmt.toFixed(2)}</strong></td>
-          </tr>
-        `;
-      }
-    }
-
-    async function renderFarmerPortal() {
-      if(!currentFarmer) return;
-      document.getElementById('farmer-portal-name').innerText = currentFarmer.name;
-      document.getElementById('farmer-portal-phone').innerText = currentFarmer.email || currentFarmer.mobile;
-
-      const rangeFrom = document.getElementById('farmer-range-from').value;
-      const rangeTo = document.getElementById('farmer-range-to').value;
-
-      let records = await DairyVisionAPI.fetchGlobalFarmerRecords(currentFarmer.mobile, currentFarmer.id, currentFarmer.email);
-      
-      if(rangeFrom) records = records.filter(r => r.date >= rangeFrom);
-      if(rangeTo) records = records.filter(r => r.date <= rangeTo);
-
-      const totalQty = records.reduce((acc, c) => acc + parseFloat(c.qty), 0);
-      const totalEarnings = records.reduce((acc, c) => acc + parseFloat(c.total), 0);
-
-      document.getElementById('farmer-total-qty').innerText = `${totalQty.toFixed(1)} L`;
-      document.getElementById('farmer-total-earnings').innerText = `₹ ${totalEarnings.toFixed(2)}`;
-
-      const itemizedTbody = document.getElementById('farmer-itemized-tbody');
-      if(records.length === 0) {
-        itemizedTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No milk collection entries found for your account.</td></tr>`;
-      } else {
-        itemizedTbody.innerHTML = records.map(r => `
-          <tr>
-            <td>${r.date}</td>
-            <td>${r.shift}</td>
-            <td>${r.type}</td>
-            <td>${r.qty} L</td>
-            <td>${r.fat}%</td>
-            <td>${r.snf}%</td>
-            <td>${r.waterPct}%</td>
-            <td>₹${r.rate}</td>
-            <td><strong>₹${r.total}</strong></td>
-          </tr>
-        `).join('');
       }
 
+      renderFarmerImageFormat(list);
       renderFarmerBookings();
     }
+
+    function renderFarmerImageFormat(collections) {
+      const tbody = document.getElementById('farmer-image-format-tbody');
+      if(!tbody) return;
+
+      if(collections.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:15px; color:#888;">No summary data recorded.</td></tr>`;
+        return;
+      }
+
+      let html = `<tr class="month-header-row"><td colspan="5">Summary Statement</td></tr>`;
+      collections.forEach(c => {
+        html += `
+          <tr>
+            <td>${c.date} (${c.shift ? c.shift[0] : ''})</td>
+            <td>${c.qty}</td>
+            <td>${c.fat}</td>
+            <td>${c.rate}</td>
+            <td>${c.total}</td>
+          </tr>
+        `;
+      });
+
+      tbody.innerHTML = html;
+    }
   </script>
+  <script src="script.js"></script>
 </body>
 </html>

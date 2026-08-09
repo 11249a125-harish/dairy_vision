@@ -1,4 +1,4 @@
-const API_BASE_URL = window.location.origin;
+const API_BASE_URL = 'https://dairy-vision.onrender.com';
 
 function showToast(message, isError = false) {
     const toast = document.getElementById('notification');
