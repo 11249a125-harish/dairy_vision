@@ -14,7 +14,7 @@ function showToast(message, isError = false) {
     }, 4000);
 }
 
-async function handleSendOTP(emailInputId, contextPurpose) {
+async function handleSendOTP(emailInputId, contextPurpose, event) {
     const emailField = document.getElementById(emailInputId);
     if (!emailField) {
         console.error(`Input element with ID '${emailInputId}' was not found in HTML.`);
@@ -27,8 +27,7 @@ async function handleSendOTP(emailInputId, contextPurpose) {
         return;
     }
 
-    // Locate the triggered button to enforce cooldown
-    const sendBtn = document.querySelector(`button[onclick*="${emailInputId}"]`) || event?.target;
+    const sendBtn = document.querySelector(`button[onclick*="${emailInputId}"]`) || (event ? event.target : null);
     let originalText = '';
 
     if (sendBtn && sendBtn.tagName === 'BUTTON') {
@@ -64,7 +63,6 @@ async function handleSendOTP(emailInputId, contextPurpose) {
         console.error('Request Execution Failure:', error);
         showToast('Unable to connect to local cloud server network.', true);
     } finally {
-        // 30-second cooldown timer to avoid 429 rate limiting
         if (sendBtn && sendBtn.tagName === 'BUTTON') {
             setTimeout(() => {
                 sendBtn.disabled = false;
@@ -104,14 +102,73 @@ async function handleVerifyOTP(emailInputId, otpInputId, successCallback) {
     }
 }
 
-function sendAgentLoginOtp() {
-    handleSendOTP('agent-email-input', 'Agent Login Verification');
+function sendAgentLoginOtp(event) {
+    handleSendOTP('agent-email-input', 'Agent Login Verification', event);
 }
 
-function verifyGmailOtp() {
-    handleSendOTP('farmer-email', 'Farmer Registration');
+function verifyGmailOtp(event) {
+    handleSendOTP('farmer-email', 'Farmer Registration', event);
 }
 
-function sendFarmerLoginOtp() {
-    handleSendOTP('farmer-login-email', 'Farmer Portal Login');
+function sendFarmerLoginOtp(event) {
+    handleSendOTP('farmer-login-email', 'Farmer Portal Login', event);
+}
+
+function renderFarmerPortal() {
+    if (!currentFarmer) return;
+
+    // Display basic farmer details
+    const nameElem = document.getElementById('farmer-portal-name');
+    const phoneElem = document.getElementById('farmer-portal-phone');
+    if (nameElem) nameElem.innerText = currentFarmer.name;
+    if (phoneElem) phoneElem.innerText = currentFarmer.email || currentFarmer.mobile;
+
+    // Retrieve date filters
+    const fromDate = document.getElementById('farmer-range-from')?.value;
+    const toDate = document.getElementById('farmer-range-to')?.value;
+
+    // Filter collections for active farmer
+    const farmerCollections = DB.collections.filter(c => {
+        const matchesFarmer = (c.farmerId === currentFarmer.id || c.farmerEmail === currentFarmer.email);
+        const matchesFrom = !fromDate || c.date >= fromDate;
+        const matchesTo = !toDate || c.date <= toDate;
+        return matchesFarmer && matchesFrom && matchesTo;
+    });
+
+    // Compute metrics
+    let totalQty = 0;
+    let totalEarnings = 0;
+
+    const itemizedTbody = document.getElementById('farmer-itemized-tbody');
+    if (itemizedTbody) {
+        if (farmerCollections.length === 0) {
+            itemizedTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No milk collection history found.</td></tr>`;
+        } else {
+            itemizedTbody.innerHTML = farmerCollections.map(c => {
+                totalQty += c.qty;
+                totalEarnings += parseFloat(c.total);
+                return `
+                    <tr>
+                        <td>${c.date}</td>
+                        <td>${c.shift}</td>
+                        <td>${c.type}</td>
+                        <td>${c.qty} L</td>
+                        <td>${c.fat}%</td>
+                        <td>${c.snf}%</td>
+                        <td><span class="water-badge ${c.waterPct > 0 ? 'water-warning' : 'water-pure'}">${c.waterPct}%</span></td>
+                        <td>₹${c.rate}</td>
+                        <td><strong>₹${c.total}</strong></td>
+                    </tr>
+                `;
+            }).join('');
+        }
+    }
+
+    // Update totals
+    const qtyElem = document.getElementById('farmer-total-qty');
+    const earningsElem = document.getElementById('farmer-total-earnings');
+    if (qtyElem) qtyElem.innerText = `${totalQty.toFixed(1)} L`;
+    if (earningsElem) earningsElem.innerText = `₹ ${totalEarnings.toFixed(2)}`;
+
+    renderFarmerBookings();
 }
