@@ -2380,24 +2380,12 @@
     }
 
     function initAppView() {
-      const today = new Date().toISOString().split('T')[0];
-      document.getElementById('milk-date').value = today;
-      document.getElementById('report-start-date').value = today;
-      document.getElementById('report-end-date').value = today;
-      document.getElementById('farmer-range-from').value = today;
-      document.getElementById('farmer-range-to').value = today;
-      if(document.getElementById('booking-date')) document.getElementById('booking-date').value = today;
-      
-      document.querySelectorAll('.sync-can-display').forEach(el => el.innerText = DB.agentCAN);
       renderFarmers();
       renderCollections();
       populateDropdowns();
       updateDashboardMetrics();
+      document.getElementById('milk-date').value = new Date().toISOString().split('T')[0];
     }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      initAppView();
-    });
   </script>
 </body>
 </html>
