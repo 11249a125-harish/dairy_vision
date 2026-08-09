@@ -4,7 +4,10 @@ const dotenv = require('dotenv');
 
 dotenv.config();
 
-const app = express(); // <
+const app = express();
+
+// Middleware to parse JSON bodies from incoming requests
+app.use(express.json());
 
 // Allow requests from your GitHub Pages site
 app.use(cors({
@@ -100,6 +103,87 @@ app.post('/api/verify-otp', (req, res) => {
 
   delete otpStore[formattedEmail];
   return res.json({ success: true, message: 'OTP verified successfully.' });
+});
+
+// Endpoint: Send Milk Collection Bill via Brevo API
+app.post('/api/send-milk-bill', async (req, res) => {
+  const { farmerName, farmerEmail, milkType, shift, liters, fat, snf, water, totalAmount } = req.body;
+
+  console.log(`[MILK BILL ATTEMPT] Preparing email bill for: ${farmerEmail}`);
+
+  if (!farmerEmail || typeof farmerEmail !== 'string' || !farmerEmail.includes('@')) {
+    return res.status(400).json({ success: false, message: 'Valid farmer email address is required.' });
+  }
+
+  const senderEmail = process.env.SENDER_EMAIL || 'karanamharish93@gmail.com';
+
+  try {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': process.env.BREVO_API_KEY,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        sender: { name: "Dairy Vision Portal", email: senderEmail },
+        to: [{ email: farmerEmail.trim(), name: farmerName || 'Farmer' }],
+        subject: `Milk Collection Receipt - ${farmerName || 'Dairy Member'}`,
+        htmlContent: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+            <h2 style="color: #1b4332; text-align: center;">Dairy Vision Collection Receipt</h2>
+            <p>Dear <strong>${farmerName || 'Valued Farmer'}</strong>,</p>
+            <p>Your milk collection entry has been successfully registered. Below are your collection details:</p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+              <tr style="background-color: #f2f2f2;">
+                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Milk Type:</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd;">${milkType || 'Standard Milk'}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Shift:</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd;">${shift || 'Morning/Evening'}</td>
+              </tr>
+              <tr style="background-color: #f2f2f2;">
+                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Quantity (Liters):</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd;">${liters} L</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border: 1px solid #ddd;"><strong>FAT / SNF:</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd;">${fat}% / ${snf}%</td>
+              </tr>
+              <tr style="background-color: #f2f2f2;">
+                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Water %:</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd;">${water || '0'}%</td>
+              </tr>
+              <tr style="background-color: #e8f5e9;">
+                <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px;"><strong>Total Amount:</strong></td>
+                <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px; color: #2e7d32;"><strong>₹${totalAmount}</strong></td>
+              </tr>
+            </table>
+
+            <p style="margin-top: 20px; font-size: 12px; color: #777; text-align: center;">
+              This is an automated receipt from Dairy Vision Cloud System.
+            </p>
+          </div>
+        `
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('❌ BREVO MILK BILL ERROR:', JSON.stringify(data));
+      return res.status(response.status).json({ success: false, message: data.message || 'Failed to dispatch milk bill email.' });
+    }
+
+    console.log(`[MILK BILL SENT] Sent to ${farmerEmail}. Message ID: ${data.messageId}`);
+    return res.json({ success: true, message: 'Milk bill emailed to farmer successfully.' });
+
+  } catch (err) {
+    console.error('❌ CRITICAL BILL EMAIL ERROR:', err.message);
+    return res.status(500).json({ success: false, message: 'Internal server error while sending bill email.' });
+  }
 });
 
 const PORT = process.env.PORT || 5000;
