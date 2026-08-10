@@ -280,7 +280,7 @@
     th { background-color: var(--primary); color: white; }
     tr:nth-child(even) { background-color: #f8fdf9; }
 
-    /* Farmer Requirement Slip Card Styling */
+    /* Farmer Requirement Slip Box */
     .req-slip-box {
       border: 2px solid var(--primary);
       border-radius: 10px;
@@ -294,6 +294,64 @@
     .req-slip-title { font-size: 1.3em; color: var(--primary); font-weight: bold; }
     .req-slip-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.95em; }
     .req-slip-row strong { color: var(--primary); }
+
+    .farmer-report-image-view {
+      background: #f2f2f2;
+      padding: 20px;
+      border-radius: 12px;
+      font-family: Arial, sans-serif;
+      max-width: 520px;
+      margin: 15px auto;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .farmer-report-image-view .year-select-header {
+      text-align: center;
+      margin-bottom: 15px;
+    }
+    .farmer-report-image-view select {
+      background: #ffffff;
+      border: 1px solid #888;
+      border-radius: 3px;
+      padding: 4px 15px;
+      font-size: 1.1em;
+      color: #444;
+    }
+    .farmer-report-grid {
+      width: 100%;
+      border-collapse: collapse;
+      background: transparent;
+    }
+    .farmer-report-grid th {
+      background: transparent;
+      color: #00b0f0;
+      font-size: 1.15em;
+      font-weight: bold;
+      border: none;
+      padding: 8px;
+      text-align: right;
+    }
+    .farmer-report-grid th:first-child { text-align: left; }
+    .farmer-report-grid td {
+      border: none;
+      border-top: 1px solid #e0e0e0;
+      padding: 8px;
+      font-size: 1.1em;
+      color: #444;
+      text-align: right;
+    }
+    .farmer-report-grid td:first-child {
+      color: #00b0f0;
+      font-weight: bold;
+      text-align: left;
+    }
+    .farmer-report-grid .month-header-row td {
+      color: #00b0f0;
+      font-weight: bold;
+      border-top: none;
+      padding-top: 12px;
+      padding-bottom: 2px;
+      text-align: left;
+    }
 
     .dev-card {
       background: white;
@@ -345,8 +403,9 @@
     @media print {
       body * { visibility: hidden !important; }
       #printable-req-slip, #printable-req-slip *,
-      #sheet-output-card, #sheet-output-card * { visibility: visible !important; }
-      #printable-req-slip, #sheet-output-card {
+      #sheet-output-card, #sheet-output-card *, 
+      .farmer-report-image-view, .farmer-report-image-view * { visibility: visible !important; }
+      #printable-req-slip, #sheet-output-card, .farmer-report-image-view {
         position: absolute !important; left: 0 !important; top: 0 !important;
         width: 100% !important; margin: 0 !important; padding: 20px !important;
         box-shadow: none !important; border: none !important;
@@ -460,11 +519,13 @@
                   <small style="font-size:0.75em; color:#666;">Allowed: karanamharish93@gmail.com, 11249a251@kanchiuniv.ac.in, 11249a255@kanchiuniv.ac.in</small>
                 </div>
 
+                <!-- Password Block -->
                 <div id="agent-password-block" class="form-group">
                   <label><i class="fa-solid fa-lock"></i> Password *</label>
                   <input type="password" id="agent-password-input" placeholder="Enter password">
                 </div>
 
+                <!-- Gmail OTP Block -->
                 <div id="agent-login-otp-block" class="form-group hidden" style="background: var(--accent); padding: 12px; border-radius: 8px; border: 1px solid var(--secondary);">
                   <label style="color: var(--primary);"><i class="fa-solid fa-key"></i> Enter Gmail OTP *</label>
                   <input type="text" id="agent-login-otp" placeholder="Enter 6-digit OTP" pattern="[0-9]{6}">
@@ -520,11 +581,13 @@
                   <input type="email" id="farmer-login-email" placeholder="Enter registered Gmail" required>
                 </div>
 
+                <!-- Farmer Password Block -->
                 <div id="farmer-password-block" class="form-group">
                   <label><i class="fa-solid fa-lock"></i> Password *</label>
                   <input type="password" id="farmer-password-input" placeholder="Enter password">
                 </div>
 
+                <!-- Farmer OTP Block -->
                 <div id="farmer-login-otp-block" class="form-group hidden" style="background: var(--accent); padding: 12px; border-radius: 8px;">
                   <label style="color:var(--primary);"><i class="fa-solid fa-key"></i> Gmail OTP *</label>
                   <input type="text" id="farmer-login-otp" placeholder="Enter 6-digit OTP">
@@ -870,7 +933,7 @@
           </div>
         </div>
 
-        <!-- Tab 6: Requirements Management Portal (Updated Format) -->
+        <!-- Tab 6: Requirements Management Portal (Updated Requirement Slip & Deductions Logic) -->
         <div id="tab-bookings" class="tab-content hidden">
           <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
@@ -898,11 +961,11 @@
             </table>
           </div>
 
-          <!-- Requirement Slip View Card -->
+          <!-- Printable Requirement Slip View Box -->
           <div id="printable-req-slip" class="req-slip-box hidden">
             <div class="req-slip-header">
               <div class="req-slip-title"><i class="fa-solid fa-receipt"></i> FARMER REQUIREMENT SLIP</div>
-              <p style="font-size:0.85em; color:#555;">Dairy Vision Cloud System - Official Product Confirmation</p>
+              <p style="font-size:0.85em; color:#555;">Dairy Vision Cloud System - Official Confirmation</p>
             </div>
             <div class="req-slip-row"><span>Farmer Code / Name:</span><strong id="slip-farmer-name">--</strong></div>
             <div class="req-slip-row"><span>Date of Booking:</span><strong id="slip-booking-date">--</strong></div>
@@ -1167,6 +1230,32 @@
             </thead>
             <tbody id="farmer-deductions-tbody"></tbody>
           </table>
+        </div>
+
+        <div class="farmer-report-image-view">
+          <div class="year-select-header">
+            <select id="farmer-year-dropdown" onchange="renderFarmerPortal()">
+              <option value="2026-2027">2026-2027</option>
+              <option value="2025-2026">2025-2026</option>
+            </select>
+          </div>
+
+          <table class="farmer-report-grid">
+            <thead>
+              <tr>
+                <th></th>
+                <th>Qty</th>
+                <th>Fat</th>
+                <th>Rate</th>
+                <th>Amt.</th>
+              </tr>
+            </thead>
+            <tbody id="farmer-image-format-tbody"></tbody>
+          </table>
+
+          <div style="margin-top: 20px; text-align: center;" class="no-print">
+            <button class="btn btn-success btn-sm" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Statement</button>
+          </div>
         </div>
 
       </div>
@@ -1766,7 +1855,7 @@
         renderFarmerBookings();
         showAlert(`Requirement order set to ${statusState}! Cost logged to bill deductions.`);
 
-        // Email Requirement Slip Notification
+        // Email Requirement Slip Notification via backend route
         if (booking.farmerEmail) {
           try {
             await fetch(`${API_BASE_URL}/send-requirement-slip`, {
@@ -2443,7 +2532,74 @@
         }
       }
 
+      renderFarmerImageGrid(records);
       renderFarmerBookings();
+    }
+
+    function renderFarmerImageGrid(records) {
+      const gridTbody = document.getElementById('farmer-image-format-tbody');
+      if (!gridTbody) return;
+
+      if (records.length === 0) {
+        gridTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:15px; color:#888;">No monthly records found.</td></tr>`;
+        return;
+      }
+
+      const groupedByMonth = {};
+      records.forEach(c => {
+        const monthKey = c.date ? c.date.substring(0, 7) : '2026-01';
+        if (!groupedByMonth[monthKey]) groupedByMonth[monthKey] = [];
+        groupedByMonth[monthKey].push(c);
+      });
+
+      let html = '';
+      Object.keys(groupedByMonth).sort().reverse().forEach(month => {
+        const monthRecords = groupedByMonth[month];
+        const dateObj = new Date(month + "-01");
+        const monthName = dateObj.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+
+        html += `<tr class="month-header-row"><td colspan="5">${monthName}</td></tr>`;
+
+        let mQty = 0, mFatSum = 0, mAmt = 0;
+        monthRecords.forEach(c => {
+          const qty = c.qty;
+          const fat = c.fat;
+          const amt = parseFloat(c.total);
+          const rate = parseFloat(c.rate);
+
+          mQty += qty;
+          mFatSum += (fat * qty);
+          mAmt += amt;
+
+          const day = c.date ? c.date.split('-')[2] : '01';
+          const shiftLabel = c.shift === 'Morning' ? 'M' : 'E';
+
+          html += `
+            <tr>
+              <td>${day}/${shiftLabel}</td>
+              <td>${qty.toFixed(1)}</td>
+              <td>${fat.toFixed(1)}</td>
+              <td>${rate.toFixed(1)}</td>
+              <td>${amt.toFixed(0)}</td>
+            </tr>
+          `;
+        });
+
+        const avgFat = mQty > 0 ? (mFatSum / mQty).toFixed(1) : '0.0';
+        const avgRate = mQty > 0 ? (mAmt / mQty).toFixed(1) : '0.0';
+
+        html += `
+          <tr style="font-weight:bold; background:rgba(0,176,240,0.1); border-top:1px solid #00b0f0;">
+            <td style="color:#00b0f0;">Tot/Avg</td>
+            <td>${mQty.toFixed(1)}</td>
+            <td>${avgFat}</td>
+            <td>${avgRate}</td>
+            <td>₹${mAmt.toFixed(0)}</td>
+          </tr>
+        `;
+      });
+
+      gridTbody.innerHTML = html;
     }
   </script>
 </body>
