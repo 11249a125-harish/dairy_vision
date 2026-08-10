@@ -933,7 +933,7 @@
           </div>
         </div>
 
-        <!-- Tab 6: Requirements Management Portal (Updated Requirement Slip & Deductions Logic) -->
+        <!-- Tab 6: Requirements Management Portal -->
         <div id="tab-bookings" class="tab-content hidden">
           <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
@@ -941,7 +941,7 @@
               <button class="btn btn-danger btn-sm" onclick="clearRequirements('agent')"><i class="fa-solid fa-trash-can"></i> Clear Requirements History</button>
             </div>
             <p style="color:#666; font-size:0.9em; margin-top:5px; margin-bottom:15px;">
-              Review and process requirement requests. Approvals automatically generate requirement slips and deduct product costs from the respective 10-day (1-10, 11-20, 21-31) or 15-day (1-15, 16-31) milk bill cycle.
+              Review and process requirement requests. Approvals automatically generate requirement slips, dispatch emails to farmers, and deduct product costs from the respective 10-day (1-10, 11-20, 21-31) or 15-day (1-15, 16-31) milk bill cycle.
             </p>
 
             <table>
@@ -1301,29 +1301,6 @@
     };
 
     const DairyVisionAPI = {
-      async sendEmailNotification(toEmail, subject, content) {
-        console.log(`[Brevo SMTP Mailer Outgoing] To: ${toEmail} | Subject: ${subject}`);
-        try {
-          await fetch(`${API_BASE_URL}/send-milk-bill`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
-              farmerEmail: toEmail, 
-              farmerName: "Dairy Vision Member", 
-              milkType: subject, 
-              shift: "Notification", 
-              liters: 0, 
-              fat: 0, 
-              snf: 0, 
-              water: 0, 
-              totalAmount: 0 
-            })
-          });
-        } catch(e) {
-          console.warn('Backend Brevo fallback active.');
-        }
-      },
-
       async queryGmailOtp(email, purpose = 'VERIFY') {
         const firewallCheck = FirewallSystem.isAllowed(email);
         if (!firewallCheck.allowed) {
@@ -1827,7 +1804,7 @@
       `).join('');
     }
 
-    // DIRECTLY TRIGGER REQUIREMENT SLIP EMAIL API ROUTE
+    // DISPATCH DIRECT EMAIL RECEIPT UPON APPROVAL/DECLINE
     async function processRequirementOrder(bookingId, statusState) {
       if(!DB.bookings) return;
       const idx = DB.bookings.findIndex(b => b.id === bookingId);
@@ -1855,12 +1832,12 @@
         saveDB();
         renderAgentBookings();
         renderFarmerBookings();
-        showAlert(`Requirement order set to ${statusState}! Dispatching email slip...`);
+        showAlert(`Requirement order set to ${statusState}! Dispatching Gmail requirement slip...`);
 
-        // Explicit POST call to /send-requirement-slip
+        // Trigger backend route /send-requirement-slip
         if (booking.farmerEmail) {
           try {
-            const res = await fetch(`${API_BASE_URL}/send-requirement-slip`, {
+            const response = await fetch(`${API_BASE_URL}/send-requirement-slip`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
@@ -1873,12 +1850,16 @@
                 cost: costAmount
               })
             });
-            const data = await res.json();
-            if(data.success) {
-              showAlert(`Requirement Slip emailed successfully to ${booking.farmerEmail}!`);
+
+            const data = await response.json();
+            if (data.success) {
+              showAlert(`Requirement Slip successfully emailed to ${booking.farmerEmail}!`);
+            } else {
+              showAlert(`Failed to email slip: ${data.message}`, 'danger');
             }
           } catch(err) {
-            console.error("Requirement slip email error:", err);
+            console.error("Requirement slip email dispatch error:", err);
+            showAlert('Network error sending email slip.', 'danger');
           }
         }
       }
