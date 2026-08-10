@@ -1804,7 +1804,7 @@
       `).join('');
     }
 
-    // DISPATCH DIRECT EMAIL RECEIPT UPON APPROVAL/DECLINE
+    // PROCESS REQUIREMENT ORDER AND DISPATCH EMAIL SLIP
     async function processRequirementOrder(bookingId, statusState) {
       if(!DB.bookings) return;
       const idx = DB.bookings.findIndex(b => b.id === bookingId);
@@ -1834,7 +1834,7 @@
         renderFarmerBookings();
         showAlert(`Requirement order set to ${statusState}! Dispatching Gmail requirement slip...`);
 
-        // Trigger backend route /send-requirement-slip
+        // Directly call /send-requirement-slip API with correct field names
         if (booking.farmerEmail) {
           try {
             const response = await fetch(`${API_BASE_URL}/send-requirement-slip`, {
@@ -1844,7 +1844,7 @@
                 farmerName: booking.farmerName,
                 farmerEmail: booking.farmerEmail,
                 bookingDate: bookingDateVal,
-                requirement: booking.item,
+                item: booking.item,
                 status: statusState,
                 deliveryDate: booking.deliveryDate || 'N/A',
                 cost: costAmount

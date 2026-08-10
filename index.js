@@ -6,24 +6,20 @@ dotenv.config();
 
 const app = express();
 
-// Middleware to parse JSON bodies from incoming requests
 app.use(express.json());
 
-// Enable CORS for frontend clients
+// Enable CORS
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type']
 }));
 
-// In-memory OTP store
 const otpStore = {};
 
-// Endpoint: Send OTP via Brevo REST API
+// 1. Send OTP Endpoint
 app.post('/api/send-otp', async (req, res) => {
   const { email, purpose } = req.body;
-
-  console.log(`[OTP ATTEMPT] Received request for: ${email}`);
 
   if (!email || typeof email !== 'string' || !email.includes('@')) {
     return res.status(400).json({ success: false, message: 'Valid email required.' });
@@ -31,12 +27,11 @@ app.post('/api/send-otp', async (req, res) => {
 
   const senderEmail = process.env.SENDER_EMAIL || 'karanamharish93@gmail.com'; 
   const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes expiry
+  const expiresAt = Date.now() + 5 * 60 * 1000;
   
   otpStore[email.toLowerCase().trim()] = { otp: generatedOtp, expiresAt };
 
   try {
-    console.log(`[BREVO HTTP] Dispatching payload to Brevo API...`);
     const response = await fetch('https://api.brevo.com/v3/smtp/email', {
       method: 'POST',
       headers: {
@@ -52,64 +47,42 @@ app.post('/api/send-otp', async (req, res) => {
           <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
             <h2 style="color: #1b4332;">Dairy Vision Cloud System</h2>
             <p>Your verification code for <strong>${purpose || 'Verification'}</strong> is:</p>
-            <h1 style="color: #ffb703; background: #1b4332; display: inline-block; padding: 10px 20px; border-radius: 5px; letter-spacing: 3px;">
-              ${generatedOtp}
-            </h1>
-            <p>This code expires in 5 minutes. If you did not request this, please ignore this email.</p>
+            <h1 style="color: #ffb703; background: #1b4332; display: inline-block; padding: 10px 20px; border-radius: 5px;">${generatedOtp}</h1>
+            <p>This code expires in 5 minutes.</p>
           </div>
         `
       })
     });
 
-    const data = await response.json();
-
     if (!response.ok) {
-      console.error('❌ BREVO API ERROR DETAILS:', JSON.stringify(data));
-      return res.status(response.status).json({ success: false, message: data.message || 'Brevo API rejection.' });
+      return res.status(500).json({ success: false, message: 'Brevo API rejection.' });
     }
 
-    console.log(`[OTP SENT] Code ${generatedOtp} successfully accepted by Brevo. Message ID: ${data.messageId}`);
-    return res.json({ success: true, message: 'OTP sent successfully via Brevo API.' });
-
+    return res.json({ success: true, message: 'OTP sent successfully.' });
   } catch (err) {
-    console.error('❌ CRITICAL SERVER ERROR:', err.message);
-    return res.status(500).json({ success: false, message: 'Internal server error while sending OTP.' });
+    return res.status(500).json({ success: false, message: 'Server error sending OTP.' });
   }
 });
 
-// Endpoint: Verify OTP
+// 2. Verify OTP Endpoint
 app.post('/api/verify-otp', (req, res) => {
   const { email, otp } = req.body;
-
-  if (!email || !otp) {
-    return res.status(400).json({ success: false, message: 'Email and OTP are required.' });
-  }
+  if (!email || !otp) return res.status(400).json({ success: false, message: 'Email and OTP required.' });
 
   const formattedEmail = email.toLowerCase().trim();
   const record = otpStore[formattedEmail];
 
-  if (!record) {
-    return res.status(400).json({ success: false, message: 'No OTP requested for this email.' });
-  }
-
-  if (Date.now() > record.expiresAt) {
-    delete otpStore[formattedEmail];
-    return res.status(400).json({ success: false, message: 'OTP has expired. Please request a new one.' });
-  }
-
-  if (String(record.otp).trim() !== String(otp).trim()) {
-    return res.status(400).json({ success: false, message: 'Invalid OTP code.' });
+  if (!record || Date.now() > record.expiresAt || String(record.otp).trim() !== String(otp).trim()) {
+    return res.status(400).json({ success: false, message: 'Invalid or expired OTP.' });
   }
 
   delete otpStore[formattedEmail];
   return res.json({ success: true, message: 'OTP verified successfully.' });
 });
 
-// Endpoint: Send Milk Collection Bill via Brevo API
+// 3. Send Milk Collection Bill Receipt
 app.post('/api/send-milk-bill', async (req, res) => {
   const { farmerName, farmerEmail, milkType, shift, liters, fat, snf, water, totalAmount } = req.body;
-
-  console.log(`[MILK BILL ATTEMPT] Preparing email bill for: ${farmerEmail}`);
 
   if (!farmerEmail || typeof farmerEmail !== 'string' || !farmerEmail.includes('@')) {
     return res.status(400).json({ success: false, message: 'Valid farmer email address is required.' });
@@ -170,27 +143,15 @@ app.post('/api/send-milk-bill', async (req, res) => {
       })
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('❌ BREVO MILK BILL ERROR:', JSON.stringify(data));
-      return res.status(response.status).json({ success: false, message: data.message || 'Failed to dispatch milk bill email.' });
-    }
-
-    console.log(`[MILK BILL SENT] Sent to ${farmerEmail}. Message ID: ${data.messageId}`);
     return res.json({ success: true, message: 'Milk bill emailed to farmer successfully.' });
-
   } catch (err) {
-    console.error('❌ CRITICAL BILL EMAIL ERROR:', err.message);
     return res.status(500).json({ success: false, message: 'Internal server error while sending bill email.' });
   }
 });
 
-// Endpoint: Send Farmer Requirement Slip Email Notification via Brevo API
+// 4. Send Farmer Requirement Request Slip Endpoint
 app.post('/api/send-requirement-slip', async (req, res) => {
-  const { farmerName, farmerEmail, bookingDate, requirement, status, deliveryDate, cost } = req.body;
-
-  console.log(`[REQUIREMENT SLIP ATTEMPT] Preparing slip email for: ${farmerEmail}`);
+  const { farmerName, farmerEmail, bookingDate, item, status, deliveryDate, cost } = req.body;
 
   if (!farmerEmail || typeof farmerEmail !== 'string' || !farmerEmail.includes('@')) {
     return res.status(400).json({ success: false, message: 'Valid farmer email is required.' });
@@ -223,7 +184,7 @@ app.post('/api/send-requirement-slip', async (req, res) => {
               </tr>
               <tr>
                 <td style="padding: 10px; border: 1px solid #ddd;"><strong>Requirement:</strong></td>
-                <td style="padding: 10px; border: 1px solid #ddd;">${requirement}</td>
+                <td style="padding: 10px; border: 1px solid #ddd;">${item}</td>
               </tr>
               <tr style="background-color: #f2f2f2;">
                 <td style="padding: 10px; border: 1px solid #ddd;"><strong>Status:</strong></td>
@@ -247,18 +208,8 @@ app.post('/api/send-requirement-slip', async (req, res) => {
       })
     });
 
-    const data = await response.json();
-
-    if (!response.ok) {
-      console.error('❌ BREVO REQUIREMENT SLIP ERROR:', JSON.stringify(data));
-      return res.status(response.status).json({ success: false, message: data.message || 'Failed to dispatch requirement slip.' });
-    }
-
-    console.log(`[REQUIREMENT SLIP SENT] Sent to ${farmerEmail}. Message ID: ${data.messageId}`);
     return res.json({ success: true, message: 'Requirement slip email sent successfully.' });
-
   } catch (err) {
-    console.error('❌ CRITICAL REQUIREMENT SLIP ERROR:', err.message);
     return res.status(500).json({ success: false, message: 'Internal server error while sending requirement slip.' });
   }
 });
