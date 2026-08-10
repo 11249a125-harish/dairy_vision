@@ -1052,7 +1052,7 @@
       <!-- 3. FARMER PORTAL VIEW -->
       <div id="farmer-portal-section" class="hidden">
         <div class="card no-print" style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white;">
-          2. Global Farmer Portal</h2>
+          <h2>Global Farmer Portal</h2>
           <p style="margin-top: 5px;">Farmer: <span id="farmer-portal-name">--</span> | Registered Gmail: <span id="farmer-portal-phone">--</span></p>
         </div>
 
@@ -2422,12 +2422,12 @@
         const avgRate = mQty > 0 ? (mAmt / mQty).toFixed(1) : '0.0';
 
         html += `
-          <tr style="font-weight:bold; border-top: 1px solid #00b0f0; background: rgba(0, 176, 240, 0.05);">
-            <td style="color:#00b0f0;">TOT:</td>
-            <td style="color:#00b0f0;">${mQty.toFixed(1)}</td>
-            <td style="color:#00b0f0;">${avgFat}</td>
-            <td style="color:#00b0f0;">${avgRate}</td>
-            <td style="color:#00b0f0;">${mAmt.toFixed(0)}</td>
+          <tr style="font-weight:bold; background:rgba(0,176,240,0.1); border-top:1px solid #00b0f0;">
+            <td style="color:#00b0f0;">Tot/Avg</td>
+            <td>${mQty.toFixed(1)}</td>
+            <td>${avgFat}</td>
+            <td>${avgRate}</td>
+            <td>₹${mAmt.toFixed(0)}</td>
           </tr>
         `;
       });
