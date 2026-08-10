@@ -1827,6 +1827,7 @@
       `).join('');
     }
 
+    // DIRECTLY TRIGGER REQUIREMENT SLIP EMAIL API ROUTE
     async function processRequirementOrder(bookingId, statusState) {
       if(!DB.bookings) return;
       const idx = DB.bookings.findIndex(b => b.id === bookingId);
@@ -1835,6 +1836,7 @@
         
         const booking = DB.bookings[idx];
         const costAmount = parseFloat(booking.totalPrice || booking.cost || 0);
+        const bookingDateVal = booking.bookingDate || booking.date;
 
         // Deduct requirement cost from milk bill upon approval
         if (statusState === 'Approved') {
@@ -1844,7 +1846,7 @@
             farmerId: booking.farmerId,
             farmerName: booking.farmerName,
             item: booking.item,
-            date: booking.bookingDate || booking.date,
+            date: bookingDateVal,
             deliveryDate: booking.deliveryDate,
             amount: costAmount
           });
@@ -1853,26 +1855,30 @@
         saveDB();
         renderAgentBookings();
         renderFarmerBookings();
-        showAlert(`Requirement order set to ${statusState}! Cost logged to bill deductions.`);
+        showAlert(`Requirement order set to ${statusState}! Dispatching email slip...`);
 
-        // Email Requirement Slip Notification via backend route
+        // Explicit POST call to /send-requirement-slip
         if (booking.farmerEmail) {
           try {
-            await fetch(`${API_BASE_URL}/send-requirement-slip`, {
+            const res = await fetch(`${API_BASE_URL}/send-requirement-slip`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({
                 farmerName: booking.farmerName,
                 farmerEmail: booking.farmerEmail,
-                bookingDate: booking.bookingDate || booking.date,
+                bookingDate: bookingDateVal,
                 requirement: booking.item,
                 status: statusState,
-                deliveryDate: booking.deliveryDate,
+                deliveryDate: booking.deliveryDate || 'N/A',
                 cost: costAmount
               })
             });
+            const data = await res.json();
+            if(data.success) {
+              showAlert(`Requirement Slip emailed successfully to ${booking.farmerEmail}!`);
+            }
           } catch(err) {
-            console.error("Requirement slip email dispatch fallback active.");
+            console.error("Requirement slip email error:", err);
           }
         }
       }
