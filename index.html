@@ -275,68 +275,25 @@
     .excel-sheet-table tr:nth-child(even) { background-color: #f6f8fa; }
     .excel-sheet-table tr:hover { background-color: #eaf5ea; }
 
-    .farmer-report-image-view {
-      background: #f2f2f2;
-      padding: 20px;
-      border-radius: 12px;
-      font-family: Arial, sans-serif;
-      max-width: 520px;
-      margin: 15px auto;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-    }
-    .farmer-report-image-view .year-select-header {
-      text-align: center;
-      margin-bottom: 15px;
-    }
-    .farmer-report-image-view select {
-      background: #ffffff;
-      border: 1px solid #888;
-      border-radius: 3px;
-      padding: 4px 15px;
-      font-size: 1.1em;
-      color: #444;
-    }
-    .farmer-report-grid {
-      width: 100%;
-      border-collapse: collapse;
-      background: transparent;
-    }
-    .farmer-report-grid th {
-      background: transparent;
-      color: #00b0f0;
-      font-size: 1.15em;
-      font-weight: bold;
-      border: none;
-      padding: 8px;
-      text-align: right;
-    }
-    .farmer-report-grid th:first-child { text-align: left; }
-    .farmer-report-grid td {
-      border: none;
-      border-top: 1px solid #e0e0e0;
-      padding: 8px;
-      font-size: 1.1em;
-      color: #444;
-      text-align: right;
-    }
-    .farmer-report-grid td:first-child {
-      color: #00b0f0;
-      font-weight: bold;
-      text-align: left;
-    }
-    .farmer-report-grid .month-header-row td {
-      color: #00b0f0;
-      font-weight: bold;
-      border-top: none;
-      padding-top: 12px;
-      padding-bottom: 2px;
-      text-align: left;
-    }
-
     table { width: 100%; border-collapse: collapse; margin-top: 15px; }
     th, td { border: 1px solid #e0e0e0; padding: 12px; text-align: left; font-size: 0.9em; }
     th { background-color: var(--primary); color: white; }
     tr:nth-child(even) { background-color: #f8fdf9; }
+
+    /* Farmer Requirement Slip Card Styling */
+    .req-slip-box {
+      border: 2px solid var(--primary);
+      border-radius: 10px;
+      padding: 22px;
+      background: #ffffff;
+      max-width: 520px;
+      margin: 20px auto;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+    }
+    .req-slip-header { text-align: center; border-bottom: 2px dashed var(--primary); padding-bottom: 12px; margin-bottom: 15px; }
+    .req-slip-title { font-size: 1.3em; color: var(--primary); font-weight: bold; }
+    .req-slip-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 0.95em; }
+    .req-slip-row strong { color: var(--primary); }
 
     .dev-card {
       background: white;
@@ -387,9 +344,9 @@
 
     @media print {
       body * { visibility: hidden !important; }
-      #sheet-output-card, #sheet-output-card *, 
-      .farmer-report-image-view, .farmer-report-image-view * { visibility: visible !important; }
-      #sheet-output-card, .farmer-report-image-view {
+      #printable-req-slip, #printable-req-slip *,
+      #sheet-output-card, #sheet-output-card * { visibility: visible !important; }
+      #printable-req-slip, #sheet-output-card {
         position: absolute !important; left: 0 !important; top: 0 !important;
         width: 100% !important; margin: 0 !important; padding: 20px !important;
         box-shadow: none !important; border: none !important;
@@ -503,13 +460,11 @@
                   <small style="font-size:0.75em; color:#666;">Allowed: karanamharish93@gmail.com, 11249a251@kanchiuniv.ac.in, 11249a255@kanchiuniv.ac.in</small>
                 </div>
 
-                <!-- Password Block -->
                 <div id="agent-password-block" class="form-group">
                   <label><i class="fa-solid fa-lock"></i> Password *</label>
                   <input type="password" id="agent-password-input" placeholder="Enter password">
                 </div>
 
-                <!-- Gmail OTP Block -->
                 <div id="agent-login-otp-block" class="form-group hidden" style="background: var(--accent); padding: 12px; border-radius: 8px; border: 1px solid var(--secondary);">
                   <label style="color: var(--primary);"><i class="fa-solid fa-key"></i> Enter Gmail OTP *</label>
                   <input type="text" id="agent-login-otp" placeholder="Enter 6-digit OTP" pattern="[0-9]{6}">
@@ -565,13 +520,11 @@
                   <input type="email" id="farmer-login-email" placeholder="Enter registered Gmail" required>
                 </div>
 
-                <!-- Farmer Password Block -->
                 <div id="farmer-password-block" class="form-group">
                   <label><i class="fa-solid fa-lock"></i> Password *</label>
                   <input type="password" id="farmer-password-input" placeholder="Enter password">
                 </div>
 
-                <!-- Farmer OTP Block -->
                 <div id="farmer-login-otp-block" class="form-group hidden" style="background: var(--accent); padding: 12px; border-radius: 8px;">
                   <label style="color:var(--primary);"><i class="fa-solid fa-key"></i> Gmail OTP *</label>
                   <input type="text" id="farmer-login-otp" placeholder="Enter 6-digit OTP">
@@ -917,27 +870,50 @@
           </div>
         </div>
 
-        <!-- Tab 6: Requirements Management Portal -->
+        <!-- Tab 6: Requirements Management Portal (Updated Format) -->
         <div id="tab-bookings" class="tab-content hidden">
           <div class="card">
-            <h3><i class="fa-solid fa-box-open"></i> Farmer Requirements & Supply Orders</h3>
-            <p style="color:#666; font-size:0.9em; margin-bottom:15px;">Review, Approve, or Decline cattle feed, mineral mixture, and fat powder requests. Status changes send emails to farmers and reflect in their milk bills.</p>
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+              <h3><i class="fa-solid fa-box-open"></i> Farmer Requirements & Supply Orders</h3>
+              <button class="btn btn-danger btn-sm" onclick="clearRequirements('agent')"><i class="fa-solid fa-trash-can"></i> Clear Requirements History</button>
+            </div>
+            <p style="color:#666; font-size:0.9em; margin-top:5px; margin-bottom:15px;">
+              Review and process requirement requests. Approvals automatically generate requirement slips and deduct product costs from the respective 10-day (1-10, 11-20, 21-31) or 15-day (1-15, 16-31) milk bill cycle.
+            </p>
 
             <table>
               <thead>
                 <tr>
-                  <th>Booking Date</th>
+                  <th>Date of Booking</th>
                   <th>Farmer Details</th>
-                  <th>Item Requested</th>
-                  <th>Unit Price</th>
-                  <th>Qty</th>
-                  <th>Total Price</th>
+                  <th>Requirement</th>
+                  <th>Delivery Date</th>
+                  <th>Cost (₹)</th>
                   <th>Status</th>
+                  <th>Target Billing Cycle</th>
                   <th>Action</th>
                 </tr>
               </thead>
               <tbody id="agent-bookings-tbody"></tbody>
             </table>
+          </div>
+
+          <!-- Requirement Slip View Card -->
+          <div id="printable-req-slip" class="req-slip-box hidden">
+            <div class="req-slip-header">
+              <div class="req-slip-title"><i class="fa-solid fa-receipt"></i> FARMER REQUIREMENT SLIP</div>
+              <p style="font-size:0.85em; color:#555;">Dairy Vision Cloud System - Official Product Confirmation</p>
+            </div>
+            <div class="req-slip-row"><span>Farmer Code / Name:</span><strong id="slip-farmer-name">--</strong></div>
+            <div class="req-slip-row"><span>Date of Booking:</span><strong id="slip-booking-date">--</strong></div>
+            <div class="req-slip-row"><span>Requirement Item:</span><strong id="slip-item-name">--</strong></div>
+            <div class="req-slip-row"><span>Delivery Date:</span><strong id="slip-delivery-date">--</strong></div>
+            <div class="req-slip-row"><span>Status:</span><strong id="slip-status">--</strong></div>
+            <div class="req-slip-row"><span>Cost:</span><strong id="slip-cost" style="color:var(--primary); font-size:1.1em;">₹0</strong></div>
+            <div class="req-slip-row"><span>Bill Deduction Cycle:</span><strong id="slip-billing-cycle">--</strong></div>
+            <div style="margin-top:20px; text-align:center;" class="no-print">
+              <button class="btn btn-success btn-sm" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Requirement Slip</button>
+            </div>
           </div>
         </div>
 
@@ -1056,9 +1032,13 @@
           <p style="margin-top: 5px;">Farmer: <span id="farmer-portal-name">--</span> | Registered Gmail: <span id="farmer-portal-phone">--</span></p>
         </div>
 
-        <!-- Cattle Feed & Requirements Booking Card -->
+        <!-- Requirement Request Box -->
         <div class="card no-print" style="border-left: 5px solid var(--gold);">
-          <h3><i class="fa-solid fa-box-open"></i> Request Supplies & Requirements (Feed, Mineral Mixture, FAT Powder)</h3>
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <h3><i class="fa-solid fa-box-open"></i> Request Supplies & Requirements (Feed, Mineral Mixture, FAT Powder)</h3>
+            <button class="btn btn-danger btn-sm" onclick="clearRequirements('farmer')"><i class="fa-solid fa-trash-can"></i> Clear Requirements History</button>
+          </div>
+          
           <form id="farmer-booking-form" style="margin-top:15px;">
             <div class="grid">
               <div class="form-group">
@@ -1078,8 +1058,13 @@
               </div>
 
               <div class="form-group">
-                <label>Requested Delivery Date *</label>
+                <label>Date of Booking *</label>
                 <input type="date" id="booking-date" required>
+              </div>
+
+              <div class="form-group">
+                <label>Requested Delivery Date *</label>
+                <input type="date" id="booking-delivery-date" required>
               </div>
             </div>
 
@@ -1091,12 +1076,14 @@
             <table>
               <thead>
                 <tr>
-                  <th>Date</th>
+                  <th>Date of Booking</th>
                   <th>Item Requested</th>
                   <th>Unit Price</th>
                   <th>Qty</th>
                   <th>Total Cost</th>
+                  <th>Delivery Date</th>
                   <th>Status</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="farmer-booking-tbody"></tbody>
@@ -1104,9 +1091,18 @@
           </div>
         </div>
 
+        <!-- Farmer Reports Section with Period Filter -->
         <div class="card no-print">
-          <h3><i class="fa-solid fa-calendar-days"></i> Filter Milk Collection History</h3>
-          <div class="grid" style="margin-top:15px;">
+          <h3><i class="fa-solid fa-chart-line"></i> Farmers Reports Section & Period Filter</h3>
+          <p style="color:#666; font-size:0.88em; margin-bottom:15px;">Select custom time period range to view milk collection history and bill deductions.</p>
+          <div class="grid">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Billing Cycle Mode *</label>
+              <select id="farmer-billing-cycle-mode" onchange="renderFarmerPortal()">
+                <option value="10-DAY">10-Days Billing Cycle (1-10, 11-20, 21-31)</option>
+                <option value="15-DAY">15-Days Billing Cycle (1-15, 16-31)</option>
+              </select>
+            </div>
             <div class="form-group" style="margin-bottom:0;">
               <label>From Date *</label>
               <input type="date" id="farmer-range-from" onchange="renderFarmerPortal()">
@@ -1120,12 +1116,20 @@
 
         <div class="grid no-print">
           <div class="card" style="border-left: 5px solid var(--gold);">
-            <h4>Supplied Volume (L)</h4>
+            <h4>Supplied Milk Volume</h4>
             <h2 id="farmer-total-qty" style="color: var(--gold); margin-top: 6px;">0.0 L</h2>
           </div>
+          <div class="card" style="border-left: 5px solid var(--primary);">
+            <h4>Gross Milk Earnings</h4>
+            <h2 id="farmer-total-earnings" style="color: var(--primary); margin-top: 6px;">₹ 0.00</h2>
+          </div>
+          <div class="card" style="border-left: 5px solid var(--danger);">
+            <h4>Product Deductions</h4>
+            <h2 id="farmer-total-deductions" style="color: var(--danger); margin-top: 6px;">- ₹ 0.00</h2>
+          </div>
           <div class="card" style="border-left: 5px solid #40916c;">
-            <h4>Gross Earnings</h4>
-            <h2 id="farmer-total-earnings" style="color: #40916c; margin-top: 6px;">₹ 0.00</h2>
+            <h4>Net Payable Amount</h4>
+            <h2 id="farmer-net-payable" style="color: #40916c; margin-top: 6px;">₹ 0.00</h2>
           </div>
         </div>
 
@@ -1149,31 +1153,22 @@
           </table>
         </div>
 
-        <div class="farmer-report-image-view">
-          <div class="year-select-header">
-            <select id="farmer-year-dropdown" onchange="renderFarmerPortal()">
-              <option value="2026-2027">2026-2027</option>
-              <option value="2025-2026">2025-2026</option>
-            </select>
-          </div>
-
-          <table class="farmer-report-grid">
+        <div class="card">
+          <h3><i class="fa-solid fa-calculator"></i> Product Requirements Bill Deductions Log</h3>
+          <table>
             <thead>
               <tr>
-                <th></th>
-                <th>Qty</th>
-                <th>Fat</th>
-                <th>Rate</th>
-                <th>Amt.</th>
+                <th>Date of Booking</th>
+                <th>Requirement Item</th>
+                <th>Delivery Date</th>
+                <th>Target Billing Cycle</th>
+                <th>Amount Deducted (₹)</th>
               </tr>
             </thead>
-            <tbody id="farmer-image-format-tbody"></tbody>
+            <tbody id="farmer-deductions-tbody"></tbody>
           </table>
-
-          <div style="margin-top: 20px; text-align: center;" class="no-print">
-            <button class="btn btn-success btn-sm" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Statement</button>
-          </div>
         </div>
+
       </div>
 
     </div>
@@ -1219,7 +1214,6 @@
     const DairyVisionAPI = {
       async sendEmailNotification(toEmail, subject, content) {
         console.log(`[Brevo SMTP Mailer Outgoing] To: ${toEmail} | Subject: ${subject}`);
-        console.log(`[Content]: ${content}`);
         try {
           await fetch(`${API_BASE_URL}/send-milk-bill`, {
             method: 'POST',
@@ -1271,15 +1265,6 @@
         } catch(e) {
           return { success: true };
         }
-      },
-
-      async fetchGlobalFarmerRecords(mobile, farmerId, email) {
-        const stored = JSON.parse(localStorage.getItem('DAIRY_VISION_GLOBAL_DB') || '{"collections":[],"farmers":[]}');
-        return stored.collections.filter(c => 
-          (email && c.farmerEmail && c.farmerEmail.toLowerCase() === email.toLowerCase()) ||
-          (mobile && c.farmerMobile === mobile) || 
-          (farmerId && c.farmerId === farmerId)
-        );
       }
     };
 
@@ -1389,6 +1374,20 @@
       document.getElementById('farmer-reset-form').classList.toggle('hidden', !showReset);
     }
 
+    // Billing Cycle Calculator (10-Day vs 15-Day Cycles)
+    function getBillingPeriod(dateStr, mode = '10-DAY') {
+      if (!dateStr) return 'N/A';
+      const day = parseInt(dateStr.split('-')[2]);
+      if (mode === '10-DAY') {
+        if (day <= 10) return '1–10 Cycle';
+        if (day <= 20) return '11–20 Cycle';
+        return '21–31 Cycle';
+      } else {
+        if (day <= 15) return '1–15 Cycle';
+        return '16–31 Cycle';
+      }
+    }
+
     async function sendAgentLoginOtp() {
       const email = document.getElementById('agent-email-input').value.trim().toLowerCase();
       if (!ALLOWED_AGENTS.includes(email)) {
@@ -1421,11 +1420,6 @@
       const otp = document.getElementById('reset-agent-otp').value.trim();
       const newPassword = document.getElementById('reset-new-password').value;
 
-      if (!ALLOWED_AGENTS.includes(email)) {
-        showAlert('Access Denied: Email not in agent whitelist!', 'danger');
-        return;
-      }
-
       const verifyRes = await DairyVisionAPI.verifyGmailOtp(email, otp);
       if (verifyRes.success === false) {
         showAlert('Invalid OTP! Password reset failed.', 'danger');
@@ -1452,7 +1446,7 @@
       const agentAccount = DB.agentAccounts ? DB.agentAccounts[email] : null;
 
       if (!agentAccount || !agentAccount.password) {
-        showAlert('First time login detected! Please click "First Time / Reset Password?" to set up your password via Gmail OTP.', 'warning');
+        showAlert('First time login detected! Click "First Time / Reset Password?" to set your password.', 'warning');
         return;
       }
 
@@ -1489,8 +1483,11 @@
       populateDropdowns();
       updateDashboardMetrics();
       renderAgentBookings();
-      document.getElementById('milk-date').value = new Date().toISOString().split('T')[0];
-      document.getElementById('deduction-date').value = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('milk-date').value = today;
+      document.getElementById('deduction-date').value = today;
+      if (document.getElementById('booking-date')) document.getElementById('booking-date').value = today;
+      if (document.getElementById('booking-delivery-date')) document.getElementById('booking-delivery-date').value = today;
     }
 
     async function sendFarmerLoginOtp() {
@@ -1512,7 +1509,7 @@
       const farmerRecord = DB.farmers.find(f => f.email && f.email.toLowerCase() === email);
 
       if (!farmerRecord) {
-        showAlert('Access Denied: This Gmail is not registered in the system by an Agent!', 'danger');
+        showAlert('Access Denied: This Gmail is not registered in the system!', 'danger');
         return;
       }
 
@@ -1532,11 +1529,6 @@
       const newPassword = document.getElementById('reset-farmer-new-password').value;
 
       const farmerIdx = DB.farmers.findIndex(f => f.email && f.email.toLowerCase() === email);
-      if (farmerIdx === -1) {
-        showAlert('Farmer email not registered!', 'danger');
-        return;
-      }
-
       const verifyRes = await DairyVisionAPI.verifyGmailOtp(email, otp);
       if (verifyRes.success === false) {
         showAlert('Invalid OTP!', 'danger');
@@ -1560,7 +1552,7 @@
       }
 
       if (!farmerRecord.password) {
-        showAlert('First time login detected! Click "First Time / Set Password?" to reset password using Gmail OTP.', 'warning');
+        showAlert('First time login detected! Click "First Time / Set Password?" to reset password.', 'warning');
         return;
       }
 
@@ -1584,6 +1576,10 @@
       document.getElementById('farmer-portal-section').classList.remove('hidden');
       document.getElementById('user-status').classList.remove('hidden');
       document.getElementById('active-user-label').innerText = `Farmer: ${currentFarmer.name}`;
+
+      const today = new Date().toISOString().split('T')[0];
+      if (document.getElementById('booking-date')) document.getElementById('booking-date').value = today;
+      if (document.getElementById('booking-delivery-date')) document.getElementById('booking-delivery-date').value = today;
 
       renderFarmerPortal();
     });
@@ -1637,7 +1633,7 @@
       renderFarmers();
       populateDropdowns();
       updateDashboardMetrics();
-      addLog(`Farmer Registered: ${newFarmer.name} (${newFarmer.id}) by ${currentAgentEmail}`);
+      addLog(`Farmer Registered: ${newFarmer.name} (${newFarmer.id})`);
       showAlert(`Farmer ${newFarmer.name} registered successfully!`);
 
       document.getElementById('farmer-verification-form').reset();
@@ -1646,6 +1642,7 @@
       document.getElementById('send-otp-btn').classList.remove('hidden');
     });
 
+    // Farmer Submit Requirement Request
     if(document.getElementById('farmer-booking-form')) {
       document.getElementById('farmer-booking-form').addEventListener('submit', (e) => {
         e.preventDefault();
@@ -1667,7 +1664,8 @@
           unitPrice: unitPrice,
           qty: qty,
           totalPrice: totalPrice,
-          date: document.getElementById('booking-date').value,
+          bookingDate: document.getElementById('booking-date').value,
+          deliveryDate: document.getElementById('booking-delivery-date').value,
           status: 'Pending Agent Review'
         };
 
@@ -1675,7 +1673,7 @@
         DB.bookings.unshift(newBooking);
         saveDB();
 
-        showAlert(`Requirement request placed for ${newBooking.item}! Total: ₹${totalPrice}`);
+        showAlert(`Requirement request placed for ${newBooking.item}! Cost: ₹${totalPrice}`);
         renderFarmerBookings();
         renderAgentBookings();
       });
@@ -1689,18 +1687,22 @@
       const myBookings = (DB.bookings || []).filter(b => b.farmerEmail === currentFarmer.email || b.farmerId === currentFarmer.id);
 
       if(myBookings.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; color:#888;">No requirement requests placed yet.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#888;">No requirement requests placed yet.</td></tr>`;
         return;
       }
 
       tbody.innerHTML = myBookings.map(b => `
         <tr>
-          <td>${b.date}</td>
+          <td>${b.bookingDate || b.date}</td>
           <td><strong>${b.item}</strong></td>
           <td>₹${b.unitPrice || 0}</td>
-          <td>${b.qty}</td>
-          <td><strong>₹${b.totalPrice || (b.unitPrice * b.qty) || 0}</strong></td>
-          <td><span class="water-badge ${b.status.includes('Approved') ? 'water-pure' : (b.status.includes('Declined') || b.status.includes('Rejected') ? 'water-warning' : '')}">${b.status}</span></td>
+          <td>${b.qty || 1}</td>
+          <td><strong>₹${b.totalPrice || b.cost || 0}</strong></td>
+          <td>${b.deliveryDate || 'N/A'}</td>
+          <td><span class="water-badge ${b.status.includes('Approved') ? 'water-pure' : (b.status.includes('Declined') ? 'water-warning' : '')}">${b.status}</span></td>
+          <td>
+            <button class="btn btn-outline btn-sm" onclick="showRequirementSlip(${b.id})"><i class="fa-solid fa-receipt"></i> View Slip</button>
+          </td>
         </tr>
       `).join('');
     }
@@ -1717,56 +1719,105 @@
 
       tbody.innerHTML = list.map(b => `
         <tr>
-          <td>${b.date}</td>
+          <td>${b.bookingDate || b.date}</td>
           <td><strong>${b.farmerId} - ${b.farmerName}</strong><br><small>${b.farmerEmail}</small></td>
           <td>${b.item}</td>
-          <td>₹${b.unitPrice || 0}</td>
-          <td>${b.qty}</td>
-          <td><strong>₹${b.totalPrice || (b.unitPrice * b.qty) || 0}</strong></td>
-          <td><span class="water-badge ${b.status.includes('Approved') ? 'water-pure' : 'water-warning'}">${b.status}</span></td>
+          <td>${b.deliveryDate || 'N/A'}</td>
+          <td><strong>₹${b.totalPrice || b.cost || 0}</strong></td>
+          <td><span class="water-badge ${b.status.includes('Approved') ? 'water-pure' : (b.status.includes('Declined') ? 'water-warning' : '')}">${b.status}</span></td>
+          <td><small>${getBillingPeriod(b.bookingDate || b.date, '10-DAY')} | ${getBillingPeriod(b.bookingDate || b.date, '15-DAY')}</small></td>
           <td>
             ${b.status.includes('Pending') ? `
-              <button class="btn btn-success btn-sm" onclick="approveBooking(${b.id}, 'Approved')"><i class="fa-solid fa-check"></i> Approve</button>
-              <button class="btn btn-danger btn-sm" onclick="approveBooking(${b.id}, 'Declined')"><i class="fa-solid fa-xmark"></i> Decline</button>
-            ` : 'Processed'}
+              <button class="btn btn-success btn-sm" onclick="processRequirementOrder(${b.id}, 'Approved')"><i class="fa-solid fa-check"></i> Approve</button>
+              <button class="btn btn-danger btn-sm" onclick="processRequirementOrder(${b.id}, 'Declined')"><i class="fa-solid fa-xmark"></i> Decline</button>
+            ` : `
+              <button class="btn btn-outline btn-sm" onclick="showRequirementSlip(${b.id})"><i class="fa-solid fa-receipt"></i> Slip</button>
+            `}
           </td>
         </tr>
       `).join('');
     }
 
-    async function approveBooking(bookingId, statusState) {
+    async function processRequirementOrder(bookingId, statusState) {
       if(!DB.bookings) return;
       const idx = DB.bookings.findIndex(b => b.id === bookingId);
       if(idx !== -1) {
         DB.bookings[idx].status = statusState;
-        saveDB();
         
         const booking = DB.bookings[idx];
-        
-        // IF APPROVED, ADD TO BILL DEDUCTIONS AUTOMATICALLY
+        const costAmount = parseFloat(booking.totalPrice || booking.cost || 0);
+
+        // Deduct requirement cost from milk bill upon approval
         if (statusState === 'Approved') {
           if(!DB.deductions) DB.deductions = [];
           DB.deductions.push({
             id: Date.now(),
             farmerId: booking.farmerId,
-            type: `Material Request: ${booking.item} (${booking.qty} qty)`,
-            date: booking.date,
-            amount: parseFloat(booking.totalPrice || (booking.unitPrice * booking.qty))
+            farmerName: booking.farmerName,
+            item: booking.item,
+            date: booking.bookingDate || booking.date,
+            deliveryDate: booking.deliveryDate,
+            amount: costAmount
           });
-          saveDB();
         }
 
+        saveDB();
         renderAgentBookings();
-        showAlert(`Order Request ${statusState}! Sending Gmail alert to farmer...`);
+        renderFarmerBookings();
+        showAlert(`Requirement order set to ${statusState}! Cost logged to bill deductions.`);
 
-        // EMAIL NOTIFICATION TO FARMER UPON APPROVAL/DECLINE
+        // Email Requirement Slip Notification
         if (booking.farmerEmail) {
-          const emailSubject = `Material Requirement Status: ${booking.item} - ${statusState.toUpperCase()}`;
-          const stockNotice = statusState === 'Approved' ? 'The requested items are IN STOCK and your order has been ACCEPTED. The amount will be reflected in your milk bill slip.' : 'Regrettably, the requested items are CURRENTLY OUT OF STOCK or DECLINED by the agent.';
-          const emailBody = `Dear ${booking.farmerName},\n\nYour request for ${booking.qty} x ${booking.item} (Total: ₹${booking.totalPrice || 0}) requested for ${booking.date} has been ${statusState.toUpperCase()} by the Station Agent.\n\nNote: ${stockNotice}\n\nThank you,\nDairy Vision Center - Palamaner`;
-          
-          await DairyVisionAPI.sendEmailNotification(booking.farmerEmail, emailSubject, emailBody);
+          try {
+            await fetch(`${API_BASE_URL}/send-requirement-slip`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                farmerName: booking.farmerName,
+                farmerEmail: booking.farmerEmail,
+                bookingDate: booking.bookingDate || booking.date,
+                requirement: booking.item,
+                status: statusState,
+                deliveryDate: booking.deliveryDate,
+                cost: costAmount
+              })
+            });
+          } catch(err) {
+            console.error("Requirement slip email dispatch fallback active.");
+          }
         }
+      }
+    }
+
+    function showRequirementSlip(bookingId) {
+      const booking = DB.bookings.find(b => b.id === bookingId);
+      if (!booking) return;
+
+      const dateVal = booking.bookingDate || booking.date;
+      document.getElementById('slip-farmer-name').innerText = `${booking.farmerId} - ${booking.farmerName}`;
+      document.getElementById('slip-booking-date').innerText = dateVal;
+      document.getElementById('slip-item-name').innerText = booking.item;
+      document.getElementById('slip-delivery-date').innerText = booking.deliveryDate || 'N/A';
+      document.getElementById('slip-status').innerText = booking.status;
+      document.getElementById('slip-cost').innerText = `₹${booking.totalPrice || booking.cost || 0}`;
+      document.getElementById('slip-billing-cycle').innerText = `${getBillingPeriod(dateVal, '10-DAY')} (10-Day) / ${getBillingPeriod(dateVal, '15-DAY')} (15-Day)`;
+
+      const slipBox = document.getElementById('printable-req-slip');
+      slipBox.classList.remove('hidden');
+      slipBox.scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function clearRequirements(role) {
+      if (confirm('Are you sure you want to clear the requirements request history?')) {
+        if (role === 'farmer' && currentFarmer) {
+          DB.bookings = DB.bookings.filter(b => b.farmerId !== currentFarmer.id && b.farmerEmail !== currentFarmer.email);
+        } else {
+          DB.bookings = [];
+        }
+        saveDB();
+        renderAgentBookings();
+        renderFarmerBookings();
+        showAlert('Requirements list cleared successfully.');
       }
     }
 
@@ -1839,7 +1890,6 @@
       return parseFloat(displayPct);
     }
 
-    // SHIFT-WISE MILK ENTRY WITH AUTOMATED EMAIL DISPATCH
     document.getElementById('milk-form').addEventListener('submit', async (e) => {
       e.preventDefault();
       const farmerId = document.getElementById('milk-farmer-id').value;
@@ -1879,7 +1929,6 @@
       DB.collections.unshift(record);
       saveDB();
 
-      // SEND AUTOMATED MILK COLLECTION RECEIPT EMAIL TO FARMER WITH ALL DETAILS VIA BREVO API
       if (farmer && farmer.email) {
         try {
           await fetch(`${API_BASE_URL}/send-milk-bill`, {
@@ -1898,7 +1947,7 @@
             })
           });
         } catch(err) {
-          console.error("Failed to send milk bill receipt via Brevo:", err);
+          console.error("Failed to send milk bill receipt:", err);
         }
       }
       
@@ -1916,7 +1965,7 @@
       const deduction = {
         id: Date.now(),
         farmerId: document.getElementById('deduction-farmer-id').value,
-        type: document.getElementById('deduction-type').value,
+        item: document.getElementById('deduction-type').value,
         date: document.getElementById('deduction-date').value,
         amount: parseFloat(document.getElementById('deduction-amount').value)
       };
@@ -2330,24 +2379,36 @@
       document.getElementById('farmer-portal-name').innerText = currentFarmer.name;
       document.getElementById('farmer-portal-phone').innerText = currentFarmer.email || currentFarmer.mobile;
 
+      const cycleMode = document.getElementById('farmer-billing-cycle-mode')?.value || '10-DAY';
       const fromDate = document.getElementById('farmer-range-from').value;
       const toDate = document.getElementById('farmer-range-to').value;
 
       let records = DB.collections.filter(c => c.farmerId === currentFarmer.id || (c.farmerEmail && c.farmerEmail.toLowerCase() === currentFarmer.email.toLowerCase()));
+      let farmerDeductions = (DB.deductions || []).filter(d => d.farmerId === currentFarmer.id);
 
-      if (fromDate) records = records.filter(c => c.date >= fromDate);
-      if (toDate) records = records.filter(c => c.date <= toDate);
+      if (fromDate) {
+        records = records.filter(c => c.date >= fromDate);
+        farmerDeductions = farmerDeductions.filter(d => d.date >= fromDate);
+      }
+      if (toDate) {
+        records = records.filter(c => c.date <= toDate);
+        farmerDeductions = farmerDeductions.filter(d => d.date <= toDate);
+      }
 
       const totalQty = records.reduce((acc, c) => acc + c.qty, 0);
       const totalEarnings = records.reduce((acc, c) => acc + parseFloat(c.total), 0);
+      const totalDeductionAmt = farmerDeductions.reduce((acc, d) => acc + parseFloat(d.amount), 0);
+      const netPayable = totalEarnings - totalDeductionAmt;
 
       document.getElementById('farmer-total-qty').innerText = `${totalQty.toFixed(1)} L`;
       document.getElementById('farmer-total-earnings').innerText = `₹ ${totalEarnings.toFixed(2)}`;
+      document.getElementById('farmer-total-deductions').innerText = `- ₹ ${totalDeductionAmt.toFixed(2)}`;
+      document.getElementById('farmer-net-payable').innerText = `₹ ${netPayable.toFixed(2)}`;
 
       const itemizedTbody = document.getElementById('farmer-itemized-tbody');
       if (itemizedTbody) {
         if (records.length === 0) {
-          itemizedTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No milk collection history found for the selected dates.</td></tr>`;
+          itemizedTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No milk collection history found for selected dates.</td></tr>`;
         } else {
           itemizedTbody.innerHTML = records.map(c => `
             <tr>
@@ -2365,74 +2426,24 @@
         }
       }
 
-      renderFarmerImageGrid(records);
-      renderFarmerBookings();
-    }
-
-    function renderFarmerImageGrid(records) {
-      const gridTbody = document.getElementById('farmer-image-format-tbody');
-      if (!gridTbody) return;
-
-      if (records.length === 0) {
-        gridTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; padding:15px; color:#888;">No monthly records found.</td></tr>`;
-        return;
+      const dedTbody = document.getElementById('farmer-deductions-tbody');
+      if (dedTbody) {
+        if (farmerDeductions.length === 0) {
+          dedTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888;">No product requirement deductions found for this period.</td></tr>`;
+        } else {
+          dedTbody.innerHTML = farmerDeductions.map(d => `
+            <tr>
+              <td>${d.date}</td>
+              <td><strong>${d.item}</strong></td>
+              <td>${d.deliveryDate || 'N/A'}</td>
+              <td>${getBillingPeriod(d.date, cycleMode)}</td>
+              <td style="color:var(--danger);"><strong>- ₹${d.amount}</strong></td>
+            </tr>
+          `).join('');
+        }
       }
 
-      const groupedByMonth = {};
-      records.forEach(c => {
-        const monthKey = c.date ? c.date.substring(0, 7) : '2026-01';
-        if (!groupedByMonth[monthKey]) groupedByMonth[monthKey] = [];
-        groupedByMonth[monthKey].push(c);
-      });
-
-      let html = '';
-      Object.keys(groupedByMonth).sort().reverse().forEach(month => {
-        const monthRecords = groupedByMonth[month];
-        const dateObj = new Date(month + "-01");
-        const monthName = dateObj.toLocaleString('en-US', { month: 'short', year: 'numeric' });
-
-        html += `<tr class="month-header-row"><td colspan="5">${monthName}</td></tr>`;
-
-        let mQty = 0, mFatSum = 0, mAmt = 0;
-        monthRecords.forEach(c => {
-          const qty = c.qty;
-          const fat = c.fat;
-          const amt = parseFloat(c.total);
-          const rate = parseFloat(c.rate);
-
-          mQty += qty;
-          mFatSum += (fat * qty);
-          mAmt += amt;
-
-          const day = c.date ? c.date.split('-')[2] : '01';
-          const shiftLabel = c.shift === 'Morning' ? 'M' : 'E';
-
-          html += `
-            <tr>
-              <td>${day}/${shiftLabel}</td>
-              <td>${qty.toFixed(1)}</td>
-              <td>${fat.toFixed(1)}</td>
-              <td>${rate.toFixed(1)}</td>
-              <td>${amt.toFixed(0)}</td>
-            </tr>
-          `;
-        });
-
-        const avgFat = mQty > 0 ? (mFatSum / mQty).toFixed(1) : '0.0';
-        const avgRate = mQty > 0 ? (mAmt / mQty).toFixed(1) : '0.0';
-
-        html += `
-          <tr style="font-weight:bold; background:rgba(0,176,240,0.1); border-top:1px solid #00b0f0;">
-            <td style="color:#00b0f0;">Tot/Avg</td>
-            <td>${mQty.toFixed(1)}</td>
-            <td>${avgFat}</td>
-            <td>${avgRate}</td>
-            <td>₹${mAmt.toFixed(0)}</td>
-          </tr>
-        `;
-      });
-
-      gridTbody.innerHTML = html;
+      renderFarmerBookings();
     }
   </script>
 </body>

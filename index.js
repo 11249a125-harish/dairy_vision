@@ -9,9 +9,9 @@ const app = express();
 // Middleware to parse JSON bodies from incoming requests
 app.use(express.json());
 
-// Allow requests from your GitHub Pages site
+// Enable CORS for frontend clients
 app.use(cors({
-  origin: 'https://11249a125-harish.github.io',
+  origin: '*',
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type']
 }));
@@ -183,6 +183,83 @@ app.post('/api/send-milk-bill', async (req, res) => {
   } catch (err) {
     console.error('❌ CRITICAL BILL EMAIL ERROR:', err.message);
     return res.status(500).json({ success: false, message: 'Internal server error while sending bill email.' });
+  }
+});
+
+// Endpoint: Send Farmer Requirement Slip Email Notification via Brevo API
+app.post('/api/send-requirement-slip', async (req, res) => {
+  const { farmerName, farmerEmail, bookingDate, requirement, status, deliveryDate, cost } = req.body;
+
+  console.log(`[REQUIREMENT SLIP ATTEMPT] Preparing slip email for: ${farmerEmail}`);
+
+  if (!farmerEmail || typeof farmerEmail !== 'string' || !farmerEmail.includes('@')) {
+    return res.status(400).json({ success: false, message: 'Valid farmer email is required.' });
+  }
+
+  const senderEmail = process.env.SENDER_EMAIL || 'karanamharish93@gmail.com';
+
+  try {
+    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'accept': 'application/json',
+        'api-key': process.env.BREVO_API_KEY,
+        'content-type': 'application/json'
+      },
+      body: JSON.stringify({
+        sender: { name: "Dairy Vision Portal", email: senderEmail },
+        to: [{ email: farmerEmail.trim(), name: farmerName || 'Farmer' }],
+        subject: `Farmer Requirement Request Slip: ${status.toUpperCase()}`,
+        htmlContent: `
+          <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 2px solid #1b4332; border-radius: 8px;">
+            <h2 style="color: #1b4332; text-align: center;">Dairy Vision Requirement Slip</h2>
+            <p>Dear <strong>${farmerName || 'Farmer'}</strong>,</p>
+            <p>Your product requirement request status has been updated by the Agent:</p>
+            
+            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+              <tr style="background-color: #f2f2f2;">
+                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Date of Booking:</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd;">${bookingDate}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Requirement:</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd;">${requirement}</td>
+              </tr>
+              <tr style="background-color: #f2f2f2;">
+                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Status:</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: ${status === 'Approved' ? '#2e7d32' : '#c1121f'};">${status}</td>
+              </tr>
+              <tr>
+                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Delivery Date:</strong></td>
+                <td style="padding: 10px; border: 1px solid #ddd;">${deliveryDate || 'N/A'}</td>
+              </tr>
+              <tr style="background-color: #e8f5e9;">
+                <td style="padding: 12px; border: 1px solid #ddd;"><strong>Cost:</strong></td>
+                <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px; color: #2e7d32;"><strong>₹${cost}</strong></td>
+              </tr>
+            </table>
+
+            <p style="margin-top: 20px; font-size: 12px; color: #777; text-align: center;">
+              This requirement cost will be automatically deducted from your respective 10-day / 15-day milk bill payment statement.
+            </p>
+          </div>
+        `
+      })
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      console.error('❌ BREVO REQUIREMENT SLIP ERROR:', JSON.stringify(data));
+      return res.status(response.status).json({ success: false, message: data.message || 'Failed to dispatch requirement slip.' });
+    }
+
+    console.log(`[REQUIREMENT SLIP SENT] Sent to ${farmerEmail}. Message ID: ${data.messageId}`);
+    return res.json({ success: true, message: 'Requirement slip email sent successfully.' });
+
+  } catch (err) {
+    console.error('❌ CRITICAL REQUIREMENT SLIP ERROR:', err.message);
+    return res.status(500).json({ success: false, message: 'Internal server error while sending requirement slip.' });
   }
 });
 
