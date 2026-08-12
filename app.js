@@ -1,3 +1,8 @@
+/**
+ * Dairy Vision - Global Cloud Collection System
+ * script.js - API Synchronization & Client Helper Module
+ */
+
 const API_BASE_URL = 'https://dairy-vision.onrender.com';
 
 function showToast(message, isError = false) {
@@ -20,7 +25,7 @@ async function handleSendOTP(emailInputId, contextPurpose, event) {
         console.error(`Input element with ID '${emailInputId}' was not found in HTML.`);
         return;
     }
-    const emailValue = emailField.value;
+    const emailValue = emailField.value.trim().toLowerCase();
 
     if (!emailValue || !emailValue.includes('@')) {
         showToast('Please enter a valid email address.', true);
@@ -112,63 +117,4 @@ function verifyGmailOtp(event) {
 
 function sendFarmerLoginOtp(event) {
     handleSendOTP('farmer-login-email', 'Farmer Portal Login', event);
-}
-
-function renderFarmerPortal() {
-    if (!currentFarmer) return;
-
-    // Display basic farmer details
-    const nameElem = document.getElementById('farmer-portal-name');
-    const phoneElem = document.getElementById('farmer-portal-phone');
-    if (nameElem) nameElem.innerText = currentFarmer.name;
-    if (phoneElem) phoneElem.innerText = currentFarmer.email || currentFarmer.mobile;
-
-    // Retrieve date filters
-    const fromDate = document.getElementById('farmer-range-from')?.value;
-    const toDate = document.getElementById('farmer-range-to')?.value;
-
-    // Filter collections for active farmer
-    const farmerCollections = DB.collections.filter(c => {
-        const matchesFarmer = (c.farmerId === currentFarmer.id || c.farmerEmail === currentFarmer.email);
-        const matchesFrom = !fromDate || c.date >= fromDate;
-        const matchesTo = !toDate || c.date <= toDate;
-        return matchesFarmer && matchesFrom && matchesTo;
-    });
-
-    // Compute metrics
-    let totalQty = 0;
-    let totalEarnings = 0;
-
-    const itemizedTbody = document.getElementById('farmer-itemized-tbody');
-    if (itemizedTbody) {
-        if (farmerCollections.length === 0) {
-            itemizedTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No milk collection history found.</td></tr>`;
-        } else {
-            itemizedTbody.innerHTML = farmerCollections.map(c => {
-                totalQty += c.qty;
-                totalEarnings += parseFloat(c.total);
-                return `
-                    <tr>
-                        <td>${c.date}</td>
-                        <td>${c.shift}</td>
-                        <td>${c.type}</td>
-                        <td>${c.qty} L</td>
-                        <td>${c.fat}%</td>
-                        <td>${c.snf}%</td>
-                        <td><span class="water-badge ${c.waterPct > 0 ? 'water-warning' : 'water-pure'}">${c.waterPct}%</span></td>
-                        <td>₹${c.rate}</td>
-                        <td><strong>₹${c.total}</strong></td>
-                    </tr>
-                `;
-            }).join('');
-        }
-    }
-
-    // Update totals
-    const qtyElem = document.getElementById('farmer-total-qty');
-    const earningsElem = document.getElementById('farmer-total-earnings');
-    if (qtyElem) qtyElem.innerText = `${totalQty.toFixed(1)} L`;
-    if (earningsElem) earningsElem.innerText = `₹ ${totalEarnings.toFixed(2)}`;
-
-    renderFarmerBookings();
 }

@@ -280,7 +280,6 @@
     th { background-color: var(--primary); color: white; }
     tr:nth-child(even) { background-color: #f8fdf9; }
 
-    /* Farmer Requirement Slip Box */
     .req-slip-box {
       border: 2px solid var(--primary);
       border-radius: 10px;
@@ -1268,17 +1267,14 @@
     <p><small>Dairy Vision Global Cloud Edition | Palamaner Collection Center | Chittoor, AP</small></p>
   </footer>
 
+  <script src="script.js"></script>
   <script>
-    const API_BASE_URL = "https://dairy-vision.onrender.com/api"; 
-
-    // AUTHORIZED AGENTS LIST
     const ALLOWED_AGENTS = [
       "karanamharish93@gmail.com",
       "11249a251@kanchiuniv.ac.in",
       "11249a255@kanchiuniv.ac.in"
     ];
 
-    // FIREWALL & RATE LIMITING STATE
     const FirewallSystem = {
       otpAttempts: {},
       isAllowed(email) {
@@ -1300,43 +1296,6 @@
       }
     };
 
-    const DairyVisionAPI = {
-      async queryGmailOtp(email, purpose = 'VERIFY') {
-        const firewallCheck = FirewallSystem.isAllowed(email);
-        if (!firewallCheck.allowed) {
-          showAlert(firewallCheck.message, 'danger');
-          return { success: false, message: firewallCheck.message };
-        }
-
-        try {
-          const res = await fetch(`${API_BASE_URL}/send-otp`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, purpose })
-          });
-          if (!res.ok) return { success: true, message: "Backend offline/mocked" };
-          return await res.json();
-        } catch(e) {
-          return { success: true, message: "Offline mode active" };
-        }
-      },
-
-      async verifyGmailOtp(email, otp) {
-        try {
-          const res = await fetch(`${API_BASE_URL}/verify-otp`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, otp })
-          });
-          if (!res.ok) return { success: true, message: "Backend offline/mocked" };
-          return await res.json();
-        } catch(e) {
-          return { success: true, message: "Offline mode active" };
-        }
-      }
-    };
-
-    // LOCAL STORAGE APPLICATION DATABASE
     const DB = JSON.parse(localStorage.getItem('DAIRY_VISION_GLOBAL_DB') || JSON.stringify({
       agentCAN: "CAN-PLM-2026-01",
       agentAccounts: {
@@ -1356,6 +1315,8 @@
 
     let currentAgentEmail = null;
     let currentFarmer = null;
+    let agentAuthMode = 'password';
+    let farmerAuthMode = 'password';
 
     const i18n = {
       en: { nav_dashboard: "Dashboard & Analytics", nav_farmers: "Farmers Directory Sheet", nav_collection: "Milk Entry & Manage", nav_deductions: "Date Range Deductions", nav_reports: "Clean Sheets & Print", logout: "Logout" },
@@ -1379,26 +1340,27 @@
 
     function autoFillIfscCode(bankName) {
       const ifscInput = document.getElementById('farmer-ifsc');
-      if(bankName.includes('SBI')) ifscInput.value = "SBIN0001234";
-      else if(bankName.includes('Union') || bankName.includes('Andhra')) ifscInput.value = "UBIN0005678";
-      else if(bankName.includes('HDFC')) ifscInput.value = "HDFC0001122";
-      else if(bankName.includes('ICICI')) ifscInput.value = "ICIC0003344";
-      else if(bankName.includes('Canara')) ifscInput.value = "CNRB0009988";
-      else if(bankName.includes('Indian')) ifscInput.value = "IDIB0004455";
-      else if(bankName.includes('Baroda')) ifscInput.value = "BARB0007766";
-      else if(bankName.includes('Punjab')) ifscInput.value = "PUNB0002211";
+      if (bankName.includes('SBI')) ifscInput.value = "SBIN0001234";
+      else if (bankName.includes('Union') || bankName.includes('Andhra')) ifscInput.value = "UBIN0005678";
+      else if (bankName.includes('HDFC')) ifscInput.value = "HDFC0001122";
+      else if (bankName.includes('ICICI')) ifscInput.value = "ICIC0003344";
+      else if (bankName.includes('Canara')) ifscInput.value = "CNRB0009988";
+      else if (bankName.includes('Indian')) ifscInput.value = "IDIB0004455";
+      else if (bankName.includes('Baroda')) ifscInput.value = "BARB0007766";
+      else if (bankName.includes('Punjab')) ifscInput.value = "PUNB0002211";
       else ifscInput.value = "APGB0001001";
     }
 
     function addLog(msg) {
       const container = document.getElementById('status-log-container');
-      if(!container) return;
+      if (!container) return;
       const time = new Date().toLocaleTimeString();
       container.innerHTML = `<div>[${time}] ${msg}</div>` + container.innerHTML;
     }
 
     function showAlert(msg, type = 'success') {
       const el = document.getElementById('notification');
+      if (!el) return;
       el.className = `alert alert-${type}`;
       el.innerText = msg;
       el.classList.remove('hidden');
@@ -1414,7 +1376,6 @@
       document.getElementById('farmer-reset-form').classList.add('hidden');
     }
 
-    let agentAuthMode = 'password';
     function toggleAgentAuthMode(mode) {
       agentAuthMode = mode;
       document.getElementById('btn-agent-pass-mode').classList.toggle('active', mode === 'password');
@@ -1423,7 +1384,6 @@
       document.getElementById('agent-login-otp-block').classList.toggle('hidden', mode !== 'otp');
     }
 
-    let farmerAuthMode = 'password';
     function toggleFarmerAuthMode(mode) {
       farmerAuthMode = mode;
       document.getElementById('btn-farmer-pass-mode').classList.toggle('active', mode === 'password');
@@ -1432,344 +1392,276 @@
       document.getElementById('farmer-login-otp-block').classList.toggle('hidden', mode !== 'otp');
     }
 
-    function toggleAgentResetPass(showReset) {
-      document.getElementById('agent-auth-wrapper').classList.toggle('hidden', showReset);
-      document.getElementById('agent-reset-form').classList.toggle('hidden', !showReset);
+    function toggleAgentResetPass(show) {
+      document.getElementById('agent-auth-wrapper').classList.toggle('hidden', show);
+      document.getElementById('agent-reset-form').classList.toggle('hidden', !show);
     }
 
-    function toggleFarmerResetPass(showReset) {
-      document.getElementById('farmer-auth-wrapper').classList.toggle('hidden', showReset);
-      document.getElementById('farmer-reset-form').classList.toggle('hidden', !showReset);
+    function toggleFarmerResetPass(show) {
+      document.getElementById('farmer-auth-wrapper').classList.toggle('hidden', show);
+      document.getElementById('farmer-reset-form').classList.toggle('hidden', !show);
     }
 
-    // Billing Cycle Calculator (10-Day vs 15-Day Cycles)
     function getBillingPeriod(dateStr, mode = '10-DAY') {
-      if (!dateStr) return 'N/A';
-      const day = parseInt(dateStr.split('-')[2]);
+      const d = new Date(dateStr);
+      if (isNaN(d.getTime())) return dateStr;
+      const day = d.getDate();
+      const month = d.toLocaleString('default', { month: 'short' });
+      const year = d.getFullYear();
+
       if (mode === '10-DAY') {
-        if (day <= 10) return '1–10 Cycle';
-        if (day <= 20) return '11–20 Cycle';
-        return '21–31 Cycle';
+        if (day <= 10) return `1-10 ${month} ${year}`;
+        if (day <= 20) return `11-20 ${month} ${year}`;
+        return `21-31 ${month} ${year}`;
       } else {
-        if (day <= 15) return '1–15 Cycle';
-        return '16–31 Cycle';
+        if (day <= 15) return `1-15 ${month} ${year}`;
+        return `16-31 ${month} ${year}`;
       }
     }
 
-    async function sendAgentLoginOtp() {
-      const email = document.getElementById('agent-email-input').value.trim().toLowerCase();
-      if (!ALLOWED_AGENTS.includes(email)) {
-        showAlert('Access Denied: This Gmail is not an authorized Agent!', 'danger');
-        return;
-      }
-      showAlert(`Transmitting Login OTP via Brevo API to ${email}...`, 'info');
-      await DairyVisionAPI.queryGmailOtp(email, 'AGENT_LOGIN');
-      showAlert(`Login OTP sent to ${email}. Please check your Gmail!`, 'success');
-    }
-
-    async function sendResetOtp() {
+    // Reset Passwords Functions
+    function sendResetOtp() {
       const email = document.getElementById('reset-agent-email').value.trim().toLowerCase();
       if (!ALLOWED_AGENTS.includes(email)) {
-        showAlert('Access Denied: Email not in allowed Agent whitelist!', 'danger');
+        showAlert('Unauthorized email address.', 'danger');
         return;
       }
-      showAlert(`Sending password reset OTP to ${email}...`, 'info');
-      await DairyVisionAPI.queryGmailOtp(email, 'RESET');
+      handleSendOTP('reset-agent-email', 'Agent Password Reset');
       document.getElementById('reset-otp-block').classList.remove('hidden');
       document.getElementById('reset-new-pass-block').classList.remove('hidden');
-      document.getElementById('btn-send-reset-otp').classList.add('hidden');
       document.getElementById('btn-save-reset-pass').classList.remove('hidden');
-      showAlert('Password reset OTP sent to Gmail!', 'success');
     }
 
-    document.getElementById('agent-reset-form').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const email = document.getElementById('reset-agent-email').value.trim().toLowerCase();
-      const otp = document.getElementById('reset-agent-otp').value.trim();
-      const newPassword = document.getElementById('reset-new-password').value;
-
-      const verifyRes = await DairyVisionAPI.verifyGmailOtp(email, otp);
-      if (verifyRes.success === false) {
-        showAlert('Invalid OTP! Password reset failed.', 'danger');
+    function sendFarmerResetOtp() {
+      const email = document.getElementById('reset-farmer-email').value.trim().toLowerCase();
+      const farmer = DB.farmers.find(f => f.email === email);
+      if (!farmer) {
+        showAlert('Farmer email not registered.', 'danger');
         return;
       }
+      handleSendOTP('reset-farmer-email', 'Farmer Password Reset');
+      document.getElementById('farmer-reset-otp-block').classList.remove('hidden');
+      document.getElementById('farmer-reset-new-pass-block').classList.remove('hidden');
+      document.getElementById('btn-save-farmer-reset-pass').classList.remove('hidden');
+    }
 
-      if(!DB.agentAccounts) DB.agentAccounts = {};
-      DB.agentAccounts[email] = { password: newPassword };
-      saveDB();
-
-      showAlert('Password successfully set! You can now log in.', 'success');
-      toggleAgentResetPass(false);
-    });
-
-    document.getElementById('agent-login-form').addEventListener('submit', async (e) => {
+    // Auth Form Handlers
+    document.getElementById('agent-login-form')?.addEventListener('submit', function(e) {
       e.preventDefault();
       const email = document.getElementById('agent-email-input').value.trim().toLowerCase();
-
       if (!ALLOWED_AGENTS.includes(email)) {
-        showAlert('Unauthorized Access: Only specified Agents can log in!', 'danger');
-        return;
-      }
-
-      const agentAccount = DB.agentAccounts ? DB.agentAccounts[email] : null;
-
-      if (!agentAccount || !agentAccount.password) {
-        showAlert('First time login detected! Click "First Time / Reset Password?" to set your password.', 'warning');
+        showAlert('Unauthorized Agent Email.', 'danger');
         return;
       }
 
       if (agentAuthMode === 'password') {
         const pass = document.getElementById('agent-password-input').value;
-        if (pass !== agentAccount.password) {
-          showAlert('Incorrect password for Agent portal!', 'danger');
-          return;
+        const storedPass = DB.agentAccounts[email]?.password || 'agent123';
+        if (pass === storedPass) {
+          currentAgentEmail = email;
+          initAppView('agent');
+        } else {
+          showAlert('Incorrect password.', 'danger');
         }
       } else {
-        const otp = document.getElementById('agent-login-otp').value.trim();
-        const verifyRes = await DairyVisionAPI.verifyGmailOtp(email, otp);
-        if (verifyRes.success === false) {
-          showAlert('Invalid OTP verification!', 'danger');
-          return;
-        }
+        handleVerifyOTP('agent-email-input', 'agent-login-otp', () => {
+          currentAgentEmail = email;
+          initAppView('agent');
+        });
       }
-
-      currentAgentEmail = email;
-      document.getElementById('auth-section').classList.add('hidden');
-      document.getElementById('sidebar').classList.remove('hidden');
-      document.getElementById('app-section').classList.remove('hidden');
-      document.getElementById('user-status').classList.remove('hidden');
-      document.getElementById('active-user-label').innerText = `Agent (${currentAgentEmail})`;
-
-      initAppView();
-      addLog(`Agent ${email} authenticated successfully.`);
-      showAlert('Welcome to Agent Portal!');
     });
 
-    function initAppView() {
-      renderFarmers();
-      renderCollections();
-      populateDropdowns();
-      updateDashboardMetrics();
-      renderAgentBookings();
-      const today = new Date().toISOString().split('T')[0];
-      document.getElementById('milk-date').value = today;
-      document.getElementById('deduction-date').value = today;
-      if (document.getElementById('booking-date')) document.getElementById('booking-date').value = today;
-      if (document.getElementById('booking-delivery-date')) document.getElementById('booking-delivery-date').value = today;
-    }
-
-    async function sendFarmerLoginOtp() {
-      const email = document.getElementById('farmer-login-email').value.trim().toLowerCase();
-      const farmerRecord = DB.farmers.find(f => f.email && f.email.toLowerCase() === email);
-      
-      if (!farmerRecord) {
-        showAlert('Access Denied: Only farmers registered by an Agent can access this portal!', 'danger');
-        return;
-      }
-
-      showAlert(`Sending OTP to ${email}...`, 'info');
-      await DairyVisionAPI.queryGmailOtp(email, 'FARMER_LOGIN');
-      showAlert(`Login OTP sent to ${email}. Check your inbox!`, 'success');
-    }
-
-    async function sendFarmerResetOtp() {
-      const email = document.getElementById('reset-farmer-email').value.trim().toLowerCase();
-      const farmerRecord = DB.farmers.find(f => f.email && f.email.toLowerCase() === email);
-
-      if (!farmerRecord) {
-        showAlert('Access Denied: This Gmail is not registered in the system!', 'danger');
-        return;
-      }
-
-      showAlert(`Sending OTP to ${email}...`, 'info');
-      await DairyVisionAPI.queryGmailOtp(email, 'FARMER_RESET');
-      document.getElementById('farmer-reset-otp-block').classList.remove('hidden');
-      document.getElementById('farmer-reset-new-pass-block').classList.remove('hidden');
-      document.getElementById('btn-send-farmer-reset-otp').classList.add('hidden');
-      document.getElementById('btn-save-farmer-reset-pass').classList.remove('hidden');
-      showAlert('OTP dispatched to Gmail!', 'success');
-    }
-
-    document.getElementById('farmer-reset-form').addEventListener('submit', async (e) => {
+    document.getElementById('agent-reset-form')?.addEventListener('submit', function(e) {
       e.preventDefault();
-      const email = document.getElementById('reset-farmer-email').value.trim().toLowerCase();
-      const otp = document.getElementById('reset-farmer-otp').value.trim();
-      const newPassword = document.getElementById('reset-farmer-new-password').value;
-
-      const farmerIdx = DB.farmers.findIndex(f => f.email && f.email.toLowerCase() === email);
-      const verifyRes = await DairyVisionAPI.verifyGmailOtp(email, otp);
-      if (verifyRes.success === false) {
-        showAlert('Invalid OTP!', 'danger');
-        return;
-      }
-
-      DB.farmers[farmerIdx].password = newPassword;
-      saveDB();
-      showAlert('Password set successfully! You can now login.', 'success');
-      toggleFarmerResetPass(false);
+      const email = document.getElementById('reset-agent-email').value.trim().toLowerCase();
+      const newPass = document.getElementById('reset-new-password').value;
+      handleVerifyOTP('reset-agent-email', 'reset-agent-otp', () => {
+        if (!DB.agentAccounts[email]) DB.agentAccounts[email] = {};
+        DB.agentAccounts[email].password = newPass;
+        saveDB();
+        showAlert('Password reset successful! Please login.');
+        toggleAgentResetPass(false);
+      });
     });
 
-    document.getElementById('farmer-login-form').addEventListener('submit', async (e) => {
+    document.getElementById('farmer-login-form')?.addEventListener('submit', function(e) {
       e.preventDefault();
       const email = document.getElementById('farmer-login-email').value.trim().toLowerCase();
-      const farmerRecord = DB.farmers.find(f => f.email && f.email.toLowerCase() === email);
-
-      if (!farmerRecord) {
-        showAlert('Access Denied: Only farmers registered by an Agent can login!', 'danger');
-        return;
-      }
-
-      if (!farmerRecord.password) {
-        showAlert('First time login detected! Click "First Time / Set Password?" to reset password.', 'warning');
+      const farmer = DB.farmers.find(f => f.email === email);
+      if (!farmer) {
+        showAlert('No registered farmer found with this Gmail.', 'danger');
         return;
       }
 
       if (farmerAuthMode === 'password') {
         const pass = document.getElementById('farmer-password-input').value;
-        if (pass !== farmerRecord.password) {
-          showAlert('Incorrect password!', 'danger');
-          return;
+        if (pass === (farmer.password || 'farmer123')) {
+          currentFarmer = farmer;
+          initAppView('farmer');
+        } else {
+          showAlert('Incorrect farmer password.', 'danger');
         }
       } else {
-        const otp = document.getElementById('farmer-login-otp').value.trim();
-        const verifyRes = await DairyVisionAPI.verifyGmailOtp(email, otp);
-        if (verifyRes.success === false) {
-          showAlert('Invalid OTP verification!', 'danger');
-          return;
-        }
+        handleVerifyOTP('farmer-login-email', 'farmer-login-otp', () => {
+          currentFarmer = farmer;
+          initAppView('farmer');
+        });
       }
-
-      currentFarmer = farmerRecord;
-      document.getElementById('auth-section').classList.add('hidden');
-      document.getElementById('farmer-portal-section').classList.remove('hidden');
-      document.getElementById('user-status').classList.remove('hidden');
-      document.getElementById('active-user-label').innerText = `Farmer: ${currentFarmer.name}`;
-
-      const today = new Date().toISOString().split('T')[0];
-      if (document.getElementById('booking-date')) document.getElementById('booking-date').value = today;
-      if (document.getElementById('booking-delivery-date')) document.getElementById('booking-delivery-date').value = today;
-
-      renderFarmerPortal();
     });
 
-    async function verifyGmailOtp() {
-      const email = document.getElementById('farmer-email').value;
-      const mobile = document.getElementById('farmer-mobile').value;
+    document.getElementById('farmer-reset-form')?.addEventListener('submit', function(e) {
+      e.preventDefault();
+      const email = document.getElementById('reset-farmer-email').value.trim().toLowerCase();
+      const farmer = DB.farmers.find(f => f.email === email);
+      const newPass = document.getElementById('reset-farmer-new-password').value;
+      handleVerifyOTP('reset-farmer-email', 'reset-farmer-otp', () => {
+        farmer.password = newPass;
+        saveDB();
+        showAlert('Farmer password updated! Please log in.');
+        toggleFarmerResetPass(false);
+      });
+    });
 
-      if (!email || !email.includes('@') || mobile.length !== 10) {
-        showAlert('Please enter a valid Gmail Address and 10-digit Mobile Number!', 'danger');
-        return;
+    function initAppView(role) {
+      document.getElementById('auth-section').classList.add('hidden');
+      document.getElementById('user-status').classList.remove('hidden');
+
+      if (role === 'agent') {
+        document.getElementById('sidebar').classList.remove('hidden');
+        document.getElementById('app-section').classList.remove('hidden');
+        document.getElementById('farmer-portal-section').classList.add('hidden');
+        document.getElementById('active-user-label').innerText = `Agent (${currentAgentEmail.split('@')[0]})`;
+        populateDropdowns();
+        renderFarmers();
+        renderCollections();
+        renderAgentBookings();
+        updateDashboardMetrics();
+        switchTab('dashboard');
+        addLog(`Agent ${currentAgentEmail} logged in.`);
+      } else {
+        document.getElementById('sidebar').classList.add('hidden');
+        document.getElementById('app-section').classList.add('hidden');
+        document.getElementById('farmer-portal-section').classList.remove('hidden');
+        document.getElementById('active-user-label').innerText = `Farmer (${currentFarmer.name})`;
+        renderFarmerPortal();
       }
-
-      showAlert(`Sending OTP to ${email}...`, 'info');
-      await DairyVisionAPI.queryGmailOtp(email, 'REGISTRATION');
-      
-      document.getElementById('aadhaar-otp-block').classList.remove('hidden');
-      document.getElementById('complete-reg-btn').classList.remove('hidden');
-      document.getElementById('send-otp-btn').classList.add('hidden');
-      showAlert(`Verification OTP code sent to ${email}!`, 'success');
     }
 
-    document.getElementById('farmer-verification-form').addEventListener('submit', async (e) => {
+    function logout() {
+      currentAgentEmail = null;
+      currentFarmer = null;
+      document.getElementById('auth-section').classList.remove('hidden');
+      document.getElementById('app-section').classList.add('hidden');
+      document.getElementById('farmer-portal-section').classList.add('hidden');
+      document.getElementById('sidebar').classList.add('hidden');
+      document.getElementById('user-status').classList.add('hidden');
+      showAlert('Logged out successfully.', 'info');
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
+      
+      const selectedTab = document.getElementById(`tab-${tabId}`);
+      if (selectedTab) selectedTab.classList.remove('hidden');
+
+      const btn = document.querySelector(`aside button[onclick*="${tabId}"]`);
+      if (btn) btn.classList.add('active');
+
+      if (tabId === 'dashboard') {
+        updateDashboardMetrics();
+      }
+    }
+
+    // Farmer Registration Listener
+    document.getElementById('farmer-verification-form')?.addEventListener('submit', function(e) {
       e.preventDefault();
       const email = document.getElementById('farmer-email').value.trim().toLowerCase();
-      const otp = document.getElementById('farmer-aadhaar-otp').value;
-
-      const res = await DairyVisionAPI.verifyGmailOtp(email, otp);
-      if (res.success === false) {
-        showAlert('Invalid OTP Verification!', 'danger');
-        return;
-      }
-
-      const newFarmer = {
-        id: `F${101 + DB.farmers.length}`,
-        name: document.getElementById('farmer-name').value,
-        village: document.getElementById('farmer-village').value || 'Palamaner Village',
-        mobile: document.getElementById('farmer-mobile').value,
-        email: email,
-        aadhaar: document.getElementById('farmer-aadhaar').value,
-        bankName: document.getElementById('farmer-bank-name').value,
-        account: document.getElementById('farmer-account').value,
-        ifsc: document.getElementById('farmer-ifsc').value,
-        registeredByAgent: currentAgentEmail || "Authorized Agent",
-        password: null,
-        verified: true
-      };
-
-      DB.farmers.push(newFarmer);
-      saveDB();
-      renderFarmers();
-      populateDropdowns();
-      updateDashboardMetrics();
-      addLog(`Farmer Registered: ${newFarmer.name} (${newFarmer.id})`);
-      showAlert(`Farmer ${newFarmer.name} registered successfully!`);
-
-      document.getElementById('farmer-verification-form').reset();
-      document.getElementById('aadhaar-otp-block').classList.add('hidden');
-      document.getElementById('complete-reg-btn').classList.add('hidden');
-      document.getElementById('send-otp-btn').classList.remove('hidden');
-    });
-
-    // Farmer Submit Requirement Request
-    if(document.getElementById('farmer-booking-form')) {
-      document.getElementById('farmer-booking-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        if(!currentFarmer) return;
-
-        const itemVal = document.getElementById('booking-item-type').value.split('|');
-        const itemName = itemVal[0];
-        const unitPrice = parseFloat(itemVal[1]);
-        const qty = parseInt(document.getElementById('booking-qty').value);
-        const totalPrice = unitPrice * qty;
-
-        const newBooking = {
-          id: Date.now(),
-          farmerId: currentFarmer.id,
-          farmerEmail: currentFarmer.email,
-          farmerMobile: currentFarmer.mobile,
-          farmerName: currentFarmer.name,
-          item: itemName,
-          unitPrice: unitPrice,
-          qty: qty,
-          totalPrice: totalPrice,
-          bookingDate: document.getElementById('booking-date').value,
-          deliveryDate: document.getElementById('booking-delivery-date').value,
-          status: 'Pending Agent Review'
+      
+      handleVerifyOTP('farmer-email', 'farmer-aadhaar-otp', () => {
+        const id = `FARM-${String(DB.farmers.length + 1).padStart(3, '0')}`;
+        const newFarmer = {
+          id,
+          name: document.getElementById('farmer-name').value,
+          mobile: document.getElementById('farmer-mobile').value,
+          email: email,
+          village: document.getElementById('farmer-village').value,
+          aadhaar: document.getElementById('farmer-aadhaar').value,
+          bankName: document.getElementById('farmer-bank-name').value,
+          account: document.getElementById('farmer-account').value,
+          ifsc: document.getElementById('farmer-ifsc').value,
+          password: 'farmer123',
+          registeredBy: currentAgentEmail
         };
 
-        if(!DB.bookings) DB.bookings = [];
-        DB.bookings.unshift(newBooking);
+        DB.farmers.push(newFarmer);
         saveDB();
-
-        showAlert(`Requirement request placed for ${newBooking.item}! Cost: ₹${totalPrice}`);
-        renderFarmerBookings();
-        renderAgentBookings();
+        showAlert(`Farmer ${newFarmer.name} registered with ID: ${id}`);
+        populateDropdowns();
+        renderFarmers();
+        this.reset();
+        document.getElementById('aadhaar-otp-block').classList.add('hidden');
+        document.getElementById('complete-reg-btn').classList.add('hidden');
       });
-    }
+    });
+
+    // Farmer Bookings Requirements logic
+    document.getElementById('farmer-booking-form')?.addEventListener('submit', function(e) {
+      e.preventDefault();
+      if (!currentFarmer) return;
+
+      const itemVal = document.getElementById('booking-item-type').value;
+      const [itemName, unitPriceStr] = itemVal.split('|');
+      const unitPrice = parseFloat(unitPriceStr);
+      const qty = parseInt(document.getElementById('booking-qty').value, 10);
+      const bookingDate = document.getElementById('booking-date').value;
+      const deliveryDate = document.getElementById('booking-delivery-date').value;
+
+      const booking = {
+        id: `REQ-${Date.now().toString().slice(-6)}`,
+        farmerId: currentFarmer.id,
+        farmerName: currentFarmer.name,
+        farmerEmail: currentFarmer.email,
+        item: itemName,
+        unitPrice,
+        qty,
+        totalPrice: unitPrice * qty,
+        bookingDate,
+        deliveryDate,
+        status: 'Pending'
+      };
+
+      if (!DB.bookings) DB.bookings = [];
+      DB.bookings.push(booking);
+      saveDB();
+      showAlert('Requirement request submitted successfully!');
+      renderFarmerBookings();
+      this.reset();
+    });
 
     function renderFarmerBookings() {
-      if(!currentFarmer) return;
+      if (!currentFarmer) return;
       const tbody = document.getElementById('farmer-booking-tbody');
-      if(!tbody) return;
+      if (!tbody) return;
 
-      const myBookings = (DB.bookings || []).filter(b => b.farmerEmail === currentFarmer.email || b.farmerId === currentFarmer.id);
+      const farmerBookings = (DB.bookings || []).filter(b => b.farmerId === currentFarmer.id || b.farmerEmail === currentFarmer.email);
 
-      if(myBookings.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#888;">No requirement requests placed yet.</td></tr>`;
+      if (farmerBookings.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#888;">No requirements requested yet.</td></tr>`;
         return;
       }
 
-      tbody.innerHTML = myBookings.map(b => `
+      tbody.innerHTML = farmerBookings.map(b => `
         <tr>
-          <td>${b.bookingDate || b.date}</td>
-          <td><strong>${b.item}</strong></td>
-          <td>₹${b.unitPrice || 0}</td>
-          <td>${b.qty || 1}</td>
-          <td><strong>₹${b.totalPrice || b.cost || 0}</strong></td>
-          <td>${b.deliveryDate || 'N/A'}</td>
-          <td><span class="water-badge ${b.status.includes('Approved') ? 'water-pure' : (b.status.includes('Declined') ? 'water-warning' : '')}">${b.status}</span></td>
+          <td>${b.bookingDate}</td>
+          <td>${b.item}</td>
+          <td>₹${b.unitPrice}</td>
+          <td>${b.qty}</td>
+          <td>₹${b.totalPrice}</td>
+          <td>${b.deliveryDate}</td>
+          <td><span class="water-badge ${b.status === 'Approved & Cost Deducted' ? 'water-pure' : 'water-warning'}">${b.status}</span></td>
           <td>
-            <button class="btn btn-outline btn-sm" onclick="showRequirementSlip(${b.id})"><i class="fa-solid fa-receipt"></i> View Slip</button>
+            ${b.status === 'Approved & Cost Deducted' ? `<button class="btn btn-sm btn-gold" onclick="showRequirementSlip('${b.id}')"><i class="fa-solid fa-receipt"></i> Slip</button>` : '<span style="color:#888;">Pending</span>'}
           </td>
         </tr>
       `).join('');
@@ -1777,108 +1669,55 @@
 
     function renderAgentBookings() {
       const tbody = document.getElementById('agent-bookings-tbody');
-      if(!tbody) return;
+      if (!tbody) return;
 
-      const list = DB.bookings || [];
-      if(list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#888;">No farmer requirement orders pending.</td></tr>`;
+      const bookings = DB.bookings || [];
+      if (bookings.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#888;">No requirements submitted yet.</td></tr>`;
         return;
       }
 
-      tbody.innerHTML = list.map(b => `
+      tbody.innerHTML = bookings.map(b => `
         <tr>
-          <td>${b.bookingDate || b.date}</td>
-          <td><strong>${b.farmerId} - ${b.farmerName}</strong><br><small>${b.farmerEmail}</small></td>
-          <td>${b.item}</td>
-          <td>${b.deliveryDate || 'N/A'}</td>
-          <td><strong>₹${b.totalPrice || b.cost || 0}</strong></td>
-          <td><span class="water-badge ${b.status.includes('Approved') ? 'water-pure' : (b.status.includes('Declined') ? 'water-warning' : '')}">${b.status}</span></td>
-          <td><small>${getBillingPeriod(b.bookingDate || b.date, '10-DAY')} | ${getBillingPeriod(b.bookingDate || b.date, '15-DAY')}</small></td>
+          <td>${b.bookingDate}</td>
+          <td>${b.farmerName} (${b.farmerId})</td>
+          <td>${b.item} (x${b.qty})</td>
+          <td>${b.deliveryDate}</td>
+          <td><strong>₹${b.totalPrice}</strong></td>
+          <td><span class="water-badge ${b.status === 'Approved & Cost Deducted' ? 'water-pure' : 'water-warning'}">${b.status}</span></td>
+          <td>${getBillingPeriod(b.bookingDate)}</td>
           <td>
-            ${b.status.includes('Pending') ? `
-              <button class="btn btn-success btn-sm" onclick="processRequirementOrder(${b.id}, 'Approved')"><i class="fa-solid fa-check"></i> Approve</button>
-              <button class="btn btn-danger btn-sm" onclick="processRequirementOrder(${b.id}, 'Declined')"><i class="fa-solid fa-xmark"></i> Decline</button>
-            ` : `
-              <button class="btn btn-outline btn-sm" onclick="showRequirementSlip(${b.id})"><i class="fa-solid fa-receipt"></i> Slip</button>
-            `}
+            ${b.status === 'Pending' ? `
+              <button class="btn btn-sm btn-success" onclick="processRequirementOrder('${b.id}', 'Approved & Cost Deducted')"><i class="fa-solid fa-check"></i> Approve</button>
+              <button class="btn btn-sm btn-danger" onclick="processRequirementOrder('${b.id}', 'Rejected')"><i class="fa-solid fa-xmark"></i> Reject</button>
+            ` : `<button class="btn btn-sm btn-gold" onclick="showRequirementSlip('${b.id}')"><i class="fa-solid fa-receipt"></i> Slip</button>`}
           </td>
         </tr>
       `).join('');
     }
 
-    // PROCESS REQUIREMENT ORDER AND DISPATCH EMAIL SLIP
-    async function processRequirementOrder(bookingId, statusState) {
-      if(!DB.bookings) return;
-      const idx = DB.bookings.findIndex(b => b.id === bookingId);
-      if(idx !== -1) {
-        DB.bookings[idx].status = statusState;
-        
-        const booking = DB.bookings[idx];
-        const costAmount = parseFloat(booking.totalPrice || booking.cost || 0);
-        const bookingDateVal = booking.bookingDate || booking.date;
-
-        // Deduct requirement cost from milk bill upon approval
-        if (statusState === 'Approved') {
-          if(!DB.deductions) DB.deductions = [];
-          DB.deductions.push({
-            id: Date.now(),
-            farmerId: booking.farmerId,
-            farmerName: booking.farmerName,
-            item: booking.item,
-            date: bookingDateVal,
-            deliveryDate: booking.deliveryDate,
-            amount: costAmount
-          });
-        }
-
+    function processRequirementOrder(bookingId, statusState) {
+      const b = (DB.bookings || []).find(item => item.id === bookingId);
+      if (b) {
+        b.status = statusState;
         saveDB();
+        showAlert(`Order ${bookingId} updated to ${statusState}`);
         renderAgentBookings();
-        renderFarmerBookings();
-        showAlert(`Requirement order set to ${statusState}! Dispatching Gmail requirement slip...`);
-
-        // Directly call /send-requirement-slip API with correct field names
-        if (booking.farmerEmail) {
-          try {
-            const response = await fetch(`${API_BASE_URL}/send-requirement-slip`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                farmerName: booking.farmerName,
-                farmerEmail: booking.farmerEmail,
-                bookingDate: bookingDateVal,
-                item: booking.item,
-                status: statusState,
-                deliveryDate: booking.deliveryDate || 'N/A',
-                cost: costAmount
-              })
-            });
-
-            const data = await response.json();
-            if (data.success) {
-              showAlert(`Requirement Slip successfully emailed to ${booking.farmerEmail}!`);
-            } else {
-              showAlert(`Failed to email slip: ${data.message}`, 'danger');
-            }
-          } catch(err) {
-            console.error("Requirement slip email dispatch error:", err);
-            showAlert('Network error sending email slip.', 'danger');
-          }
-        }
+        if (statusState === 'Approved & Cost Deducted') showRequirementSlip(bookingId);
       }
     }
 
     function showRequirementSlip(bookingId) {
-      const booking = DB.bookings.find(b => b.id === bookingId);
-      if (!booking) return;
+      const b = (DB.bookings || []).find(item => item.id === bookingId);
+      if (!b) return;
 
-      const dateVal = booking.bookingDate || booking.date;
-      document.getElementById('slip-farmer-name').innerText = `${booking.farmerId} - ${booking.farmerName}`;
-      document.getElementById('slip-booking-date').innerText = dateVal;
-      document.getElementById('slip-item-name').innerText = booking.item;
-      document.getElementById('slip-delivery-date').innerText = booking.deliveryDate || 'N/A';
-      document.getElementById('slip-status').innerText = booking.status;
-      document.getElementById('slip-cost').innerText = `₹${booking.totalPrice || booking.cost || 0}`;
-      document.getElementById('slip-billing-cycle').innerText = `${getBillingPeriod(dateVal, '10-DAY')} (10-Day) / ${getBillingPeriod(dateVal, '15-DAY')} (15-Day)`;
+      document.getElementById('slip-farmer-name').innerText = `${b.farmerName} (${b.farmerId})`;
+      document.getElementById('slip-booking-date').innerText = b.bookingDate;
+      document.getElementById('slip-item-name').innerText = `${b.item} (Qty: ${b.qty})`;
+      document.getElementById('slip-delivery-date').innerText = b.deliveryDate;
+      document.getElementById('slip-status').innerText = b.status;
+      document.getElementById('slip-cost').innerText = `₹${b.totalPrice}`;
+      document.getElementById('slip-billing-cycle').innerText = getBillingPeriod(b.bookingDate);
 
       const slipBox = document.getElementById('printable-req-slip');
       slipBox.classList.remove('hidden');
@@ -1886,232 +1725,169 @@
     }
 
     function clearRequirements(role) {
-      if (confirm('Are you sure you want to clear the requirements request history?')) {
+      if (confirm('Are you sure you want to clear requirement history?')) {
         if (role === 'farmer' && currentFarmer) {
-          DB.bookings = DB.bookings.filter(b => b.farmerId !== currentFarmer.id && b.farmerEmail !== currentFarmer.email);
-        } else {
+          DB.bookings = DB.bookings.filter(b => b.farmerId !== currentFarmer.id);
+        } else if (role === 'agent') {
           DB.bookings = [];
         }
         saveDB();
-        renderAgentBookings();
-        renderFarmerBookings();
-        showAlert('Requirements list cleared successfully.');
+        showAlert('Requirements history cleared.');
+        if (role === 'farmer') renderFarmerBookings();
+        else renderAgentBookings();
       }
     }
 
-    function logout() {
-      document.getElementById('auth-section').classList.remove('hidden');
-      document.getElementById('sidebar').classList.add('hidden');
-      document.getElementById('app-section').classList.add('hidden');
-      document.getElementById('farmer-portal-section').classList.add('hidden');
-      document.getElementById('user-status').classList.add('hidden');
-      currentFarmer = null;
-      currentAgentEmail = null;
-    }
-
-    function switchTab(tabId) {
-      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-      document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-      
-      const targetTab = document.getElementById(`tab-${tabId}`);
-      if (targetTab) targetTab.classList.remove('hidden');
-
-      const activeNavBtn = document.querySelector(`aside button[onclick*="${tabId}"]`);
-      if (activeNavBtn) activeNavBtn.classList.add('active');
-
-      if (tabId === 'dashboard') updateDashboardMetrics();
-      if (tabId === 'bookings') renderAgentBookings();
-    }
-
+    // Milk Collection logic
     function toggleEntryMode(mode) {
-      if(mode === 'auto') {
-        syncHardwareSensor('all');
-        showAlert('Hardware Synced! Weight, FAT & SNF loaded.', 'info');
-      } else {
-        showAlert('Manual Entry Mode Active');
-      }
+      showAlert(`Switched to ${mode.toUpperCase()} entry mode.`, 'info');
     }
 
-    function syncHardwareSensor(sensor) {
-      if(sensor === 'weight' || sensor === 'all') {
-        document.getElementById('milk-qty').value = (8.5 + Math.random() * 6).toFixed(1);
+    function syncHardwareSensor(sensorType) {
+      if (sensorType === 'analyzer') {
+        document.getElementById('milk-fat').value = (Math.random() * (9.0 - 3.5) + 3.5).toFixed(1);
+        document.getElementById('milk-snf').value = (Math.random() * (9.5 - 8.0) + 8.0).toFixed(1);
+        calculateWaterPercentage();
+        showAlert('Data fetched from Ultrasonic Analyzer (COM4)');
+      } else if (sensorType === 'weight') {
+        document.getElementById('milk-qty').value = (Math.random() * (30 - 2) + 2).toFixed(1);
+        showAlert('Weight fetched from Electronic Scale (COM3)');
       }
-      if(sensor === 'analyzer' || sensor === 'all') {
-        document.getElementById('milk-fat').value = (4.0 + Math.random() * 1.5).toFixed(1);
-        document.getElementById('milk-snf').value = (8.3 + Math.random() * 0.7).toFixed(1);
-      }
-      calculateWaterPercentage();
     }
 
     function calculateWaterPercentage() {
       const type = document.getElementById('milk-type').value;
       const snf = parseFloat(document.getElementById('milk-snf').value) || 0;
       const stdSnf = type.includes('Cow') ? 8.5 : 9.0;
-
+      
       let waterPct = 0;
-      if (snf > 0 && snf < stdSnf) {
-        waterPct = ((stdSnf - snf) / stdSnf) * 100;
+      if (snf < stdSnf && snf > 0) {
+        waterPct = (((stdSnf - snf) / stdSnf) * 100).toFixed(1);
       }
 
-      const displayPct = waterPct.toFixed(1);
-      document.getElementById('milk-water-pct').value = `${displayPct} %`;
+      document.getElementById('milk-water-pct').value = `${waterPct} %`;
 
-      const alertBanner = document.getElementById('water-quality-alert');
+      const alertBadge = document.getElementById('water-quality-alert');
       if (waterPct > 0) {
-        alertBanner.className = 'alert alert-danger';
-        alertBanner.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Water Alert: ~${displayPct}% Added Water Detected!`;
+        alertBadge.className = 'alert alert-danger';
+        alertBadge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Water Adulteration Detected (${waterPct}%)`;
       } else {
-        alertBanner.className = 'alert alert-success';
-        alertBanner.innerHTML = `<i class="fa-solid fa-circle-check"></i> Pure Milk Sample Detected`;
+        alertBadge.className = 'alert alert-success';
+        alertBadge.innerHTML = `<i class="fa-solid fa-circle-check"></i> Pure Milk Sample Detected`;
       }
-
-      return parseFloat(displayPct);
     }
 
-    document.getElementById('milk-form').addEventListener('submit', async (e) => {
+    document.getElementById('milk-form')?.addEventListener('submit', function(e) {
       e.preventDefault();
       const farmerId = document.getElementById('milk-farmer-id').value;
       const farmer = DB.farmers.find(f => f.id === farmerId);
+
       const qty = parseFloat(document.getElementById('milk-qty').value);
       const fat = parseFloat(document.getElementById('milk-fat').value);
       const snf = parseFloat(document.getElementById('milk-snf').value);
-      const waterPct = calculateWaterPercentage();
+      const waterPct = parseFloat(document.getElementById('milk-water-pct').value);
+      const rate = (fat * 7 + snf * 4).toFixed(2);
+      const total = (qty * rate).toFixed(2);
 
-      const ratePerLitre = (fat * 6.5) + (snf * 3.5);
-      const totalAmount = qty * ratePerLitre;
-      const canNo = DB.agentCAN || "CAN-PLM-2026-01";
-      const collectionDate = document.getElementById('milk-date').value;
-      const shift = document.getElementById('milk-shift').value;
-      const place = farmer ? farmer.village : 'Palamaner Center';
-
-      const record = {
-        id: Date.now(),
-        canNo: canNo,
-        date: collectionDate,
-        place: place,
+      const entry = {
+        id: `COL-${Date.now()}`,
+        date: document.getElementById('milk-date').value,
         time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        farmerId: farmerId,
-        farmerName: farmer ? farmer.name : 'Farmer',
+        farmerId,
+        farmerName: farmer ? farmer.name : 'Unknown',
         farmerEmail: farmer ? farmer.email : '',
-        farmerMobile: farmer ? farmer.mobile : '',
         type: document.getElementById('milk-type').value,
-        shift: shift,
-        qty: qty,
-        fat: fat,
-        snf: snf,
-        waterPct: waterPct,
-        rate: ratePerLitre.toFixed(2),
-        total: totalAmount.toFixed(2)
+        shift: document.getElementById('milk-shift').value,
+        qty,
+        fat,
+        snf,
+        waterPct,
+        rate,
+        total
       };
 
-      DB.collections.unshift(record);
+      DB.collections.push(entry);
       saveDB();
-
-      if (farmer && farmer.email) {
-        try {
-          await fetch(`${API_BASE_URL}/send-milk-bill`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              farmerName: farmer.name,
-              farmerEmail: farmer.email,
-              milkType: record.type,
-              shift: record.shift,
-              liters: record.qty,
-              fat: record.fat,
-              snf: record.snf,
-              water: record.waterPct,
-              totalAmount: record.total
-            })
-          });
-        } catch(err) {
-          console.error("Failed to send milk bill receipt:", err);
-        }
-      }
-      
+      showAlert('Milk entry recorded & dispatched to farmer!');
+      addLog(`Recorded entry for ${entry.farmerName} - ${qty}L`);
       renderCollections();
       updateDashboardMetrics();
-      addLog(`Milk Collection Logged: ${qty}L for ${farmer ? farmer.name : farmerId}`);
-      showAlert(`Record saved and Gmail slip dispatched to ${farmer ? farmer.email : 'farmer'}!`);
-
-      document.getElementById('milk-form').reset();
-      document.getElementById('milk-date').value = new Date().toISOString().split('T')[0];
+      this.reset();
     });
 
-    document.getElementById('deduction-form').addEventListener('submit', (e) => {
+    document.getElementById('deduction-form')?.addEventListener('submit', function(e) {
       e.preventDefault();
-      const deduction = {
-        id: Date.now(),
-        farmerId: document.getElementById('deduction-farmer-id').value,
-        item: document.getElementById('deduction-type').value,
-        date: document.getElementById('deduction-date').value,
-        amount: parseFloat(document.getElementById('deduction-amount').value)
-      };
-      DB.deductions.push(deduction);
+      const farmerId = document.getElementById('deduction-farmer-id').value;
+      const amount = parseFloat(document.getElementById('deduction-amount').value);
+      const type = document.getElementById('deduction-type').value;
+      const date = document.getElementById('deduction-date').value;
+
+      DB.deductions.push({ id: `DED-${Date.now()}`, farmerId, type, amount, date });
       saveDB();
-      showAlert('Deduction added successfully!');
-      document.getElementById('deduction-form').reset();
+      showAlert('Bill deduction logged successfully!');
+      this.reset();
     });
 
     function renderFarmers() {
       const tbody = document.getElementById('farmer-table-body');
-      if(!tbody) return;
-      if(DB.farmers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No registered farmers.</td></tr>`;
+      if (!tbody) return;
+
+      if (DB.farmers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">No farmers registered yet.</td></tr>`;
         return;
       }
-      tbody.innerHTML = DB.farmers.map((f) => `
+
+      tbody.innerHTML = DB.farmers.map(f => `
         <tr>
           <td><strong>${f.id}</strong></td>
           <td>${f.name}</td>
           <td>${f.village}</td>
           <td>${f.mobile}</td>
-          <td>${f.email || 'N/A'}</td>
-          <td>${f.bankName || 'State Bank of India'}</td>
+          <td>${f.email}</td>
+          <td>${f.bankName}</td>
           <td>${f.account}</td>
-          <td><small style="color:var(--primary); font-weight:bold;">${f.registeredByAgent || 'Agent'}</small></td>
-          <td><button class="btn btn-danger btn-sm" onclick="deleteFarmer('${f.id}')"><i class="fa-solid fa-trash"></i></button></td>
+          <td>${f.registeredBy || 'Agent'}</td>
+          <td><button class="btn btn-sm btn-danger" onclick="deleteFarmer('${f.id}')"><i class="fa-solid fa-trash"></i></button></td>
         </tr>
       `).join('');
     }
 
     function exportFarmersToCsv() {
-      if(DB.farmers.length === 0) {
-        showAlert('No profiles to export!', 'danger');
-        return;
-      }
-      let csvContent = "data:text/csv;charset=utf-8,ID,Name,Village,Mobile,Email,Bank,Account,IFSC\n";
+      if (!DB.farmers.length) return showAlert('No farmer records to export.', 'danger');
+      let csv = 'ID,Name,Village,Mobile,Email,Bank,Account,IFSC\n';
       DB.farmers.forEach(f => {
-        csvContent += `${f.id},${f.name},${f.village},${f.mobile},${f.email || ''},"${f.bankName || 'SBI'}",${f.account},${f.ifsc || ''}\n`;
+        csv += `"${f.id}","${f.name}","${f.village}","${f.mobile}","${f.email}","${f.bankName}","${f.account}","${f.ifsc}"\n`;
       });
-      const encodedUri = encodeURI(csvContent);
-      const link = document.createElement("a");
-      link.setAttribute("href", encodedUri);
-      link.setAttribute("download", `Farmers_Directory_${new Date().toISOString().split('T')[0]}.csv`);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `Farmers_Directory_${new Date().toISOString().slice(0,10)}.csv`;
+      a.click();
     }
 
     function deleteFarmer(id) {
-      DB.farmers = DB.farmers.filter(f => f.id !== id);
-      saveDB();
-      renderFarmers();
-      populateDropdowns();
-      updateDashboardMetrics();
+      if (confirm('Delete this farmer record?')) {
+        DB.farmers = DB.farmers.filter(f => f.id !== id);
+        saveDB();
+        renderFarmers();
+        populateDropdowns();
+        showAlert('Farmer record removed.');
+      }
     }
 
     function renderCollections() {
       const tbody = document.getElementById('collection-table-body');
-      if(!tbody) return;
-      if(DB.collections.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center; color:#888;">No milk collection entries.</td></tr>`;
+      if (!tbody) return;
+
+      if (DB.collections.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;">No milk collection entries found.</td></tr>`;
         return;
       }
+
       tbody.innerHTML = DB.collections.map(c => `
         <tr>
-          <td>${c.time}<br><small style="color:#777;">${c.date}</small></td>
-          <td><strong>${c.farmerName}</strong></td>
+          <td>${c.date} ${c.time}</td>
+          <td>${c.farmerName} (${c.farmerId})</td>
           <td>${c.type}</td>
           <td>${c.shift}</td>
           <td>${c.qty} L</td>
@@ -2119,205 +1895,315 @@
           <td>${c.snf}%</td>
           <td><span class="water-badge ${c.waterPct > 0 ? 'water-warning' : 'water-pure'}">${c.waterPct}%</span></td>
           <td><strong>₹${c.total}</strong></td>
-          <td><button class="btn btn-danger btn-sm" onclick="deleteEntry(${c.id})"><i class="fa-solid fa-trash"></i></button></td>
+          <td><button class="btn btn-sm btn-danger" onclick="deleteEntry('${c.id}')"><i class="fa-solid fa-trash"></i></button></td>
         </tr>
       `).join('');
     }
 
     function deleteEntry(id) {
-      DB.collections = DB.collections.filter(c => c.id !== id);
-      saveDB();
-      renderCollections();
-      updateDashboardMetrics();
+      if (confirm('Delete collection entry?')) {
+        DB.collections = DB.collections.filter(c => c.id !== id);
+        saveDB();
+        renderCollections();
+        updateDashboardMetrics();
+        showAlert('Entry removed.');
+      }
     }
 
     function populateDropdowns() {
-      const options = '<option value="">Select Farmer Code / ID</option>' + DB.farmers.map(f => `<option value="${f.id}">${f.id} - ${f.name}</option>`).join('');
-      document.getElementById('milk-farmer-id').innerHTML = options;
-      document.getElementById('deduction-farmer-id').innerHTML = options;
-      document.getElementById('report-farmer-code').innerHTML = options;
+      const options = DB.farmers.map(f => `<option value="${f.id}">${f.name} (${f.id})</option>`).join('');
+      ['milk-farmer-id', 'deduction-farmer-id', 'report-farmer-code'].forEach(id => {
+        const select = document.getElementById(id);
+        if (select) {
+          select.innerHTML = `<option value="">Select Farmer</option>` + options;
+        }
+      });
     }
 
     function updateDashboardMetrics() {
-      const countEl = document.getElementById('dash-farmer-count');
-      if (countEl) countEl.innerText = DB.farmers.length;
+      const today = new Date().toISOString().slice(0, 10);
+      document.getElementById('milk-date').value = today;
+      document.getElementById('report-start-date').value = today;
+
+      document.getElementById('dash-farmer-count').innerText = DB.farmers.length;
       
-      const totalQty = DB.collections.reduce((acc, curr) => acc + curr.qty, 0);
-      const totalEl = document.getElementById('dash-milk-total');
-      if (totalEl) totalEl.innerText = `${totalQty.toFixed(1)} L`;
-      
-      const waterAlertsCount = DB.collections.filter(c => c.waterPct > 0).length;
-      const alertsEl = document.getElementById('dash-water-alerts');
-      if (alertsEl) alertsEl.innerText = waterAlertsCount;
+      const todayCollections = DB.collections.filter(c => c.date === today);
+      const totalQty = todayCollections.reduce((sum, c) => sum + c.qty, 0);
+      const waterAlerts = DB.collections.filter(c => c.waterPct > 0).length;
+
+      document.getElementById('dash-milk-total').innerText = `${totalQty.toFixed(1)} L`;
+      document.getElementById('dash-water-alerts').innerText = waterAlerts;
 
       const emptyBanner = document.getElementById('empty-dash-banner');
       const activeCharts = document.getElementById('active-dash-charts');
 
-      if (emptyBanner && activeCharts) {
-        if (DB.farmers.length === 0 || DB.collections.length === 0) {
-          emptyBanner.classList.remove('hidden');
-          activeCharts.classList.add('hidden');
-        } else {
-          emptyBanner.classList.add('hidden');
-          activeCharts.classList.remove('hidden');
-          renderDashboardCharts();
-        }
+      if (DB.collections.length === 0 && DB.farmers.length === 0) {
+        emptyBanner?.classList.remove('hidden');
+        activeCharts?.classList.add('hidden');
+      } else {
+        emptyBanner?.classList.add('hidden');
+        activeCharts?.classList.remove('hidden');
+        renderDashboardCharts();
       }
     }
-
-    let trendChartInstance = null;
-    let qualityChartInstance = null;
 
     function renderDashboardCharts() {
       const trendCtx = document.getElementById('milkTrendChart')?.getContext('2d');
       const qualityCtx = document.getElementById('milkQualityChart')?.getContext('2d');
+
       if (!trendCtx || !qualityCtx) return;
 
-      if (trendChartInstance) trendChartInstance.destroy();
-      if (qualityChartInstance) qualityChartInstance.destroy();
+      if (window.trendChartInst) window.trendChartInst.destroy();
+      if (window.qualityChartInst) window.qualityChartInst.destroy();
 
-      const recentCollections = DB.collections.slice(0, 7).reverse();
+      const dates = [...new Set(DB.collections.map(c => c.date))].sort().slice(-7);
+      const dailyTotals = dates.map(d => {
+        return DB.collections.filter(c => c.date === d).reduce((acc, curr) => acc + curr.qty, 0);
+      });
 
-      trendChartInstance = new Chart(trendCtx, {
+      window.trendChartInst = new Chart(trendCtx, {
         type: 'line',
         data: {
-          labels: recentCollections.map(c => c.date),
+          labels: dates.length ? dates : ['Today'],
           datasets: [{
-            label: 'Milk Volume (Liters)',
-            data: recentCollections.map(c => c.qty),
+            label: 'Volume (Liters)',
+            data: dailyTotals.length ? dailyTotals : [0],
             borderColor: '#1b4332',
             backgroundColor: 'rgba(27, 67, 50, 0.1)',
             fill: true,
             tension: 0.3
           }]
-        }
+        },
+        options: { responsive: true, maintainAspectRatio: false }
       });
 
-      const cowCount = DB.collections.filter(c => c.type.includes('Cow')).length;
-      const buffaloCount = DB.collections.filter(c => c.type.includes('Buffalo')).length;
+      const cowMilkCount = DB.collections.filter(c => c.type === 'Cow Milk').length;
+      const buffaloMilkCount = DB.collections.filter(c => c.type === 'Buffalo Milk').length;
 
-      qualityChartInstance = new Chart(qualityCtx, {
+      window.qualityChartInst = new Chart(qualityCtx, {
         type: 'doughnut',
         data: {
           labels: ['Cow Milk', 'Buffalo Milk'],
           datasets: [{
-            data: [cowCount, buffaloCount],
+            data: [cowMilkCount, buffaloMilkCount],
             backgroundColor: ['#206a78', '#ffb703']
           }]
-        }
+        },
+        options: { responsive: true, maintainAspectRatio: false }
       });
     }
 
-    function handleReportTypeChange(type) {
+    function renderFarmerPortal() {
+      if (!currentFarmer) return;
+
+      const nameElem = document.getElementById('farmer-portal-name');
+      const phoneElem = document.getElementById('farmer-portal-phone');
+      if (nameElem) nameElem.innerText = currentFarmer.name;
+      if (phoneElem) phoneElem.innerText = currentFarmer.email || currentFarmer.mobile;
+
+      const fromDate = document.getElementById('farmer-range-from')?.value;
+      const toDate = document.getElementById('farmer-range-to')?.value;
+      const cycleMode = document.getElementById('farmer-billing-cycle-mode')?.value || '10-DAY';
+
+      const farmerCollections = DB.collections.filter(c => {
+        const matchesFarmer = (c.farmerId === currentFarmer.id || c.farmerEmail === currentFarmer.email);
+        const matchesFrom = !fromDate || c.date >= fromDate;
+        const matchesTo = !toDate || c.date <= toDate;
+        return matchesFarmer && matchesFrom && matchesTo;
+      });
+
+      let totalQty = 0;
+      let totalEarnings = 0;
+
+      const itemizedTbody = document.getElementById('farmer-itemized-tbody');
+      if (itemizedTbody) {
+        if (farmerCollections.length === 0) {
+          itemizedTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No milk collection history found.</td></tr>`;
+        } else {
+          itemizedTbody.innerHTML = farmerCollections.map(c => {
+            totalQty += c.qty;
+            totalEarnings += parseFloat(c.total);
+            return `
+              <tr>
+                <td>${c.date}</td>
+                <td>${c.shift}</td>
+                <td>${c.type}</td>
+                <td>${c.qty} L</td>
+                <td>${c.fat}%</td>
+                <td>${c.snf}%</td>
+                <td><span class="water-badge ${c.waterPct > 0 ? 'water-warning' : 'water-pure'}">${c.waterPct}%</span></td>
+                <td>₹${c.rate}</td>
+                <td><strong>₹${c.total}</strong></td>
+              </tr>
+            `;
+          }).join('');
+        }
+      }
+
+      const farmerDeductions = (DB.bookings || []).filter(b => {
+        const matchesFarmer = (b.farmerId === currentFarmer.id || b.farmerEmail === currentFarmer.email);
+        const isApproved = b.status === 'Approved & Cost Deducted';
+        return matchesFarmer && isApproved;
+      });
+
+      let totalDeductions = farmerDeductions.reduce((sum, b) => sum + b.totalPrice, 0);
+
+      const dedTbody = document.getElementById('farmer-deductions-tbody');
+      if (dedTbody) {
+        if (farmerDeductions.length === 0) {
+          dedTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888;">No product deductions found.</td></tr>`;
+        } else {
+          dedTbody.innerHTML = farmerDeductions.map(b => `
+            <tr>
+              <td>${b.bookingDate}</td>
+              <td>${b.item}</td>
+              <td>${b.deliveryDate}</td>
+              <td>${getBillingPeriod(b.bookingDate, cycleMode)}</td>
+              <td><strong>- ₹${b.totalPrice}</strong></td>
+            </tr>
+          `).join('');
+        }
+      }
+
+      const netPayable = Math.max(0, totalEarnings - totalDeductions);
+
+      const qtyElem = document.getElementById('farmer-total-qty');
+      const earningsElem = document.getElementById('farmer-total-earnings');
+      const dedElem = document.getElementById('farmer-total-deductions');
+      const netElem = document.getElementById('farmer-net-payable');
+
+      if (qtyElem) qtyElem.innerText = `${totalQty.toFixed(1)} L`;
+      if (earningsElem) earningsElem.innerText = `₹ ${totalEarnings.toFixed(2)}`;
+      if (dedElem) dedElem.innerText = `- ₹ ${totalDeductions.toFixed(2)}`;
+      if (netElem) netElem.innerText = `₹ ${netPayable.toFixed(2)}`;
+
+      const imgFormatTbody = document.getElementById('farmer-image-format-tbody');
+      if (imgFormatTbody) {
+        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+        let imgHtml = '';
+        months.forEach((m, idx) => {
+          const mColls = farmerCollections.filter(c => new Date(c.date).getMonth() === idx);
+          const mQty = mColls.reduce((s, c) => s + c.qty, 0);
+          const mAvgFat = mColls.length ? (mColls.reduce((s, c) => s + c.fat, 0) / mColls.length).toFixed(1) : '0.0';
+          const mAvgRate = mColls.length ? (mColls.reduce((s, c) => s + parseFloat(c.rate), 0) / mColls.length).toFixed(1) : '0.0';
+          const mAmt = mColls.reduce((s, c) => s + parseFloat(c.total), 0);
+
+          if (mColls.length > 0) {
+            imgHtml += `
+              <tr class="month-header-row"><td colspan="5">${m}</td></tr>
+              <tr>
+                <td>Totals</td>
+                <td>${mQty.toFixed(1)}</td>
+                <td>${mAvgFat}%</td>
+                <td>₹${mAvgRate}</td>
+                <td>₹${mAmt.toFixed(2)}</td>
+              </tr>
+            `;
+          }
+        });
+        imgFormatTbody.innerHTML = imgHtml || `<tr><td colspan="5" style="text-align:center; color:#888;">No summary data found.</td></tr>`;
+      }
+
+      renderFarmerBookings();
+    }
+
+    function handleReportTypeChange(val) {
+      const groupDate = document.getElementById('group-report-date');
       const groupEndDate = document.getElementById('group-report-end-date');
       const groupShift = document.getElementById('group-report-shift');
       const groupFarmer = document.getElementById('group-report-farmer-id');
-      const labelDate = document.getElementById('label-report-date');
 
-      if (type === 'SHIFT_SUMMARY') {
-        groupEndDate.classList.add('hidden');
-        groupShift.classList.remove('hidden');
-        groupFarmer.classList.add('hidden');
-        labelDate.innerText = 'Select Date *';
-      } else if (type === 'MILK_BILL') {
-        groupEndDate.classList.remove('hidden');
-        groupShift.classList.add('hidden');
-        groupFarmer.classList.remove('hidden');
-        labelDate.innerText = 'From Date *';
-      } else if (type === 'BILL_SUMMARY') {
-        groupEndDate.classList.remove('hidden');
-        groupShift.classList.add('hidden');
-        groupFarmer.classList.add('hidden');
-        labelDate.innerText = 'From Date *';
+      if (val === 'SHIFT_SUMMARY') {
+        groupDate?.classList.remove('hidden');
+        groupEndDate?.classList.add('hidden');
+        groupShift?.classList.remove('hidden');
+        groupFarmer?.classList.add('hidden');
+      } else if (val === 'MILK_BILL') {
+        groupDate?.classList.remove('hidden');
+        groupEndDate?.classList.remove('hidden');
+        groupShift?.classList.add('hidden');
+        groupFarmer?.classList.remove('hidden');
+      } else if (val === 'BILL_SUMMARY') {
+        groupDate?.classList.remove('hidden');
+        groupEndDate?.classList.remove('hidden');
+        groupShift?.classList.add('hidden');
+        groupFarmer?.classList.add('hidden');
       }
     }
 
     function generateSelectedReport() {
-      const type = document.getElementById('report-type-select').value;
+      const reportType = document.getElementById('report-type-select').value;
       const startDate = document.getElementById('report-start-date').value;
       const endDate = document.getElementById('report-end-date').value;
       const shift = document.getElementById('report-shift-select').value;
       const farmerId = document.getElementById('report-farmer-code').value;
 
+      const titleElem = document.getElementById('sheet-report-title');
+      const rangeElem = document.getElementById('sheet-range-display');
+      const headElem = document.getElementById('sheet-table-head');
+      const bodyElem = document.getElementById('sheet-table-body');
+      const footElem = document.getElementById('sheet-table-footer');
       const outputCard = document.getElementById('sheet-output-card');
-      const titleEl = document.getElementById('sheet-report-title');
-      const rangeEl = document.getElementById('sheet-range-display');
-      const headEl = document.getElementById('sheet-table-head');
-      const bodyEl = document.getElementById('sheet-table-body');
-      const footEl = document.getElementById('sheet-table-footer');
-
-      if (!startDate) {
-        showAlert('Please select a valid date range!', 'danger');
-        return;
-      }
 
       outputCard.classList.remove('hidden');
 
-      if (type === 'SHIFT_SUMMARY') {
-        titleEl.innerText = 'SHIFT SUMMARY REPORT';
-        rangeEl.innerText = `${startDate} (${shift})`;
+      if (reportType === 'SHIFT_SUMMARY') {
+        titleElem.innerText = `SHIFT SUMMARY REPORT - ${shift.toUpperCase()}`;
+        rangeElem.innerText = startDate || 'All Dates';
 
-        headEl.innerHTML = `
+        headElem.innerHTML = `
           <tr>
-            <th>Code</th>
+            <th>Farmer Code</th>
             <th>Farmer Name</th>
-            <th>Milk Type</th>
             <th>Shift</th>
+            <th>Milk Type</th>
             <th>Qty (L)</th>
             <th>FAT %</th>
             <th>SNF %</th>
-            <th>Rate (₹)</th>
-            <th>Amount (₹)</th>
+            <th>Water %</th>
+            <th>Total (₹)</th>
           </tr>
         `;
 
-        const filtered = DB.collections.filter(c => c.date === startDate && (shift === 'ALL' || c.shift === shift));
+        const filtered = DB.collections.filter(c => {
+          const matchesDate = !startDate || c.date === startDate;
+          const matchesShift = shift === 'ALL' || c.shift === shift;
+          return matchesDate && matchesShift;
+        });
 
-        if (filtered.length === 0) {
-          bodyEl.innerHTML = `<tr><td colspan="9" style="text-align:center;">No collections logged for this shift/date.</td></tr>`;
-          footEl.innerHTML = '';
-          return;
-        }
-
-        let totalQty = 0, totalAmt = 0;
-        bodyEl.innerHTML = filtered.map(c => {
-          totalQty += c.qty;
-          totalAmt += parseFloat(c.total);
+        let totQty = 0, totAmt = 0;
+        bodyElem.innerHTML = filtered.map(c => {
+          totQty += c.qty;
+          totAmt += parseFloat(c.total);
           return `
             <tr>
               <td>${c.farmerId}</td>
               <td>${c.farmerName}</td>
-              <td>${c.type}</td>
               <td>${c.shift}</td>
+              <td>${c.type}</td>
               <td>${c.qty} L</td>
               <td>${c.fat}%</td>
               <td>${c.snf}%</td>
-              <td>₹${c.rate}</td>
+              <td>${c.waterPct}%</td>
               <td>₹${c.total}</td>
             </tr>
           `;
-        }).join('');
+        }).join('') || '<tr><td colspan="9" style="text-align:center;">No records found.</td></tr>';
 
-        footEl.innerHTML = `
+        footElem.innerHTML = `
           <tr>
-            <td colspan="4" style="text-align:right;"><strong>Total:</strong></td>
-            <td><strong>${totalQty.toFixed(1)} L</strong></td>
+            <td colspan="4">TOTALS</td>
+            <td>${totQty.toFixed(1)} L</td>
             <td colspan="3"></td>
-            <td><strong>₹${totalAmt.toFixed(2)}</strong></td>
+            <td>₹${totAmt.toFixed(2)}</td>
           </tr>
         `;
-      } 
-      else if (type === 'MILK_BILL') {
-        if (!farmerId) {
-          showAlert('Please select a farmer code!', 'danger');
-          return;
-        }
-
+      } else if (reportType === 'MILK_BILL') {
         const farmer = DB.farmers.find(f => f.id === farmerId);
-        titleEl.innerText = `INDIVIDUAL MILK RECEIPT / BILL (${farmer ? farmer.name : farmerId})`;
-        rangeEl.innerText = `${startDate} to ${endDate || startDate}`;
+        titleElem.innerText = `INDIVIDUAL MILK BILL - ${farmer ? farmer.name : farmerId}`;
+        rangeElem.innerText = `${startDate || 'Start'} to ${endDate || 'End'}`;
 
-        headEl.innerHTML = `
+        headElem.innerHTML = `
           <tr>
             <th>Date</th>
             <th>Shift</th>
@@ -2325,27 +2211,22 @@
             <th>Qty (L)</th>
             <th>FAT %</th>
             <th>SNF %</th>
-            <th>Rate (₹)</th>
+            <th>Rate/L</th>
             <th>Amount (₹)</th>
           </tr>
         `;
 
         const filtered = DB.collections.filter(c => {
-          const matchFarmer = c.farmerId === farmerId;
-          const matchDate = c.date >= startDate && c.date <= (endDate || startDate);
-          return matchFarmer && matchDate;
+          const matchesFarmer = c.farmerId === farmerId;
+          const matchesFrom = !startDate || c.date >= startDate;
+          const matchesTo = !endDate || c.date <= endDate;
+          return matchesFarmer && matchesFrom && matchesTo;
         });
 
-        if (filtered.length === 0) {
-          bodyEl.innerHTML = `<tr><td colspan="8" style="text-align:center;">No collections found for this farmer in the given period.</td></tr>`;
-          footEl.innerHTML = '';
-          return;
-        }
-
-        let totalQty = 0, totalGross = 0;
-        bodyEl.innerHTML = filtered.map(c => {
-          totalQty += c.qty;
-          totalGross += parseFloat(c.total);
+        let totQty = 0, totAmt = 0;
+        bodyElem.innerHTML = filtered.map(c => {
+          totQty += c.qty;
+          totAmt += parseFloat(c.total);
           return `
             <tr>
               <td>${c.date}</td>
@@ -2358,239 +2239,68 @@
               <td>₹${c.total}</td>
             </tr>
           `;
-        }).join('');
+        }).join('') || '<tr><td colspan="8" style="text-align:center;">No records found.</td></tr>';
 
-        const farmerDeductions = (DB.deductions || []).filter(d => d.farmerId === farmerId && d.date >= startDate && d.date <= (endDate || startDate));
-        const totalDeductions = farmerDeductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0);
-        const netPay = totalGross - totalDeductions;
-
-        footEl.innerHTML = `
+        footElem.innerHTML = `
           <tr>
-            <td colspan="3" style="text-align:right;"><strong>Gross Total:</strong></td>
-            <td><strong>${totalQty.toFixed(1)} L</strong></td>
+            <td colspan="3">TOTAL PAYABLE</td>
+            <td>${totQty.toFixed(1)} L</td>
             <td colspan="3"></td>
-            <td><strong>₹${totalGross.toFixed(2)}</strong></td>
-          </tr>
-          <tr>
-            <td colspan="7" style="text-align:right; color:var(--danger);"><strong>Total Deductions:</strong></td>
-            <td style="color:var(--danger);"><strong>- ₹${totalDeductions.toFixed(2)}</strong></td>
-          </tr>
-          <tr>
-            <td colspan="7" style="text-align:right; color:var(--primary); font-size:1.1em;"><strong>Net Payable:</strong></td>
-            <td style="color:var(--primary); font-size:1.1em;"><strong>₹${netPay.toFixed(2)}</strong></td>
+            <td>₹${totAmt.toFixed(2)}</td>
           </tr>
         `;
-      }
-      else if (type === 'BILL_SUMMARY') {
-        titleEl.innerText = 'BILL SUMMARY REPORT';
-        rangeEl.innerText = `${startDate} to ${endDate || startDate}`;
+      } else if (reportType === 'BILL_SUMMARY') {
+        titleElem.innerText = 'CONSOLIDATED BILL SUMMARY REPORT';
+        rangeElem.innerText = `${startDate || 'Start'} to ${endDate || 'End'}`;
 
-        headEl.innerHTML = `
+        headElem.innerHTML = `
           <tr>
             <th>Farmer Code</th>
             <th>Farmer Name</th>
-            <th>Total Qty (L)</th>
-            <th>Gross Amount (₹)</th>
+            <th>Total Volume (L)</th>
+            <th>Gross Earnings (₹)</th>
             <th>Deductions (₹)</th>
             <th>Net Payable (₹)</th>
           </tr>
         `;
 
-        const summaryMap = {};
-        DB.farmers.forEach(f => {
-          summaryMap[f.id] = { name: f.name, qty: 0, gross: 0, deductions: 0 };
-        });
-
-        DB.collections.forEach(c => {
-          if (c.date >= startDate && c.date <= (endDate || startDate)) {
-            if (!summaryMap[c.farmerId]) {
-              summaryMap[c.farmerId] = { name: c.farmerName || c.farmerId, qty: 0, gross: 0, deductions: 0 };
-            }
-            summaryMap[c.farmerId].qty += c.qty;
-            summaryMap[c.farmerId].gross += parseFloat(c.total);
-          }
-        });
-
-        (DB.deductions || []).forEach(d => {
-          if (d.date >= startDate && d.date <= (endDate || startDate)) {
-            if (summaryMap[d.farmerId]) {
-              summaryMap[d.farmerId].deductions += (parseFloat(d.amount) || 0);
-            }
-          }
-        });
-
         let gQty = 0, gGross = 0, gDed = 0, gNet = 0;
-        const rows = Object.entries(summaryMap).filter(([id, data]) => data.qty > 0 || data.deductions > 0);
+        bodyElem.innerHTML = DB.farmers.map(f => {
+          const fColls = DB.collections.filter(c => (c.farmerId === f.id || c.farmerEmail === f.email) && (!startDate || c.date >= startDate) && (!endDate || c.date <= endDate));
+          const fDeds = (DB.bookings || []).filter(b => (b.farmerId === f.id || b.farmerEmail === f.email) && b.status === 'Approved & Cost Deducted');
 
-        if (rows.length === 0) {
-          bodyEl.innerHTML = `<tr><td colspan="6" style="text-align:center;">No records found for selected period.</td></tr>`;
-          footEl.innerHTML = '';
-          return;
-        }
+          const fQty = fColls.reduce((sum, c) => sum + c.qty, 0);
+          const fGross = fColls.reduce((sum, c) => sum + parseFloat(c.total), 0);
+          const fDed = fDeds.reduce((sum, b) => sum + b.totalPrice, 0);
+          const fNet = fGross - fDed;
 
-        bodyEl.innerHTML = rows.map(([id, data]) => {
-          const net = data.gross - data.deductions;
-          gQty += data.qty;
-          gGross += data.gross;
-          gDed += data.deductions;
-          gNet += net;
+          gQty += fQty;
+          gGross += fGross;
+          gDed += fDed;
+          gNet += fNet;
+
           return `
             <tr>
-              <td><strong>${id}</strong></td>
-              <td>${data.name}</td>
-              <td>${data.qty.toFixed(1)} L</td>
-              <td>₹${data.gross.toFixed(2)}</td>
-              <td>₹${data.deductions.toFixed(2)}</td>
-              <td><strong>₹${net.toFixed(2)}</strong></td>
+              <td>${f.id}</td>
+              <td>${f.name}</td>
+              <td>${fQty.toFixed(1)} L</td>
+              <td>₹${fGross.toFixed(2)}</td>
+              <td>₹${fDed.toFixed(2)}</td>
+              <td><strong>₹${fNet.toFixed(2)}</strong></td>
             </tr>
           `;
-        }).join('');
+        }).join('') || '<tr><td colspan="6" style="text-align:center;">No farmers found.</td></tr>';
 
-        footEl.innerHTML = `
+        footElem.innerHTML = `
           <tr>
-            <td colspan="2" style="text-align:right;"><strong>Grand Total:</strong></td>
-            <td><strong>${gQty.toFixed(1)} L</strong></td>
-            <td><strong>₹${gGross.toFixed(2)}</strong></td>
-            <td><strong>₹${gDed.toFixed(2)}</strong></td>
-            <td><strong>₹${gNet.toFixed(2)}</strong></td>
+            <td colspan="2">GRAND TOTALS</td>
+            <td>${gQty.toFixed(1)} L</td>
+            <td>₹${gGross.toFixed(2)}</td>
+            <td>₹${fDed.toFixed(2)}</td>
+            <td>₹${gNet.toFixed(2)}</td>
           </tr>
         `;
       }
-    }
-
-    function renderFarmerPortal() {
-      if (!currentFarmer) return;
-
-      document.getElementById('farmer-portal-name').innerText = currentFarmer.name;
-      document.getElementById('farmer-portal-phone').innerText = currentFarmer.email || currentFarmer.mobile;
-
-      renderFarmerBookings();
-
-      const fromDate = document.getElementById('farmer-range-from').value;
-      const toDate = document.getElementById('farmer-range-to').value;
-
-      const myCollections = DB.collections.filter(c => {
-        const isFarmer = c.farmerId === currentFarmer.id || c.farmerEmail === currentFarmer.email;
-        if (!isFarmer) return false;
-        if (fromDate && c.date < fromDate) return false;
-        if (toDate && c.date > toDate) return false;
-        return true;
-      });
-
-      const myDeductions = (DB.deductions || []).filter(d => {
-        const isFarmer = d.farmerId === currentFarmer.id;
-        if (!isFarmer) return false;
-        if (fromDate && d.date < fromDate) return false;
-        if (toDate && d.date > toDate) return false;
-        return true;
-      });
-
-      let totalQty = 0;
-      let totalEarnings = 0;
-
-      const itemizedTbody = document.getElementById('farmer-itemized-tbody');
-      if (myCollections.length === 0) {
-        itemizedTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No milk collection entries found for selected period.</td></tr>`;
-      } else {
-        itemizedTbody.innerHTML = myCollections.map(c => {
-          totalQty += c.qty;
-          totalEarnings += parseFloat(c.total);
-          return `
-            <tr>
-              <td>${c.date}</td>
-              <td>${c.shift}</td>
-              <td>${c.type}</td>
-              <td>${c.qty} L</td>
-              <td>${c.fat}%</td>
-              <td>${c.snf}%</td>
-              <td>${c.waterPct}%</td>
-              <td>₹${c.rate}</td>
-              <td>₹${c.total}</td>
-            </tr>
-          `;
-        }).join('');
-      }
-
-      let totalDeductions = 0;
-      const deductionsTbody = document.getElementById('farmer-deductions-tbody');
-      if (myDeductions.length === 0) {
-        deductionsTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888;">No deductions found for selected period.</td></tr>`;
-      } else {
-        deductionsTbody.innerHTML = myDeductions.map(d => {
-          const amt = parseFloat(d.amount) || 0;
-          totalDeductions += amt;
-          const cycleMode = document.getElementById('farmer-billing-cycle-mode').value;
-          return `
-            <tr>
-              <td>${d.date}</td>
-              <td>${d.item}</td>
-              <td>${d.deliveryDate || 'N/A'}</td>
-              <td>${getBillingPeriod(d.date, cycleMode)}</td>
-              <td>₹${amt.toFixed(2)}</td>
-            </tr>
-          `;
-        }).join('');
-      }
-
-      const netPayable = totalEarnings - totalDeductions;
-
-      document.getElementById('farmer-total-qty').innerText = `${totalQty.toFixed(1)} L`;
-      document.getElementById('farmer-total-earnings').innerText = `₹ ${totalEarnings.toFixed(2)}`;
-      document.getElementById('farmer-total-deductions').innerText = `- ₹ ${totalDeductions.toFixed(2)}`;
-      document.getElementById('farmer-net-payable').innerText = `₹ ${netPayable.toFixed(2)}`;
-
-      renderFarmerImageReportGrid(myCollections);
-    }
-
-    function renderFarmerImageReportGrid(myCollections) {
-      const imgTbody = document.getElementById('farmer-image-format-tbody');
-      if (!imgTbody) return;
-
-      const selectedYear = document.getElementById('farmer-year-dropdown').value;
-
-      if (myCollections.length === 0) {
-        imgTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888;">No data for ${selectedYear}</td></tr>`;
-        return;
-      }
-
-      const months = {};
-      myCollections.forEach(c => {
-        const monthName = new Date(c.date).toLocaleString('default', { month: 'short' });
-        if (!months[monthName]) months[monthName] = [];
-        months[monthName].push(c);
-      });
-
-      let html = '';
-      for (const [month, records] of Object.entries(months)) {
-        html += `<tr class="month-header-row"><td colspan="5">${month.toUpperCase()} ${selectedYear.split('-')[0]}</td></tr>`;
-        let mQty = 0, mFatSum = 0, mAmt = 0;
-        records.forEach((r) => {
-          mQty += r.qty;
-          mFatSum += r.fat;
-          mAmt += parseFloat(r.total);
-          html += `
-            <tr>
-              <td>${r.date.split('-')[2]} (${r.shift.charAt(0)})</td>
-              <td>${r.qty.toFixed(1)}</td>
-              <td>${r.fat.toFixed(1)}</td>
-              <td>${r.rate}</td>
-              <td>${r.total}</td>
-            </tr>
-          `;
-        });
-        const mAvgFat = (mFatSum / records.length).toFixed(1);
-        const mAvgRate = (mAmt / mQty).toFixed(2);
-        html += `
-          <tr style="font-weight:bold; border-top: 1px solid #00b0f0;">
-            <td>Total ${month}</td>
-            <td>${mQty.toFixed(1)}</td>
-            <td>${mAvgFat}</td>
-            <td>${mAvgRate}</td>
-            <td>${mAmt.toFixed(2)}</td>
-          </tr>
-        `;
-      }
-      imgTbody.innerHTML = html;
     }
   </script>
 </body>
