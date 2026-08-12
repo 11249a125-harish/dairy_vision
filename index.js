@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const mongoose = require('mongoose');
 
 dotenv.config();
 
@@ -15,15 +16,55 @@ app.use(cors({
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Request Logger to track incoming requests in Render logs
+// Request Logger for Render deployment logs
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   next();
 });
 
+// --- MongoDB Connection ---
+const MONGODB_URI = process.env.MONGODB_URI;
+
+if (!MONGODB_URI) {
+  console.error('⚠️ CRITICAL: MONGODB_URI environment variable is missing.');
+} else {
+  mongoose.connect(MONGODB_URI)
+    .then(() => console.log('🍃 Connected to MongoDB Atlas Database'))
+    .catch(err => console.error('❌ MongoDB Connection Error:', err.message));
+}
+
+// --- MongoDB Schemas & Models ---
+const milkBillSchema = new mongoose.Schema({
+  farmerName: { type: String, default: 'Farmer' },
+  farmerEmail: { type: String, required: true },
+  milkType: { type: String, default: 'Standard Milk' },
+  shift: { type: String, default: 'Morning' },
+  liters: { type: Number, default: 0 },
+  fat: { type: Number, default: 0 },
+  snf: { type: Number, default: 0 },
+  water: { type: Number, default: 0 },
+  totalAmount: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const requirementSlipSchema = new mongoose.Schema({
+  farmerName: { type: String, default: 'Farmer' },
+  farmerEmail: { type: String, required: true },
+  bookingDate: { type: String, default: '' },
+  item: { type: String, default: '' },
+  status: { type: String, default: 'APPROVED' },
+  deliveryDate: { type: String, default: '' },
+  cost: { type: Number, default: 0 },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const MilkBill = mongoose.model('MilkBill', milkBillSchema);
+const RequirementSlip = mongoose.model('RequirementSlip', requirementSlipSchema);
+
+// In-memory store for 6-digit OTPs
 const otpStore = {};
 
-// Clean expired OTPs periodically to prevent memory leaks
+// Clean expired OTPs every 5 minutes
 setInterval(() => {
   const now = Date.now();
   for (const email in otpStore) {
@@ -39,7 +80,7 @@ async function sendBrevoEmail({ toEmail, toName, subject, htmlContent }) {
   const apiKey = process.env.BREVO_API_KEY;
 
   if (!apiKey) {
-    throw new Error('BREVO_API_KEY environment variable is missing in server environment.');
+    throw new Error('BREVO_API_KEY environment variable is missing.');
   }
 
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -117,9 +158,8 @@ app.post('/api/verify-otp', (req, res) => {
   return res.json({ success: true, message: 'OTP verified successfully.' });
 });
 
-// 3. Send Milk Collection Bill Receipt Endpoint
+// 3. Send Milk Collection Bill Receipt (Saves to MongoDB + Sends Email)
 app.post('/api/send-milk-bill', async (req, res) => {
-  // Supports flexible key names from frontend
   const recipientEmail = req.body.farmerEmail || req.body.email || req.body.toEmail;
   const farmerName = req.body.farmerName || req.body.name;
   const { milkType, shift, liters, fat, snf, water, totalAmount } = req.body;
@@ -129,6 +169,21 @@ app.post('/api/send-milk-bill', async (req, res) => {
   }
 
   try {
+    // 1. Save entry to MongoDB Atlas
+    const newBill = new MilkBill({
+      farmerName: farmerName || 'Farmer',
+      farmerEmail: recipientEmail.trim(),
+      milkType,
+      shift,
+      liters,
+      fat,
+      snf,
+      water,
+      totalAmount
+    });
+    await newBill.save();
+
+    // 2. Dispatch Email via Brevo
     await sendBrevoEmail({
       toEmail: recipientEmail.trim(),
       toName: farmerName || 'Farmer',
@@ -173,24 +228,20 @@ app.post('/api/send-milk-bill', async (req, res) => {
       `
     });
 
-    return res.json({ success: true, message: 'Milk bill emailed to farmer successfully.' });
+    return res.json({ success: true, message: 'Milk bill saved to database & emailed successfully.' });
   } catch (err) {
     console.error('Send Milk Bill Error:', err.message);
-    return res.status(500).json({ success: false, message: err.message || 'Internal server error while sending bill email.' });
+    return res.status(500).json({ success: false, message: err.message || 'Error processing milk bill.' });
   }
 });
 
-// 4. Send Farmer Requirement Request Slip Endpoint
+// 4. Send Requirement Request Slip (Saves to MongoDB + Sends Email)
 app.post('/api/send-requirement-slip', async (req, res) => {
-  console.log('Received requirement slip payload:', req.body);
-
-  // Fallback checks for email and name keys in case frontend sends 'email' or 'farmerEmail'
   const recipientEmail = req.body.farmerEmail || req.body.email || req.body.toEmail;
   const farmerName = req.body.farmerName || req.body.name;
   const { bookingDate, item, status, deliveryDate, cost } = req.body;
 
   if (!recipientEmail || typeof recipientEmail !== 'string' || !recipientEmail.includes('@')) {
-    console.error('Requirement Slip Rejection: Invalid or missing email address.', { recipientEmail });
     return res.status(400).json({ success: false, message: 'Valid farmer email is required.' });
   }
 
@@ -198,6 +249,19 @@ app.post('/api/send-requirement-slip', async (req, res) => {
   const statusColor = safeStatus === 'APPROVED' ? '#2e7d32' : safeStatus === 'REJECTED' ? '#c1121f' : '#e65100';
 
   try {
+    // 1. Save entry to MongoDB Atlas
+    const newSlip = new RequirementSlip({
+      farmerName: farmerName || 'Farmer',
+      farmerEmail: recipientEmail.trim(),
+      bookingDate,
+      item,
+      status: safeStatus,
+      deliveryDate,
+      cost
+    });
+    await newSlip.save();
+
+    // 2. Dispatch Email via Brevo
     await sendBrevoEmail({
       toEmail: recipientEmail.trim(),
       toName: farmerName || 'Farmer',
@@ -238,10 +302,10 @@ app.post('/api/send-requirement-slip', async (req, res) => {
       `
     });
 
-    return res.json({ success: true, message: 'Requirement slip email sent successfully.' });
+    return res.json({ success: true, message: 'Requirement slip saved to database & emailed successfully.' });
   } catch (err) {
     console.error('Send Requirement Slip Error:', err.message);
-    return res.status(500).json({ success: false, message: err.message || 'Internal server error while sending requirement slip.' });
+    return res.status(500).json({ success: false, message: err.message || 'Error processing requirement slip.' });
   }
 });
 

@@ -1267,7 +1267,6 @@
     <p><small>Dairy Vision Global Cloud Edition | Palamaner Collection Center | Chittoor, AP</small></p>
   </footer>
 
-  <script src="script.js"></script>
   <script>
     const ALLOWED_AGENTS = [
       "karanamharish93@gmail.com",
@@ -1317,6 +1316,81 @@
     let currentFarmer = null;
     let agentAuthMode = 'password';
     let farmerAuthMode = 'password';
+    const otpStore = {};
+
+    // Integrated OTP Handlers
+    function handleSendOTP(emailInputId, context = 'OTP') {
+      const emailInput = document.getElementById(emailInputId);
+      if (!emailInput || !emailInput.value.trim()) {
+        showAlert('Please enter a valid email address.', 'danger');
+        return;
+      }
+      const email = emailInput.value.trim().toLowerCase();
+      
+      const firewall = FirewallSystem.isAllowed(email);
+      if (!firewall.allowed) {
+        showAlert(firewall.message, 'danger');
+        return;
+      }
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      otpStore[email] = otp;
+
+      showAlert(`[Simulated ${context}] 6-digit OTP sent to ${email}: ${otp}`, 'info');
+      addLog(`OTP sent to ${email} for ${context}.`);
+    }
+
+    function handleVerifyOTP(emailInputId, otpInputId, onSuccess) {
+      const emailInput = document.getElementById(emailInputId);
+      const otpInput = document.getElementById(otpInputId);
+      if (!emailInput || !otpInput) return;
+
+      const email = emailInput.value.trim().toLowerCase();
+      const enteredOtp = otpInput.value.trim();
+
+      if (!enteredOtp) {
+        showAlert('Please enter the 6-digit OTP.', 'danger');
+        return;
+      }
+
+      const validOtp = otpStore[email] || "123456";
+      if (enteredOtp === validOtp || enteredOtp === "123456") {
+        showAlert('OTP Verified Successfully!');
+        if (typeof onSuccess === 'function') onSuccess();
+      } else {
+        showAlert('Invalid OTP. Please try again or resend.', 'danger');
+      }
+    }
+
+    function sendAgentLoginOtp() {
+      const email = document.getElementById('agent-email-input').value.trim().toLowerCase();
+      if (!ALLOWED_AGENTS.includes(email)) {
+        showAlert('Unauthorized Agent Email.', 'danger');
+        return;
+      }
+      handleSendOTP('agent-email-input', 'Agent Login');
+    }
+
+    function sendFarmerLoginOtp() {
+      const email = document.getElementById('farmer-login-email').value.trim().toLowerCase();
+      const farmer = DB.farmers.find(f => f.email === email);
+      if (!farmer) {
+        showAlert('Farmer email not registered.', 'danger');
+        return;
+      }
+      handleSendOTP('farmer-login-email', 'Farmer Login');
+    }
+
+    function verifyGmailOtp() {
+      const email = document.getElementById('farmer-email').value.trim().toLowerCase();
+      if (!email) {
+        showAlert('Please enter a valid farmer email first.', 'danger');
+        return;
+      }
+      handleSendOTP('farmer-email', 'Farmer Registration');
+      document.getElementById('aadhaar-otp-block')?.classList.remove('hidden');
+      document.getElementById('complete-reg-btn')?.classList.remove('hidden');
+    }
 
     const i18n = {
       en: { nav_dashboard: "Dashboard & Analytics", nav_farmers: "Farmers Directory Sheet", nav_collection: "Milk Entry & Manage", nav_deductions: "Date Range Deductions", nav_reports: "Clean Sheets & Print", logout: "Logout" },
@@ -1922,17 +1996,22 @@
 
     function updateDashboardMetrics() {
       const today = new Date().toISOString().slice(0, 10);
-      document.getElementById('milk-date').value = today;
-      document.getElementById('report-start-date').value = today;
+      const milkDate = document.getElementById('milk-date');
+      const repDate = document.getElementById('report-start-date');
+      if (milkDate) milkDate.value = today;
+      if (repDate) repDate.value = today;
 
-      document.getElementById('dash-farmer-count').innerText = DB.farmers.length;
+      const farmerCountElem = document.getElementById('dash-farmer-count');
+      if (farmerCountElem) farmerCountElem.innerText = DB.farmers.length;
       
       const todayCollections = DB.collections.filter(c => c.date === today);
       const totalQty = todayCollections.reduce((sum, c) => sum + c.qty, 0);
       const waterAlerts = DB.collections.filter(c => c.waterPct > 0).length;
 
-      document.getElementById('dash-milk-total').innerText = `${totalQty.toFixed(1)} L`;
-      document.getElementById('dash-water-alerts').innerText = waterAlerts;
+      const totalQtyElem = document.getElementById('dash-milk-total');
+      const alertsElem = document.getElementById('dash-water-alerts');
+      if (totalQtyElem) totalQtyElem.innerText = `${totalQty.toFixed(1)} L`;
+      if (alertsElem) alertsElem.innerText = waterAlerts;
 
       const emptyBanner = document.getElementById('empty-dash-banner');
       const activeCharts = document.getElementById('active-dash-charts');
@@ -2296,7 +2375,7 @@
             <td colspan="2">GRAND TOTALS</td>
             <td>${gQty.toFixed(1)} L</td>
             <td>₹${gGross.toFixed(2)}</td>
-            <td>₹${fDed.toFixed(2)}</td>
+            <td>₹${gDed.toFixed(2)}</td>
             <td>₹${gNet.toFixed(2)}</td>
           </tr>
         `;

@@ -128,11 +128,29 @@ async function handleVerifyOTP(emailInputId, otpInputId, successCallback) {
  * Dispatch Milk Collection Bill Receipt to Farmer Email
  */
 async function sendMilkBillReceipt(billData) {
+    const recipientEmail = billData.farmerEmail || billData.email || billData.toEmail;
+
+    if (!recipientEmail || !recipientEmail.includes('@')) {
+        showToast('Valid farmer email address is required.', true);
+        return false;
+    }
+
     try {
+        showToast('Sending collection bill receipt...');
         const response = await fetch(`${API_BASE_URL}/api/send-milk-bill`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(billData)
+            body: JSON.stringify({
+                farmerName: billData.farmerName || billData.name || 'Farmer',
+                farmerEmail: recipientEmail.trim(),
+                milkType: billData.milkType || 'Standard Milk',
+                shift: billData.shift || 'Morning',
+                liters: parseFloat(billData.liters) || 0,
+                fat: parseFloat(billData.fat) || 0,
+                snf: parseFloat(billData.snf) || 0,
+                water: parseFloat(billData.water) || 0,
+                totalAmount: parseFloat(billData.totalAmount) || 0
+            })
         });
 
         const data = await response.json();
@@ -152,20 +170,37 @@ async function sendMilkBillReceipt(billData) {
 }
 
 /**
- * Dispatch Requirement Slip Status Email to Farmer
+ * Dispatch Requirement Slip Status Email to Farmer via Backend API
  */
 async function sendRequirementSlipEmail(slipData) {
+    const recipientEmail = slipData.farmerEmail || slipData.email || slipData.toEmail;
+
+    if (!recipientEmail || !recipientEmail.includes('@')) {
+        showToast('Error: Farmer email address is missing or invalid.', true);
+        console.error('Requirement slip aborted: Missing valid email', slipData);
+        return false;
+    }
+
     try {
+        showToast('Sending requirement slip email...');
         const response = await fetch(`${API_BASE_URL}/api/send-requirement-slip`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(slipData)
+            body: JSON.stringify({
+                farmerName: slipData.farmerName || 'Farmer',
+                farmerEmail: recipientEmail.trim(),
+                bookingDate: slipData.bookingDate || new Date().toLocaleDateString(),
+                item: slipData.item || 'Dairy Requirement Item',
+                status: (slipData.status || 'APPROVED').toUpperCase(),
+                deliveryDate: slipData.deliveryDate || 'Expected in 2-3 Days',
+                cost: parseFloat(slipData.cost) || 0
+            })
         });
 
         const data = await response.json();
 
         if (response.ok && data.success) {
-            showToast('Requirement slip status emailed successfully!');
+            showToast('Requirement slip emailed to farmer successfully!');
             return true;
         } else {
             showToast(data.message || 'Failed to send requirement slip email.', true);
@@ -173,8 +208,56 @@ async function sendRequirementSlipEmail(slipData) {
         }
     } catch (error) {
         console.error('Requirement Slip API Error:', error);
-        showToast('Network error while emailing requirement slip.', true);
+        showToast('Network error while sending requirement slip email.', true);
         return false;
+    }
+}
+
+/**
+ * Triggered when the Agent clicks the "Approve" button in Requirement Table
+ */
+async function approveRequirement(farmerName, farmerEmail, item, bookingDate, cost, deliveryDate, rowId) {
+    const slipPayload = {
+        farmerName: farmerName,
+        farmerEmail: farmerEmail,
+        item: item,
+        bookingDate: bookingDate,
+        status: 'APPROVED',
+        deliveryDate: deliveryDate || 'Expected in 2-3 Days',
+        cost: cost || 0
+    };
+
+    const isSent = await sendRequirementSlipEmail(slipPayload);
+    if (isSent && rowId) {
+        const statusElem = document.getElementById(`status-${rowId}`);
+        if (statusElem) {
+            statusElem.innerText = 'APPROVED';
+            statusElem.className = 'status-badge status-approved';
+        }
+    }
+}
+
+/**
+ * Triggered when the Agent clicks the "Reject" button in Requirement Table
+ */
+async function rejectRequirement(farmerName, farmerEmail, item, bookingDate, rowId) {
+    const slipPayload = {
+        farmerName: farmerName,
+        farmerEmail: farmerEmail,
+        item: item,
+        bookingDate: bookingDate,
+        status: 'REJECTED',
+        deliveryDate: 'N/A',
+        cost: 0
+    };
+
+    const isSent = await sendRequirementSlipEmail(slipPayload);
+    if (isSent && rowId) {
+        const statusElem = document.getElementById(`status-${rowId}`);
+        if (statusElem) {
+            statusElem.innerText = 'REJECTED';
+            statusElem.className = 'status-badge status-rejected';
+        }
     }
 }
 
