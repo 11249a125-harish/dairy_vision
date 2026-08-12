@@ -8,16 +8,22 @@ const app = express();
 
 app.use(express.json());
 
-// Enable CORS
+// Enable CORS for cross-origin frontend requests
 app.use(cors({
   origin: '*',
-  methods: ['GET', 'POST'],
-  allowedHeaders: ['Content-Type']
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// Request Logger to track incoming requests in Render logs
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
+  next();
+});
 
 const otpStore = {};
 
-// Helper: Clean expired OTPs periodically to prevent memory leaks
+// Clean expired OTPs periodically to prevent memory leaks
 setInterval(() => {
   const now = Date.now();
   for (const email in otpStore) {
@@ -33,7 +39,7 @@ async function sendBrevoEmail({ toEmail, toName, subject, htmlContent }) {
   const apiKey = process.env.BREVO_API_KEY;
 
   if (!apiKey) {
-    throw new Error('BREVO_API_KEY environment variable is missing.');
+    throw new Error('BREVO_API_KEY environment variable is missing in server environment.');
   }
 
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -53,6 +59,7 @@ async function sendBrevoEmail({ toEmail, toName, subject, htmlContent }) {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
+    console.error('Brevo API Error Details:', errorData);
     throw new Error(errorData.message || `Brevo API rejected request with status ${response.status}`);
   }
 
@@ -90,7 +97,7 @@ app.post('/api/send-otp', async (req, res) => {
     return res.json({ success: true, message: 'OTP sent successfully.' });
   } catch (err) {
     console.error('Send OTP Error:', err.message);
-    return res.status(500).json({ success: false, message: 'Failed to send OTP email.' });
+    return res.status(500).json({ success: false, message: err.message || 'Failed to send OTP email.' });
   }
 });
 
@@ -110,17 +117,20 @@ app.post('/api/verify-otp', (req, res) => {
   return res.json({ success: true, message: 'OTP verified successfully.' });
 });
 
-// 3. Send Milk Collection Bill Receipt
+// 3. Send Milk Collection Bill Receipt Endpoint
 app.post('/api/send-milk-bill', async (req, res) => {
-  const { farmerName, farmerEmail, milkType, shift, liters, fat, snf, water, totalAmount } = req.body;
+  // Supports flexible key names from frontend
+  const recipientEmail = req.body.farmerEmail || req.body.email || req.body.toEmail;
+  const farmerName = req.body.farmerName || req.body.name;
+  const { milkType, shift, liters, fat, snf, water, totalAmount } = req.body;
 
-  if (!farmerEmail || typeof farmerEmail !== 'string' || !farmerEmail.includes('@')) {
+  if (!recipientEmail || typeof recipientEmail !== 'string' || !recipientEmail.includes('@')) {
     return res.status(400).json({ success: false, message: 'Valid farmer email address is required.' });
   }
 
   try {
     await sendBrevoEmail({
-      toEmail: farmerEmail.trim(),
+      toEmail: recipientEmail.trim(),
       toName: farmerName || 'Farmer',
       subject: `Milk Collection Receipt - ${farmerName || 'Dairy Member'}`,
       htmlContent: `
@@ -166,25 +176,32 @@ app.post('/api/send-milk-bill', async (req, res) => {
     return res.json({ success: true, message: 'Milk bill emailed to farmer successfully.' });
   } catch (err) {
     console.error('Send Milk Bill Error:', err.message);
-    return res.status(500).json({ success: false, message: 'Internal server error while sending bill email.' });
+    return res.status(500).json({ success: false, message: err.message || 'Internal server error while sending bill email.' });
   }
 });
 
 // 4. Send Farmer Requirement Request Slip Endpoint
 app.post('/api/send-requirement-slip', async (req, res) => {
-  const { farmerName, farmerEmail, bookingDate, item, status, deliveryDate, cost } = req.body;
+  console.log('Received requirement slip payload:', req.body);
 
-  if (!farmerEmail || typeof farmerEmail !== 'string' || !farmerEmail.includes('@')) {
+  // Fallback checks for email and name keys in case frontend sends 'email' or 'farmerEmail'
+  const recipientEmail = req.body.farmerEmail || req.body.email || req.body.toEmail;
+  const farmerName = req.body.farmerName || req.body.name;
+  const { bookingDate, item, status, deliveryDate, cost } = req.body;
+
+  if (!recipientEmail || typeof recipientEmail !== 'string' || !recipientEmail.includes('@')) {
+    console.error('Requirement Slip Rejection: Invalid or missing email address.', { recipientEmail });
     return res.status(400).json({ success: false, message: 'Valid farmer email is required.' });
   }
 
-  const safeStatus = (status || 'PENDING').toString();
+  const safeStatus = (status || 'APPROVED').toString().toUpperCase();
+  const statusColor = safeStatus === 'APPROVED' ? '#2e7d32' : safeStatus === 'REJECTED' ? '#c1121f' : '#e65100';
 
   try {
     await sendBrevoEmail({
-      toEmail: farmerEmail.trim(),
+      toEmail: recipientEmail.trim(),
       toName: farmerName || 'Farmer',
-      subject: `Farmer Requirement Request Slip: ${safeStatus.toUpperCase()}`,
+      subject: `Farmer Requirement Request Slip: ${safeStatus}`,
       htmlContent: `
         <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 2px solid #1b4332; border-radius: 8px;">
           <h2 style="color: #1b4332; text-align: center;">Dairy Vision Requirement Slip</h2>
@@ -202,7 +219,7 @@ app.post('/api/send-requirement-slip', async (req, res) => {
             </tr>
             <tr style="background-color: #f2f2f2;">
               <td style="padding: 10px; border: 1px solid #ddd;"><strong>Status:</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: ${safeStatus.toLowerCase() === 'approved' ? '#2e7d32' : '#c1121f'};">${safeStatus}</td>
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: ${statusColor};">${safeStatus}</td>
             </tr>
             <tr>
               <td style="padding: 10px; border: 1px solid #ddd;"><strong>Delivery Date:</strong></td>
@@ -224,7 +241,7 @@ app.post('/api/send-requirement-slip', async (req, res) => {
     return res.json({ success: true, message: 'Requirement slip email sent successfully.' });
   } catch (err) {
     console.error('Send Requirement Slip Error:', err.message);
-    return res.status(500).json({ success: false, message: 'Internal server error while sending requirement slip.' });
+    return res.status(500).json({ success: false, message: err.message || 'Internal server error while sending requirement slip.' });
   }
 });
 
