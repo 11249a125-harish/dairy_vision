@@ -1,24 +1,12 @@
 {
   "name": "dairy_vision",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Dairy Vision - Global Cloud Collection & Requirements System",
+  "main": "server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "node index.js"
+    "start": "node server.js",
+    "dev": "node server.js"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/11249a125-harish/dairy_vision.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "bugs": {
-    "url": "https://github.com/11249a125-harish/dairy_vision/issues"
-  },
-  "homepage": "https://github.com/11249a125-harish/dairy_vision#readme",
   "dependencies": {
     "@getbrevo/brevo": "^6.0.2",
     "body-parser": "^2.3.0",
@@ -27,5 +15,6 @@
     "express": "^5.2.1",
     "mongoose": "^9.9.2",
     "nodemailer": "^9.0.5"
-  }
+  },
+  "license": "ISC"
 }
