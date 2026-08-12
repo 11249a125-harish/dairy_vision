@@ -10,20 +10,17 @@ const app = express();
 
 app.use(express.json());
 
-// CORS configuration for local and deployed frontends
 app.use(cors({
   origin: '*',
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-// Request Logger
 app.use((req, res, next) => {
   console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
   next();
 });
 
-// --- MongoDB Connection ---
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
@@ -34,9 +31,6 @@ if (!MONGODB_URI) {
     .catch(err => console.error('❌ MongoDB Connection Error:', err.message));
 }
 
-// --- MongoDB Schemas & Models ---
-
-// 1. Farmer Schema
 const farmerSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   name: { type: String, required: true },
@@ -52,7 +46,6 @@ const farmerSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// 2. Milk Collection Schema
 const collectionSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   date: { type: String, required: true },
@@ -71,7 +64,6 @@ const collectionSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// 3. Requirement / Booking Schema
 const bookingSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   farmerId: { type: String, required: true },
@@ -87,7 +79,6 @@ const bookingSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// 4. Deduction Schema
 const deductionSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   farmerId: { type: String, required: true },
@@ -97,7 +88,6 @@ const deductionSchema = new mongoose.Schema({
   createdAt: { type: Date, default: Date.now }
 });
 
-// 5. System Backup Schema
 const backupSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now },
   agentCAN: { type: String, default: 'CAN-PLM-2026-01' },
@@ -114,7 +104,6 @@ const Booking = mongoose.model('Booking', bookingSchema);
 const Deduction = mongoose.model('Deduction', deductionSchema);
 const SystemBackup = mongoose.model('SystemBackup', backupSchema);
 
-// In-memory store for 6-digit OTPs
 const otpStore = {};
 
 setInterval(() => {
@@ -124,12 +113,10 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
-// --- Flexible Universal Email Transporter ---
 async function sendEmailHelper({ toEmail, toName, subject, htmlContent }) {
   const senderEmail = process.env.SENDER_EMAIL || process.env.SMTP_USER || 'karanamharish93@gmail.com';
   const senderName = process.env.SENDER_NAME || 'Dairy Vision Cloud System';
 
-  // 1. Try Nodemailer SMTP if configured
   if (process.env.SMTP_USER && (process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD)) {
     try {
       const transporter = nodemailer.createTransport({
@@ -156,7 +143,6 @@ async function sendEmailHelper({ toEmail, toName, subject, htmlContent }) {
     }
   }
 
-  // 2. Try Brevo API if configured
   if (process.env.BREVO_API_KEY) {
     try {
       const response = await fetch('https://api.brevo.com/v3/smtp/email', {
@@ -183,7 +169,6 @@ async function sendEmailHelper({ toEmail, toName, subject, htmlContent }) {
     }
   }
 
-  // 3. Fallback: Log email to console (dev mode)
   console.log(`\n======================================================`);
   console.log(`📧 SIMULATED EMAIL DISPATCH (No active SMTP / Brevo key configured)`);
   console.log(`TO: ${toEmail} (${toName || 'User'})`);
@@ -193,8 +178,6 @@ async function sendEmailHelper({ toEmail, toName, subject, htmlContent }) {
 
   return { success: true, method: 'Simulated' };
 }
-
-// --- API ROUTES ---
 
 app.get('/', (req, res) => {
   res.json({
@@ -210,7 +193,6 @@ app.get('/api/health', (req, res) => {
   res.json({ success: true, status: 'Healthy', dbState: mongoose.connection.readyState });
 });
 
-// 1. Send OTP Endpoint
 app.post('/api/send-otp', async (req, res) => {
   const { email, purpose } = req.body;
   if (!email || typeof email !== 'string' || !email.includes('@')) {
@@ -245,7 +227,6 @@ app.post('/api/send-otp', async (req, res) => {
   }
 });
 
-// 2. Verify OTP Endpoint
 app.post('/api/verify-otp', (req, res) => {
   const { email, otp } = req.body;
   if (!email || !otp) return res.status(400).json({ success: false, message: 'Email and OTP required.' });
@@ -261,7 +242,6 @@ app.post('/api/verify-otp', (req, res) => {
   return res.status(400).json({ success: false, message: 'Invalid or expired OTP. Please try again.' });
 });
 
-// 3. Send Milk Collection Bill Receipt (Saves to MongoDB + Emails Receipt)
 app.post('/api/send-milk-bill', async (req, res) => {
   const recipientEmail = req.body.farmerEmail || req.body.email || req.body.toEmail;
   const farmerName = req.body.farmerName || req.body.name || 'Farmer';
@@ -345,7 +325,6 @@ app.post('/api/send-milk-bill', async (req, res) => {
   }
 });
 
-// 4. Send Requirement Request Slip (Approved / Rejected) (Saves to MongoDB + Emails Slip)
 app.post('/api/send-requirement-slip', async (req, res) => {
   const recipientEmail = req.body.farmerEmail || req.body.email || req.body.toEmail;
   const farmerName = req.body.farmerName || req.body.name || 'Farmer';
@@ -420,8 +399,6 @@ app.post('/api/send-requirement-slip', async (req, res) => {
     return res.status(500).json({ success: false, message: err.message });
   }
 });
-
-// --- MONGO DB SYNC API ENDPOINTS ---
 
 app.get('/api/farmers', async (req, res) => {
   try {
@@ -505,4 +482,113 @@ app.post('/api/bookings', async (req, res) => {
   try {
     if (mongoose.connection.readyState === 1) {
       const booking = await Booking.findOneAndUpdate({ id: req.body.id }, req.body, { upsert: true, new: true });
-      return res.json
+      return res.json({ success: true, booking });
+    }
+    res.json({ success: true, booking: req.body });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.put('/api/bookings/:id/status', async (req, res) => {
+  const { status, deliveryDate } = req.body;
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const booking = await Booking.findOneAndUpdate({ id: req.params.id }, { status, deliveryDate }, { new: true });
+      return res.json({ success: true, booking });
+    }
+    res.json({ success: true, message: 'Status updated' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.delete('/api/bookings/:id', async (req, res) => {
+  try {
+    if (mongoose.connection.readyState === 1) await Booking.deleteOne({ id: req.params.id });
+    res.json({ success: true, message: 'Booking deleted.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.get('/api/deductions', async (req, res) => {
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const deductions = await Deduction.find().sort({ createdAt: -1 });
+      return res.json({ success: true, deductions });
+    }
+    res.json({ success: true, deductions: [] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/deductions', async (req, res) => {
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const ded = await Deduction.findOneAndUpdate({ id: req.body.id }, req.body, { upsert: true, new: true });
+      return res.json({ success: true, deduction: ded });
+    }
+    res.json({ success: true, deduction: req.body });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.get('/api/backup/export', async (req, res) => {
+  try {
+    let farmers = [], collections = [], bookings = [], deductions = [];
+    if (mongoose.connection.readyState === 1) {
+      farmers = await Farmer.find();
+      collections = await Collection.find();
+      bookings = await Booking.find();
+      deductions = await Deduction.find();
+    }
+
+    const backupData = { version: '1.0', exportedAt: new Date().toISOString(), farmers, collections, bookings, deductions };
+
+    if (mongoose.connection.readyState === 1) {
+      const snapshot = new SystemBackup({
+        farmersCount: farmers.length,
+        collectionsCount: collections.length,
+        bookingsCount: bookings.length,
+        deductionsCount: deductions.length,
+        backupData
+      });
+      await snapshot.save();
+    }
+
+    res.json({ success: true, backup: backupData });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/backup/restore', async (req, res) => {
+  const { farmers, collections, bookings, deductions } = req.body;
+  try {
+    if (mongoose.connection.readyState === 1) {
+      if (Array.isArray(farmers)) {
+        for (const f of farmers) await Farmer.findOneAndUpdate({ id: f.id }, f, { upsert: true });
+      }
+      if (Array.isArray(collections)) {
+        for (const c of collections) await Collection.findOneAndUpdate({ id: c.id }, c, { upsert: true });
+      }
+      if (Array.isArray(bookings)) {
+        for (const b of bookings) await Booking.findOneAndUpdate({ id: b.id }, b, { upsert: true });
+      }
+      if (Array.isArray(deductions)) {
+        for (const d of deductions) await Deduction.findOneAndUpdate({ id: d.id }, d, { upsert: true });
+      }
+    }
+    res.json({ success: true, message: 'Data backup successfully restored into MongoDB Database!' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+const PORT = process.env.PORT || 5000;
+app.listen(PORT, () => {
+  console.log(`🚀 Dairy Vision Cloud Server running on port ${PORT}`);
+});

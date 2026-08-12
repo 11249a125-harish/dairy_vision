@@ -1,9 +1,8 @@
 /**
- * Dairy Vision - Global Cloud Collection & Requirements System
- * app.js - Frontend Application Engine & MongoDB Backend Sync Bridge
+ * Dairy Vision - Global Cloud Collection, AI Intelligence & Reports System
+ * app.js - Frontend Application Engine & AI Monitoring Console
  */
 
-// Determine API Base URL dynamically (Local server or production Render URL)
 const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? 'http://localhost:5000'
   : 'https://dairy-vision.onrender.com';
@@ -14,7 +13,6 @@ const ALLOWED_AGENTS = [
   "11249a255@kanchiuniv.ac.in"
 ];
 
-// Global State Object with Local Storage Persistence
 let DB = JSON.parse(localStorage.getItem('DAIRY_VISION_GLOBAL_DB') || JSON.stringify({
   agentCAN: "CAN-PLM-2026-01",
   agentAccounts: {
@@ -38,9 +36,6 @@ let agentAuthMode = 'password';
 let farmerAuthMode = 'password';
 const otpStore = {};
 
-/**
- * Display toast notification to user
- */
 function showAlert(msg, type = 'success') {
   const el = document.getElementById('notification');
   if (!el) {
@@ -60,14 +55,20 @@ function addLog(msg) {
   container.innerHTML = `<div>[${time}] ${msg}</div>` + container.innerHTML;
 }
 
-// --- MONGODB SYNC & BACKUP SERVICES ---
+function addAiLog(tagClass, tagText, msg) {
+  const container = document.getElementById('ai-log-stream-box');
+  if (!container) return;
+  const time = new Date().toLocaleTimeString();
+  const entry = document.createElement('div');
+  entry.className = 'ai-log-entry';
+  entry.innerHTML = `<span class="ai-tag ${tagClass}">${tagText}</span> [${time}] ${msg}`;
+  container.insertBefore(entry, container.firstChild);
+}
 
-/**
- * Fetch and sync all records from MongoDB Database on startup
- */
 async function syncFromMongoDB() {
   try {
     addLog('Connecting to MongoDB Database Service...');
+    addAiLog('tag-db', 'AI-DB-SYNC', 'Querying MongoDB database collections...');
     
     const [farmersRes, collectionsRes, bookingsRes, deductionsRes] = await Promise.allSettled([
       fetch(`${API_BASE_URL}/api/farmers`),
@@ -98,17 +99,16 @@ async function syncFromMongoDB() {
 
     saveDB();
     addLog('MongoDB Database sync complete!');
+    addAiLog('tag-db', 'AI-DB-SYNC', 'MongoDB cloud database synchronized cleanly.');
   } catch (err) {
-    console.warn('MongoDB Sync Warning (Using Local Cache):', err.message);
+    console.warn('MongoDB Sync Warning:', err.message);
   }
 }
 
-/**
- * Backup all current records to MongoDB Cloud Database
- */
 async function backupToMongoDB() {
   try {
     showAlert('Backing up files and database records to MongoDB...', 'info');
+    addAiLog('tag-db', 'AI-BACKUP', 'Initiating automated full backup into MongoDB...');
     const response = await fetch(`${API_BASE_URL}/api/backup/restore`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -124,6 +124,7 @@ async function backupToMongoDB() {
     if (response.ok && data.success) {
       showAlert('🍃 MongoDB Database & File Backup successfully completed!');
       addLog('Full backup created in MongoDB database.');
+      addAiLog('tag-db', 'AI-BACKUP', 'Backup snapshot saved to MongoDB atlas.');
     } else {
       showAlert(data.message || 'MongoDB backup encountered an error.', 'danger');
     }
@@ -133,9 +134,6 @@ async function backupToMongoDB() {
   }
 }
 
-/**
- * Export MongoDB Backup as downloadable JSON file
- */
 async function exportMongoDBBackup() {
   try {
     const res = await fetch(`${API_BASE_URL}/api/backup/export`);
@@ -159,17 +157,13 @@ async function exportMongoDBBackup() {
     a.download = `Dairy_Vision_MongoDB_Backup_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     showAlert('MongoDB Backup JSON file downloaded successfully!');
+    addAiLog('tag-audit', 'AI-EXPORTS', 'Generated JSON database backup archive.');
   } catch (err) {
     console.error('Export Backup Error:', err);
     showAlert('Failed to generate export backup file.', 'danger');
   }
 }
 
-// --- EMAIL DISPATCH SERVICES ---
-
-/**
- * Send OTP to email via API
- */
 async function handleSendOTP(emailInputId, contextPurpose) {
   const emailInput = document.getElementById(emailInputId);
   if (!emailInput || !emailInput.value.trim()) {
@@ -192,8 +186,8 @@ async function handleSendOTP(emailInputId, contextPurpose) {
       if (data.otp) otpStore[email] = data.otp;
       showAlert(`Verification code dispatched to ${email}!`);
       addLog(`OTP sent to ${email} for ${contextPurpose}.`);
+      addAiLog('tag-security', 'AI-AUTH', `OTP code generated & emailed to ${email}`);
       
-      // Reveal OTP inputs
       if (emailInputId === 'agent-email-input') {
         document.getElementById('agent-login-otp-block')?.classList.remove('hidden');
       } else if (emailInputId === 'farmer-email') {
@@ -207,16 +201,12 @@ async function handleSendOTP(emailInputId, contextPurpose) {
     }
   } catch (err) {
     console.error('Send OTP Error:', err);
-    // Dev fallback
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     otpStore[email] = otp;
     showAlert(`[Dev Mode OTP] Verification code: ${otp}`, 'info');
   }
 }
 
-/**
- * Verify 6-Digit OTP code via API
- */
 async function handleVerifyOTP(emailInputId, otpInputId, onSuccess) {
   const emailInput = document.getElementById(emailInputId);
   const otpInput = document.getElementById(otpInputId);
@@ -240,15 +230,15 @@ async function handleVerifyOTP(emailInputId, otpInputId, onSuccess) {
     const data = await response.json();
     if (response.ok && data.success) {
       showAlert('OTP Verified Successfully!');
+      addAiLog('tag-security', 'AI-AUTH', `OTP verified for user ${email}`);
       if (typeof onSuccess === 'function') onSuccess();
     } else {
       showAlert(data.message || 'Invalid OTP code. Please try again.', 'danger');
     }
   } catch (err) {
-    console.error('Verify OTP Error:', err);
-    // Dev fallback check
     if (enteredOtp === "123456" || enteredOtp === (otpStore[email] || "")) {
       showAlert('OTP Verified Successfully (Dev Mode)!');
+      addAiLog('tag-security', 'AI-AUTH', `OTP verified in dev mode for ${email}`);
       if (typeof onSuccess === 'function') onSuccess();
     } else {
       showAlert('Invalid OTP. Use 123456 for testing.', 'danger');
@@ -256,9 +246,6 @@ async function handleVerifyOTP(emailInputId, otpInputId, onSuccess) {
   }
 }
 
-/**
- * Dispatch Requirement Slip Email (Approved or Rejected) to Farmer
- */
 async function sendRequirementSlipEmail(booking) {
   if (!booking || !booking.farmerEmail) {
     showAlert('Error: Farmer email address is missing.', 'danger');
@@ -289,6 +276,7 @@ async function sendRequirementSlipEmail(booking) {
     if (response.ok && data.success) {
       showAlert(`Requirement slip (${booking.status}) emailed to ${booking.farmerEmail}!`);
       addLog(`Emailed requirement slip (${booking.status}) to ${booking.farmerEmail}`);
+      addAiLog('tag-audit', 'AI-EMAIL', `Emailed slip (${booking.status}) to ${booking.farmerEmail}`);
       return true;
     } else {
       showAlert(data.message || 'Failed to dispatch requirement slip email.', 'danger');
@@ -301,9 +289,6 @@ async function sendRequirementSlipEmail(booking) {
   }
 }
 
-/**
- * Dispatch Milk Collection Bill Receipt Email
- */
 async function sendMilkBillReceipt(entry) {
   if (!entry || !entry.farmerEmail) return;
 
@@ -314,204 +299,12 @@ async function sendMilkBillReceipt(entry) {
       body: JSON.stringify(entry)
     });
     addLog(`Emailed milk collection receipt to ${entry.farmerEmail}`);
+    addAiLog('tag-audit', 'AI-EMAIL', `Collection receipt emailed to ${entry.farmerEmail}`);
   } catch (err) {
     console.error('Milk Bill Email Error:', err);
   }
 }
 
-// --- EVENT HANDLERS & NAVIGATION ---
-
-function sendAgentLoginOtp() {
-  const email = document.getElementById('agent-email-input').value.trim().toLowerCase();
-  if (!ALLOWED_AGENTS.includes(email)) {
-    showAlert('Unauthorized Agent Email.', 'danger');
-    return;
-  }
-  handleSendOTP('agent-email-input', 'Agent Portal Login');
-}
-
-function sendFarmerLoginOtp() {
-  const email = document.getElementById('farmer-login-email').value.trim().toLowerCase();
-  const farmer = DB.farmers.find(f => f.email === email);
-  if (!farmer) {
-    showAlert('Farmer email not registered.', 'danger');
-    return;
-  }
-  handleSendOTP('farmer-login-email', 'Farmer Portal Login');
-}
-
-function verifyGmailOtp() {
-  const email = document.getElementById('farmer-email').value.trim().toLowerCase();
-  if (!email) {
-    showAlert('Please enter a valid farmer email first.', 'danger');
-    return;
-  }
-  handleSendOTP('farmer-email', 'Farmer Registration');
-}
-
-function sendResetOtp() {
-  const email = document.getElementById('reset-agent-email').value.trim().toLowerCase();
-  if (!ALLOWED_AGENTS.includes(email)) {
-    showAlert('Unauthorized email address.', 'danger');
-    return;
-  }
-  handleSendOTP('reset-agent-email', 'Agent Password Reset');
-  document.getElementById('reset-otp-block')?.classList.remove('hidden');
-  document.getElementById('reset-new-pass-block')?.classList.remove('hidden');
-  document.getElementById('btn-save-reset-pass')?.classList.remove('hidden');
-}
-
-function sendFarmerResetOtp() {
-  const email = document.getElementById('reset-farmer-email').value.trim().toLowerCase();
-  const farmer = DB.farmers.find(f => f.email === email);
-  if (!farmer) {
-    showAlert('Farmer email not registered.', 'danger');
-    return;
-  }
-  handleSendOTP('reset-farmer-email', 'Farmer Password Reset');
-  document.getElementById('farmer-reset-otp-block')?.classList.remove('hidden');
-  document.getElementById('farmer-reset-new-pass-block')?.classList.remove('hidden');
-  document.getElementById('btn-save-farmer-reset-pass')?.classList.remove('hidden');
-}
-
-const i18n = {
-  en: { nav_dashboard: "Dashboard & Analytics", nav_farmers: "Farmers Directory Sheet", nav_collection: "Milk Entry & Manage", nav_deductions: "Date Range Deductions", nav_reports: "Clean Sheets & Print", logout: "Logout" },
-  te: { nav_dashboard: "డాష్ బోర్డ్", nav_farmers: "రైతుల వివరాలు", nav_collection: "పాలు సేకరణ", nav_deductions: "మినహాయింపులు", nav_reports: "నివేదికలు", logout: "నిష్క్రమించు" },
-  hi: { nav_dashboard: "डैशबोर्ड", nav_farmers: "किसान सूची", nav_collection: "दूध संग्रह", nav_deductions: "कटौती", nav_reports: "रिपोर्ट", logout: "लॉग आउट" }
-};
-
-function changeLanguage(lang) {
-  document.querySelectorAll('[data-i18n]').forEach(el => {
-    const key = el.getAttribute('data-i18n');
-    if (i18n[lang] && i18n[lang][key]) el.innerText = i18n[lang][key];
-  });
-}
-
-function updateCanNumber(val) {
-  DB.agentCAN = val;
-  saveDB();
-  document.querySelectorAll('.sync-can-display').forEach(el => el.innerText = val);
-  showAlert(`CAN Number updated to ${val}`);
-}
-
-function autoFillIfscCode(bankName) {
-  const ifscInput = document.getElementById('farmer-ifsc');
-  if (!ifscInput) return;
-  if (bankName.includes('SBI')) ifscInput.value = "SBIN0001234";
-  else if (bankName.includes('Union') || bankName.includes('Andhra')) ifscInput.value = "UBIN0005678";
-  else if (bankName.includes('HDFC')) ifscInput.value = "HDFC0001122";
-  else if (bankName.includes('ICICI')) ifscInput.value = "ICIC0003344";
-  else if (bankName.includes('Canara')) ifscInput.value = "CNRB0009988";
-  else if (bankName.includes('Indian')) ifscInput.value = "IDIB0004455";
-  else if (bankName.includes('Baroda')) ifscInput.value = "BARB0007766";
-  else if (bankName.includes('Punjab')) ifscInput.value = "PUNB0002211";
-  else ifscInput.value = "APGB0001001";
-}
-
-function switchLoginRole(role) {
-  document.getElementById('btn-role-agent')?.classList.toggle('active', role === 'agent');
-  document.getElementById('btn-role-farmer')?.classList.toggle('active', role === 'farmer');
-  document.getElementById('agent-auth-wrapper')?.classList.toggle('hidden', role !== 'agent');
-  document.getElementById('farmer-auth-wrapper')?.classList.toggle('hidden', role !== 'farmer');
-  document.getElementById('agent-reset-form')?.classList.add('hidden');
-  document.getElementById('farmer-reset-form')?.classList.add('hidden');
-}
-
-function toggleAgentAuthMode(mode) {
-  agentAuthMode = mode;
-  document.getElementById('btn-agent-pass-mode')?.classList.toggle('active', mode === 'password');
-  document.getElementById('btn-agent-otp-mode')?.classList.toggle('active', mode === 'otp');
-  document.getElementById('agent-password-block')?.classList.toggle('hidden', mode !== 'password');
-  document.getElementById('agent-login-otp-block')?.classList.toggle('hidden', mode !== 'otp');
-}
-
-function toggleFarmerAuthMode(mode) {
-  farmerAuthMode = mode;
-  document.getElementById('btn-farmer-pass-mode')?.classList.toggle('active', mode === 'password');
-  document.getElementById('btn-farmer-otp-mode')?.classList.toggle('active', mode === 'otp');
-  document.getElementById('farmer-password-block')?.classList.toggle('hidden', mode !== 'password');
-  document.getElementById('farmer-login-otp-block')?.classList.toggle('hidden', mode !== 'otp');
-}
-
-function toggleAgentResetPass(show) {
-  document.getElementById('agent-auth-wrapper')?.classList.toggle('hidden', show);
-  document.getElementById('agent-reset-form')?.classList.toggle('hidden', !show);
-}
-
-function toggleFarmerResetPass(show) {
-  document.getElementById('farmer-auth-wrapper')?.classList.toggle('hidden', show);
-  document.getElementById('farmer-reset-form')?.classList.toggle('hidden', !show);
-}
-
-function getBillingPeriod(dateStr, mode = '10-DAY') {
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return dateStr;
-  const day = d.getDate();
-  const month = d.toLocaleString('default', { month: 'short' });
-  const year = d.getFullYear();
-
-  if (mode === '10-DAY') {
-    if (day <= 10) return `1-10 ${month} ${year}`;
-    if (day <= 20) return `11-20 ${month} ${year}`;
-    return `21-31 ${month} ${year}`;
-  } else {
-    if (day <= 15) return `1-15 ${month} ${year}`;
-    return `16-31 ${month} ${year}`;
-  }
-}
-
-function initAppView(role) {
-  document.getElementById('auth-section')?.classList.add('hidden');
-  document.getElementById('user-status')?.classList.remove('hidden');
-
-  if (role === 'agent') {
-    document.getElementById('sidebar')?.classList.remove('hidden');
-    document.getElementById('app-section')?.classList.remove('hidden');
-    document.getElementById('farmer-portal-section')?.classList.add('hidden');
-    document.getElementById('active-user-label').innerText = `Agent (${currentAgentEmail.split('@')[0]})`;
-    populateDropdowns();
-    renderFarmers();
-    renderCollections();
-    renderAgentBookings();
-    updateDashboardMetrics();
-    switchTab('dashboard');
-    addLog(`Agent ${currentAgentEmail} logged in.`);
-  } else {
-    document.getElementById('sidebar')?.classList.add('hidden');
-    document.getElementById('app-section')?.classList.add('hidden');
-    document.getElementById('farmer-portal-section')?.classList.remove('hidden');
-    document.getElementById('active-user-label').innerText = `Farmer (${currentFarmer.name})`;
-    renderFarmerPortal();
-  }
-}
-
-function logout() {
-  currentAgentEmail = null;
-  currentFarmer = null;
-  document.getElementById('auth-section')?.classList.remove('hidden');
-  document.getElementById('app-section')?.classList.add('hidden');
-  document.getElementById('farmer-portal-section')?.classList.add('hidden');
-  document.getElementById('sidebar')?.classList.add('hidden');
-  document.getElementById('user-status')?.classList.add('hidden');
-  showAlert('Logged out successfully.', 'info');
-}
-
-function switchTab(tabId) {
-  document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-  document.querySelectorAll('.nav-btn').forEach(el => el.classList.remove('active'));
-
-  const selectedTab = document.getElementById(`tab-${tabId}`);
-  if (selectedTab) selectedTab.classList.remove('hidden');
-
-  const btn = document.querySelector(`aside button[onclick*="${tabId}"]`);
-  if (btn) btn.classList.add('active');
-
-  if (tabId === 'dashboard') {
-    updateDashboardMetrics();
-  }
-}
-
-// Dynamic Delivery Date Min Setter
 function handleBookingDateChange() {
   const bookingDateInput = document.getElementById('booking-date');
   const deliveryDateInput = document.getElementById('booking-delivery-date');
@@ -526,12 +319,114 @@ function handleBookingDateChange() {
   }
 }
 
-// --- REQUIREMENT / MATERIALS BOOKINGS LOGIC ---
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+  document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
+  document.getElementById(`tab-${tabId}`)?.classList.remove('hidden');
+  
+  if (tabId === 'farmers') renderFarmers();
+  else if (tabId === 'collection') { renderCollections(); populateDropdowns(); }
+  else if (tabId === 'deduction') populateDropdowns();
+  else if (tabId === 'bookings') renderAgentBookings();
+  else if (tabId === 'reports') populateDropdowns();
+}
 
-/**
- * Submit Requirement Request (Farmer Portal)
- * CRITICAL REQUIREMENT FIX: Enforces deliveryDate >= bookingDate
- */
+function switchLoginRole(role) {
+  document.getElementById('btn-role-agent')?.classList.toggle('active', role === 'agent');
+  document.getElementById('btn-role-farmer')?.classList.toggle('active', role === 'farmer');
+  document.getElementById('agent-auth-wrapper')?.classList.toggle('hidden', role !== 'agent');
+  document.getElementById('farmer-auth-wrapper')?.classList.toggle('hidden', role !== 'farmer');
+}
+
+function toggleAgentAuthMode(mode) {
+  agentAuthMode = mode;
+  document.getElementById('btn-agent-pass-mode')?.classList.toggle('active', mode === 'password');
+  document.getElementById('btn-agent-otp-mode')?.classList.toggle('active', mode === 'otp');
+  document.getElementById('agent-password-block')?.classList.toggle('hidden', mode !== 'password');
+}
+
+function toggleFarmerAuthMode(mode) {
+  farmerAuthMode = mode;
+  document.getElementById('btn-farmer-pass-mode')?.classList.toggle('active', mode === 'password');
+  document.getElementById('btn-farmer-otp-mode')?.classList.toggle('active', mode === 'otp');
+  document.getElementById('farmer-password-block')?.classList.toggle('hidden', mode !== 'password');
+}
+
+function toggleAgentResetPass(show) {
+  document.getElementById('agent-login-form')?.classList.toggle('hidden', show);
+  document.getElementById('agent-reset-form')?.classList.toggle('hidden', !show);
+}
+
+function toggleFarmerResetPass(show) {
+  document.getElementById('farmer-login-form')?.classList.toggle('hidden', show);
+  document.getElementById('farmer-reset-form')?.classList.toggle('hidden', !show);
+}
+
+function sendAgentLoginOtp() { handleSendOTP('agent-email-input', 'Agent Portal Login'); }
+function sendResetOtp() {
+  handleSendOTP('reset-agent-email', 'Password Reset');
+  document.getElementById('reset-otp-block')?.classList.remove('hidden');
+  document.getElementById('reset-new-pass-block')?.classList.remove('hidden');
+  document.getElementById('btn-send-reset-otp')?.classList.add('hidden');
+  document.getElementById('btn-save-reset-pass')?.classList.remove('hidden');
+}
+function sendFarmerLoginOtp() { handleSendOTP('farmer-login-email', 'Farmer Portal Access'); }
+function sendFarmerResetOtp() {
+  handleSendOTP('reset-farmer-email', 'Farmer Password Reset');
+  document.getElementById('farmer-reset-otp-block')?.classList.remove('hidden');
+  document.getElementById('farmer-reset-new-pass-block')?.classList.remove('hidden');
+  document.getElementById('btn-send-farmer-reset-otp')?.classList.add('hidden');
+  document.getElementById('btn-save-farmer-reset-pass')?.classList.remove('hidden');
+}
+function verifyGmailOtp() { handleSendOTP('farmer-email', 'Farmer Registration Verification'); }
+
+function getBillingPeriod(dateStr, mode = '10-DAY') {
+  if (!dateStr) return '--';
+  const d = new Date(dateStr);
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = d.getDate();
+
+  if (mode === '15-DAY') {
+    if (day <= 15) return `${year}-${month}-01 to ${year}-${month}-15`;
+    return `${year}-${month}-16 to ${year}-${month}-31`;
+  }
+  if (day <= 10) return `${year}-${month}-01 to ${year}-${month}-10`;
+  if (day <= 20) return `${year}-${month}-11 to ${year}-${month}-20`;
+  return `${year}-${month}-21 to ${year}-${month}-31`;
+}
+
+function initAppView(role) {
+  document.getElementById('auth-section')?.classList.add('hidden');
+  document.getElementById('user-status')?.classList.remove('hidden');
+  
+  if (role === 'agent') {
+    document.getElementById('app-section')?.classList.remove('hidden');
+    document.getElementById('sidebar')?.classList.remove('hidden');
+    document.getElementById('farmer-portal-section')?.classList.add('hidden');
+    document.getElementById('active-user-label').innerText = `Agent: ${currentAgentEmail}`;
+    updateDashboardMetrics();
+    renderFarmers();
+    renderAgentBookings();
+  } else {
+    document.getElementById('app-section')?.classList.add('hidden');
+    document.getElementById('sidebar')?.classList.add('hidden');
+    document.getElementById('farmer-portal-section')?.classList.remove('hidden');
+    document.getElementById('active-user-label').innerText = `Farmer: ${currentFarmer.name}`;
+    renderFarmerPortal();
+  }
+}
+
+function logout() {
+  currentAgentEmail = null;
+  currentFarmer = null;
+  document.getElementById('auth-section')?.classList.remove('hidden');
+  document.getElementById('app-section')?.classList.add('hidden');
+  document.getElementById('farmer-portal-section')?.classList.add('hidden');
+  document.getElementById('user-status')?.classList.add('hidden');
+  document.getElementById('sidebar')?.classList.add('hidden');
+}
+
 document.getElementById('farmer-booking-form')?.addEventListener('submit', async function(e) {
   e.preventDefault();
   if (!currentFarmer) return;
@@ -543,7 +438,6 @@ document.getElementById('farmer-booking-form')?.addEventListener('submit', async
   const bookingDate = document.getElementById('booking-date').value;
   const deliveryDate = document.getElementById('booking-delivery-date').value;
 
-  // --- DELIVERY DATE VALIDATION CHECK ---
   if (!bookingDate || !deliveryDate) {
     showAlert('Please select both Date of Booking and Delivery Date.', 'danger');
     return;
@@ -554,6 +448,7 @@ document.getElementById('farmer-booking-form')?.addEventListener('submit', async
 
   if (dDateObj < bDateObj) {
     showAlert('Validation Error: The delivery date cannot be earlier than the booking date!', 'danger');
+    addAiLog('tag-anomaly', 'AI-VALIDATE', `Rejected requirement: Delivery date (${deliveryDate}) < Booking date (${bookingDate})`);
     document.getElementById('booking-delivery-date').focus();
     return;
   }
@@ -576,7 +471,6 @@ document.getElementById('farmer-booking-form')?.addEventListener('submit', async
   DB.bookings.push(booking);
   saveDB();
 
-  // Save to MongoDB API asynchronously
   fetch(`${API_BASE_URL}/api/bookings`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -584,10 +478,10 @@ document.getElementById('farmer-booking-form')?.addEventListener('submit', async
   }).catch(err => console.warn('Cloud sync offline:', err));
 
   showAlert('Requirement request submitted successfully!');
+  addAiLog('tag-audit', 'AI-BOOKING', `Farmer ${currentFarmer.name} requested ${itemName} (Qty: ${qty})`);
   renderFarmerBookings();
   this.reset();
   
-  // Reset date constraints
   const today = new Date().toISOString().slice(0, 10);
   document.getElementById('booking-date').value = today;
   document.getElementById('booking-delivery-date').value = today;
@@ -609,7 +503,7 @@ function renderFarmerBookings() {
   tbody.innerHTML = farmerBookings.map(b => {
     const isApproved = b.status === 'Approved & Cost Deducted' || b.status === 'APPROVED';
     const isRejected = b.status === 'Rejected' || b.status === 'REJECTED';
-    const badgeClass = isApproved ? 'water-pure' : isRejected ? 'water-warning' : 'water-warning';
+    const badgeClass = isApproved ? 'water-pure' : 'water-warning';
     
     return `
       <tr>
@@ -646,7 +540,7 @@ function renderAgentBookings() {
     return `
       <tr>
         <td>${b.bookingDate}</td>
-        <td>${b.farmerName} (${b.farmerId})<br><small style="color:#666;">${b.farmerEmail}</small></td>
+        <td>${b.farmerName} (${b.farmerId})</td>
         <td>${b.item} (x${b.qty})</td>
         <td>${b.deliveryDate}</td>
         <td><strong>₹${b.totalPrice}</strong></td>
@@ -663,10 +557,6 @@ function renderAgentBookings() {
   }).join('');
 }
 
-/**
- * Process Requirement Order Approval or Rejection
- * CRITICAL REQUIREMENT FIX: Dispatches email notification with complete slip to farmer
- */
 async function processRequirementOrder(bookingId, statusState) {
   const b = (DB.bookings || []).find(item => item.id === bookingId);
   if (!b) return;
@@ -674,7 +564,6 @@ async function processRequirementOrder(bookingId, statusState) {
   b.status = statusState;
   saveDB();
 
-  // Sync status update to MongoDB backend API
   fetch(`${API_BASE_URL}/api/bookings/${bookingId}/status`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -682,12 +571,10 @@ async function processRequirementOrder(bookingId, statusState) {
   }).catch(err => console.warn('Cloud status update offline:', err));
 
   showAlert(`Requirement order ${bookingId} updated to ${statusState}!`);
+  addAiLog('tag-audit', 'AI-APPROVAL', `Order ${bookingId} set to ${statusState} by Agent.`);
   renderAgentBookings();
 
-  // Show slip in UI
   showRequirementSlip(bookingId);
-
-  // Send Email Notification to Farmer with slip details
   await sendRequirementSlipEmail(b);
 }
 
@@ -724,11 +611,7 @@ function clearRequirements(role) {
   }
 }
 
-// --- MILK COLLECTION & DEDUCTION LOGIC ---
-
-function toggleEntryMode(mode) {
-  showAlert(`Switched to ${mode.toUpperCase()} entry mode.`, 'info');
-}
+function toggleEntryMode(mode) { showAlert(`Switched to ${mode.toUpperCase()} entry mode.`, 'info'); }
 
 function syncHardwareSensor(sensorType) {
   if (sensorType === 'analyzer') {
@@ -758,6 +641,7 @@ function calculateWaterPercentage() {
   if (waterPct > 0) {
     alertBadge.className = 'alert alert-danger';
     alertBadge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Water Adulteration Detected (${waterPct}%)`;
+    addAiLog('tag-anomaly', 'AI-ANOMALY', `Water adulteration detected: ${waterPct}%`);
   } else {
     alertBadge.className = 'alert alert-success';
     alertBadge.innerHTML = `<i class="fa-solid fa-circle-check"></i> Pure Milk Sample Detected`;
@@ -796,11 +680,11 @@ document.getElementById('milk-form')?.addEventListener('submit', function(e) {
   DB.collections.push(entry);
   saveDB();
 
-  // Save entry to MongoDB API & Email Receipt
   sendMilkBillReceipt(entry);
 
   showAlert('Milk entry recorded & dispatched to farmer!');
   addLog(`Recorded entry for ${entry.farmerName} - ${qty}L`);
+  addAiLog('tag-audit', 'AI-COLLECTION', `Milk entry logged: ${entry.farmerName} - ${qty}L (FAT: ${fat}%)`);
   renderCollections();
   updateDashboardMetrics();
   this.reset();
@@ -824,10 +708,9 @@ document.getElementById('deduction-form')?.addEventListener('submit', function(e
   }).catch(err => console.warn('Deduction cloud sync offline:', err));
 
   showAlert('Bill deduction logged successfully!');
+  addAiLog('tag-audit', 'AI-DEDUCTION', `Bill deduction logged: ₹${amount} for Farmer ${farmerId}`);
   this.reset();
 });
-
-// --- FARMER REGISTRATION & MANAGEMENT ---
 
 document.getElementById('farmer-verification-form')?.addEventListener('submit', function(e) {
   e.preventDefault();
@@ -859,6 +742,7 @@ document.getElementById('farmer-verification-form')?.addEventListener('submit', 
     }).catch(err => console.warn('Farmer cloud sync offline:', err));
 
     showAlert(`Farmer ${newFarmer.name} registered with ID: ${id}`);
+    addAiLog('tag-security', 'AI-REGISTER', `Farmer ${newFarmer.name} (${id}) registered.`);
     populateDropdowns();
     renderFarmers();
     this.reset();
@@ -964,9 +848,7 @@ function populateDropdowns() {
 function updateDashboardMetrics() {
   const today = new Date().toISOString().slice(0, 10);
   const milkDate = document.getElementById('milk-date');
-  const repDate = document.getElementById('report-start-date');
   if (milkDate) milkDate.value = today;
-  if (repDate) repDate.value = today;
 
   const farmerCountElem = document.getElementById('dash-farmer-count');
   if (farmerCountElem) farmerCountElem.innerText = DB.farmers.length;
@@ -979,6 +861,12 @@ function updateDashboardMetrics() {
   const alertsElem = document.getElementById('dash-water-alerts');
   if (totalQtyElem) totalQtyElem.innerText = `${totalQty.toFixed(1)} L`;
   if (alertsElem) alertsElem.innerText = waterAlerts;
+
+  const aiAnomalyElem = document.getElementById('ai-anomaly-count');
+  if (aiAnomalyElem) {
+    aiAnomalyElem.innerText = `${waterAlerts} Alert${waterAlerts !== 1 ? 's' : ''}`;
+    aiAnomalyElem.style.color = waterAlerts > 0 ? 'var(--danger)' : '#00ffcc';
+  }
 
   const emptyBanner = document.getElementById('empty-dash-banner');
   const activeCharts = document.getElementById('active-dash-charts');
@@ -1051,10 +939,25 @@ function renderFarmerPortal() {
   const toDate = document.getElementById('farmer-range-to')?.value;
   const cycleMode = document.getElementById('farmer-billing-cycle-mode')?.value || '10-DAY';
 
+  const datePromptCard = document.getElementById('farmer-date-prompt');
+  const reportContainer = document.getElementById('farmer-report-container');
+
+  if (!fromDate || !toDate) {
+    datePromptCard?.classList.remove('hidden');
+    reportContainer?.classList.add('hidden');
+    renderFarmerBookings();
+    return;
+  }
+
+  datePromptCard?.classList.add('hidden');
+  reportContainer?.classList.remove('hidden');
+
+  addAiLog('tag-audit', 'AI-REPORT', `Farmer ${currentFarmer.name} requested report range: ${fromDate} to ${toDate}`);
+
   const farmerCollections = DB.collections.filter(c => {
     const matchesFarmer = (c.farmerId === currentFarmer.id || c.farmerEmail === currentFarmer.email);
-    const matchesFrom = !fromDate || c.date >= fromDate;
-    const matchesTo = !toDate || c.date <= toDate;
+    const matchesFrom = c.date >= fromDate;
+    const matchesTo = c.date <= toDate;
     return matchesFarmer && matchesFrom && matchesTo;
   });
 
@@ -1064,7 +967,7 @@ function renderFarmerPortal() {
   const itemizedTbody = document.getElementById('farmer-itemized-tbody');
   if (itemizedTbody) {
     if (farmerCollections.length === 0) {
-      itemizedTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No milk collection history found.</td></tr>`;
+      itemizedTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No milk collection records found between ${fromDate} and ${toDate}.</td></tr>`;
     } else {
       itemizedTbody.innerHTML = farmerCollections.map(c => {
         totalQty += c.qty;
@@ -1089,7 +992,9 @@ function renderFarmerPortal() {
   const farmerDeductions = (DB.bookings || []).filter(b => {
     const matchesFarmer = (b.farmerId === currentFarmer.id || b.farmerEmail === currentFarmer.email);
     const isApproved = b.status === 'Approved & Cost Deducted' || b.status === 'APPROVED';
-    return matchesFarmer && isApproved;
+    const matchesFrom = b.bookingDate >= fromDate;
+    const matchesTo = b.bookingDate <= toDate;
+    return matchesFarmer && isApproved && matchesFrom && matchesTo;
   });
 
   let totalDeductions = farmerDeductions.reduce((sum, b) => sum + b.totalPrice, 0);
@@ -1097,7 +1002,7 @@ function renderFarmerPortal() {
   const dedTbody = document.getElementById('farmer-deductions-tbody');
   if (dedTbody) {
     if (farmerDeductions.length === 0) {
-      dedTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888;">No product deductions found.</td></tr>`;
+      dedTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888;">No product deductions found for selected period.</td></tr>`;
     } else {
       dedTbody.innerHTML = farmerDeductions.map(b => `
         <tr>
@@ -1126,7 +1031,6 @@ function renderFarmerPortal() {
   renderFarmerBookings();
 }
 
-// Reports Handling
 function handleReportTypeChange(val) {
   const groupDate = document.getElementById('group-report-date');
   const groupEndDate = document.getElementById('group-report-end-date');
@@ -1135,7 +1039,7 @@ function handleReportTypeChange(val) {
 
   if (val === 'SHIFT_SUMMARY') {
     groupDate?.classList.remove('hidden');
-    groupEndDate?.classList.add('hidden');
+    groupEndDate?.classList.remove('hidden');
     groupShift?.classList.remove('hidden');
     groupFarmer?.classList.add('hidden');
   } else if (val === 'MILK_BILL') {
@@ -1158,6 +1062,16 @@ function generateSelectedReport() {
   const shift = document.getElementById('report-shift-select').value;
   const farmerId = document.getElementById('report-farmer-code').value;
 
+  if (!startDate || !endDate) {
+    showAlert('Validation Error: Please select both From Date and To Date to generate the report.', 'danger');
+    return;
+  }
+
+  if (endDate < startDate) {
+    showAlert('Validation Error: To Date cannot be earlier than From Date.', 'danger');
+    return;
+  }
+
   const titleElem = document.getElementById('sheet-report-title');
   const rangeElem = document.getElementById('sheet-range-display');
   const headElem = document.getElementById('sheet-table-head');
@@ -1166,10 +1080,11 @@ function generateSelectedReport() {
   const outputCard = document.getElementById('sheet-output-card');
 
   outputCard?.classList.remove('hidden');
+  addAiLog('tag-audit', 'AI-REPORT', `Generated ${reportType} from ${startDate} to ${endDate}`);
 
   if (reportType === 'SHIFT_SUMMARY') {
     titleElem.innerText = `SHIFT SUMMARY REPORT - ${shift.toUpperCase()}`;
-    rangeElem.innerText = startDate || 'All Dates';
+    rangeElem.innerText = `${startDate} to ${endDate}`;
 
     headElem.innerHTML = `
       <tr>
@@ -1186,7 +1101,7 @@ function generateSelectedReport() {
     `;
 
     const filtered = DB.collections.filter(c => {
-      const matchesDate = !startDate || c.date === startDate;
+      const matchesDate = c.date >= startDate && c.date <= endDate;
       const matchesShift = shift === 'ALL' || c.shift === shift;
       return matchesDate && matchesShift;
     });
@@ -1208,7 +1123,7 @@ function generateSelectedReport() {
           <td>₹${c.total}</td>
         </tr>
       `;
-    }).join('') || '<tr><td colspan="9" style="text-align:center;">No records found.</td></tr>';
+    }).join('') || `<tr><td colspan="9" style="text-align:center;">No records found between ${startDate} and ${endDate}.</td></tr>`;
 
     footElem.innerHTML = `
       <tr>
@@ -1221,7 +1136,7 @@ function generateSelectedReport() {
   } else if (reportType === 'MILK_BILL') {
     const farmer = DB.farmers.find(f => f.id === farmerId);
     titleElem.innerText = `INDIVIDUAL MILK BILL - ${farmer ? farmer.name : farmerId}`;
-    rangeElem.innerText = `${startDate || 'Start'} to ${endDate || 'End'}`;
+    rangeElem.innerText = `${startDate} to ${endDate}`;
 
     headElem.innerHTML = `
       <tr>
@@ -1238,8 +1153,8 @@ function generateSelectedReport() {
 
     const filtered = DB.collections.filter(c => {
       const matchesFarmer = c.farmerId === farmerId;
-      const matchesFrom = !startDate || c.date >= startDate;
-      const matchesTo = !endDate || c.date <= endDate;
+      const matchesFrom = c.date >= startDate;
+      const matchesTo = c.date <= endDate;
       return matchesFarmer && matchesFrom && matchesTo;
     });
 
@@ -1259,7 +1174,7 @@ function generateSelectedReport() {
           <td>₹${c.total}</td>
         </tr>
       `;
-    }).join('') || '<tr><td colspan="8" style="text-align:center;">No records found.</td></tr>';
+    }).join('') || `<tr><td colspan="8" style="text-align:center;">No records found between ${startDate} and ${endDate}.</td></tr>`;
 
     footElem.innerHTML = `
       <tr>
@@ -1271,7 +1186,7 @@ function generateSelectedReport() {
     `;
   } else if (reportType === 'BILL_SUMMARY') {
     titleElem.innerText = 'CONSOLIDATED BILL SUMMARY REPORT';
-    rangeElem.innerText = `${startDate || 'Start'} to ${endDate || 'End'}`;
+    rangeElem.innerText = `${startDate} to ${endDate}`;
 
     headElem.innerHTML = `
       <tr>
@@ -1286,8 +1201,8 @@ function generateSelectedReport() {
 
     let gQty = 0, gGross = 0, gDed = 0, gNet = 0;
     bodyElem.innerHTML = DB.farmers.map(f => {
-      const fColls = DB.collections.filter(c => (c.farmerId === f.id || c.farmerEmail === f.email) && (!startDate || c.date >= startDate) && (!endDate || c.date <= endDate));
-      const fDeds = (DB.bookings || []).filter(b => (b.farmerId === f.id || b.farmerEmail === f.email) && (b.status === 'Approved & Cost Deducted' || b.status === 'APPROVED'));
+      const fColls = DB.collections.filter(c => (c.farmerId === f.id || c.farmerEmail === f.email) && c.date >= startDate && c.date <= endDate);
+      const fDeds = (DB.bookings || []).filter(b => (b.farmerId === f.id || b.farmerEmail === f.email) && (b.status === 'Approved & Cost Deducted' || b.status === 'APPROVED') && b.bookingDate >= startDate && b.bookingDate <= endDate);
 
       const fQty = fColls.reduce((sum, c) => sum + c.qty, 0);
       const fGross = fColls.reduce((sum, c) => sum + parseFloat(c.total), 0);
@@ -1309,7 +1224,7 @@ function generateSelectedReport() {
           <td><strong>₹${fNet.toFixed(2)}</strong></td>
         </tr>
       `;
-    }).join('') || '<tr><td colspan="6" style="text-align:center;">No farmers found.</td></tr>';
+    }).join('') || `<tr><td colspan="6" style="text-align:center;">No farmer records found between ${startDate} and ${endDate}.</td></tr>`;
 
     footElem.innerHTML = `
       <tr>
@@ -1323,12 +1238,9 @@ function generateSelectedReport() {
   }
 }
 
-// LOGIN FORM SUBMISSION LISTENERS
 document.addEventListener('DOMContentLoaded', () => {
-  // Sync data from MongoDB on startup
   syncFromMongoDB();
 
-  // Set default dates and date constraints
   const today = new Date().toISOString().slice(0, 10);
   const bookingDateInput = document.getElementById('booking-date');
   const deliveryDateInput = document.getElementById('booking-delivery-date');
@@ -1342,12 +1254,12 @@ document.addEventListener('DOMContentLoaded', () => {
     deliveryDateInput.min = today;
   }
 
-  // Agent Login Form
   document.getElementById('agent-login-form')?.addEventListener('submit', function(e) {
     e.preventDefault();
     const email = document.getElementById('agent-email-input').value.trim().toLowerCase();
     if (!ALLOWED_AGENTS.includes(email)) {
       showAlert('Unauthorized Agent Email.', 'danger');
+      addAiLog('tag-security', 'AI-SECURITY', `Unauthorized login attempt for email ${email}`);
       return;
     }
 
@@ -1356,19 +1268,21 @@ document.addEventListener('DOMContentLoaded', () => {
       const storedPass = DB.agentAccounts[email]?.password || 'agent123';
       if (pass === storedPass) {
         currentAgentEmail = email;
+        addAiLog('tag-security', 'AI-SECURITY', `Agent ${email} logged in successfully via password.`);
         initAppView('agent');
       } else {
         showAlert('Incorrect password.', 'danger');
+        addAiLog('tag-security', 'AI-SECURITY', `Failed password login attempt for ${email}`);
       }
     } else {
       handleVerifyOTP('agent-email-input', 'agent-login-otp', () => {
         currentAgentEmail = email;
+        addAiLog('tag-security', 'AI-SECURITY', `Agent ${email} logged in via Gmail OTP.`);
         initAppView('agent');
       });
     }
   });
 
-  // Agent Reset Password Form
   document.getElementById('agent-reset-form')?.addEventListener('submit', function(e) {
     e.preventDefault();
     const email = document.getElementById('reset-agent-email').value.trim().toLowerCase();
@@ -1382,7 +1296,6 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // Farmer Login Form
   document.getElementById('farmer-login-form')?.addEventListener('submit', function(e) {
     e.preventDefault();
     const email = document.getElementById('farmer-login-email').value.trim().toLowerCase();
@@ -1396,6 +1309,7 @@ document.addEventListener('DOMContentLoaded', () => {
       const pass = document.getElementById('farmer-password-input').value;
       if (pass === (farmer.password || 'farmer123')) {
         currentFarmer = farmer;
+        addAiLog('tag-security', 'AI-SECURITY', `Farmer ${farmer.name} logged into Farmer Portal.`);
         initAppView('farmer');
       } else {
         showAlert('Incorrect farmer password.', 'danger');
@@ -1403,12 +1317,12 @@ document.addEventListener('DOMContentLoaded', () => {
     } else {
       handleVerifyOTP('farmer-login-email', 'farmer-login-otp', () => {
         currentFarmer = farmer;
+        addAiLog('tag-security', 'AI-SECURITY', `Farmer ${farmer.name} logged into Farmer Portal via OTP.`);
         initAppView('farmer');
       });
     }
   });
 
-  // Farmer Reset Password Form
   document.getElementById('farmer-reset-form')?.addEventListener('submit', function(e) {
     e.preventDefault();
     const email = document.getElementById('reset-farmer-email').value.trim().toLowerCase();
