@@ -143,13 +143,13 @@ async function sendMilkBillReceipt(billData) {
             body: JSON.stringify({
                 farmerName: billData.farmerName || billData.name || 'Farmer',
                 farmerEmail: recipientEmail.trim(),
-                milkType: billData.milkType || 'Standard Milk',
+                milkType: billData.type || billData.milkType || 'Standard Milk',
                 shift: billData.shift || 'Morning',
-                liters: parseFloat(billData.liters) || 0,
+                liters: parseFloat(billData.qty || billData.liters) || 0,
                 fat: parseFloat(billData.fat) || 0,
                 snf: parseFloat(billData.snf) || 0,
-                water: parseFloat(billData.water) || 0,
-                totalAmount: parseFloat(billData.totalAmount) || 0
+                water: parseFloat(billData.waterPct || billData.water) || 0,
+                totalAmount: parseFloat(billData.total || billData.totalAmount) || 0
             })
         });
 
@@ -189,18 +189,18 @@ async function sendRequirementSlipEmail(slipData) {
             body: JSON.stringify({
                 farmerName: slipData.farmerName || 'Farmer',
                 farmerEmail: recipientEmail.trim(),
-                bookingDate: slipData.bookingDate || new Date().toLocaleDateString(),
+                bookingDate: slipData.bookingDate || new Date().toISOString().slice(0, 10),
                 item: slipData.item || 'Dairy Requirement Item',
                 status: (slipData.status || 'APPROVED').toUpperCase(),
-                deliveryDate: slipData.deliveryDate || 'Expected in 2-3 Days',
-                cost: parseFloat(slipData.cost) || 0
+                deliveryDate: slipData.deliveryDate || 'N/A',
+                cost: parseFloat(slipData.cost || slipData.totalPrice) || 0
             })
         });
 
         const data = await response.json();
 
         if (response.ok && data.success) {
-            showToast('Requirement slip emailed to farmer successfully!');
+            showToast(`Requirement slip (${slipData.status}) emailed to farmer successfully!`);
             return true;
         } else {
             showToast(data.message || 'Failed to send requirement slip email.', true);

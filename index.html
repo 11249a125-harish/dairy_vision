@@ -940,7 +940,7 @@
               <button class="btn btn-danger btn-sm" onclick="clearRequirements('agent')"><i class="fa-solid fa-trash-can"></i> Clear Requirements History</button>
             </div>
             <p style="color:#666; font-size:0.9em; margin-top:5px; margin-bottom:15px;">
-              Review and process requirement requests. Approvals automatically generate requirement slips, dispatch emails to farmers, and deduct product costs from the respective 10-day (1-10, 11-20, 21-31) or 15-day (1-15, 16-31) milk bill cycle.
+              Review and process requirement requests. Approvals automatically generate requirement slips, dispatch emails to farmers, and deduct product costs from the respective billing cycle.
             </p>
 
             <table>
@@ -1121,12 +1121,12 @@
 
               <div class="form-group">
                 <label>Date of Booking *</label>
-                <input type="date" id="booking-date" required>
+                <input type="date" id="booking-date" required onchange="validateRequirementDates()">
               </div>
 
               <div class="form-group">
                 <label>Requested Delivery Date *</label>
-                <input type="date" id="booking-delivery-date" required>
+                <input type="date" id="booking-delivery-date" required onchange="validateRequirementDates()">
               </div>
             </div>
 
@@ -1267,6 +1267,7 @@
     <p><small>Dairy Vision Global Cloud Edition | Palamaner Collection Center | Chittoor, AP</small></p>
   </footer>
 
+  <script src="app.js"></script>
   <script>
     const ALLOWED_AGENTS = [
       "karanamharish93@gmail.com",
@@ -1317,50 +1318,6 @@
     let agentAuthMode = 'password';
     let farmerAuthMode = 'password';
     const otpStore = {};
-
-    // Integrated OTP Handlers
-    function handleSendOTP(emailInputId, context = 'OTP') {
-      const emailInput = document.getElementById(emailInputId);
-      if (!emailInput || !emailInput.value.trim()) {
-        showAlert('Please enter a valid email address.', 'danger');
-        return;
-      }
-      const email = emailInput.value.trim().toLowerCase();
-      
-      const firewall = FirewallSystem.isAllowed(email);
-      if (!firewall.allowed) {
-        showAlert(firewall.message, 'danger');
-        return;
-      }
-
-      const otp = Math.floor(100000 + Math.random() * 900000).toString();
-      otpStore[email] = otp;
-
-      showAlert(`[Simulated ${context}] 6-digit OTP sent to ${email}: ${otp}`, 'info');
-      addLog(`OTP sent to ${email} for ${context}.`);
-    }
-
-    function handleVerifyOTP(emailInputId, otpInputId, onSuccess) {
-      const emailInput = document.getElementById(emailInputId);
-      const otpInput = document.getElementById(otpInputId);
-      if (!emailInput || !otpInput) return;
-
-      const email = emailInput.value.trim().toLowerCase();
-      const enteredOtp = otpInput.value.trim();
-
-      if (!enteredOtp) {
-        showAlert('Please enter the 6-digit OTP.', 'danger');
-        return;
-      }
-
-      const validOtp = otpStore[email] || "123456";
-      if (enteredOtp === validOtp || enteredOtp === "123456") {
-        showAlert('OTP Verified Successfully!');
-        if (typeof onSuccess === 'function') onSuccess();
-      } else {
-        showAlert('Invalid OTP. Please try again or resend.', 'danger');
-      }
-    }
 
     function sendAgentLoginOtp() {
       const email = document.getElementById('agent-email-input').value.trim().toLowerCase();
@@ -1493,7 +1450,6 @@
       }
     }
 
-    // Reset Passwords Functions
     function sendResetOtp() {
       const email = document.getElementById('reset-agent-email').value.trim().toLowerCase();
       if (!ALLOWED_AGENTS.includes(email)) {
@@ -1617,6 +1573,13 @@
         document.getElementById('app-section').classList.add('hidden');
         document.getElementById('farmer-portal-section').classList.remove('hidden');
         document.getElementById('active-user-label').innerText = `Farmer (${currentFarmer.name})`;
+        
+        // Auto initialize default dates in farmer portal
+        const today = new Date().toISOString().slice(0, 10);
+        document.getElementById('booking-date').value = today;
+        document.getElementById('booking-delivery-date').value = today;
+        document.getElementById('booking-delivery-date').min = today;
+        
         renderFarmerPortal();
       }
     }
@@ -1679,10 +1642,31 @@
       });
     });
 
+    // Date Validation for Farmer Requirement Booking
+    function validateRequirementDates() {
+      const bookingDateInput = document.getElementById('booking-date');
+      const deliveryDateInput = document.getElementById('booking-delivery-date');
+
+      if (bookingDateInput.value) {
+        deliveryDateInput.min = bookingDateInput.value;
+      }
+
+      if (bookingDateInput.value && deliveryDateInput.value) {
+        if (new Date(deliveryDateInput.value) < new Date(bookingDateInput.value)) {
+          showAlert('Delivery date cannot precede the date of booking!', 'danger');
+          deliveryDateInput.value = bookingDateInput.value;
+          return false;
+        }
+      }
+      return true;
+    }
+
     // Farmer Bookings Requirements logic
     document.getElementById('farmer-booking-form')?.addEventListener('submit', function(e) {
       e.preventDefault();
       if (!currentFarmer) return;
+
+      if (!validateRequirementDates()) return;
 
       const itemVal = document.getElementById('booking-item-type').value;
       const [itemName, unitPriceStr] = itemVal.split('|');
@@ -1711,6 +1695,10 @@
       showAlert('Requirement request submitted successfully!');
       renderFarmerBookings();
       this.reset();
+      
+      const today = new Date().toISOString().slice(0, 10);
+      document.getElementById('booking-date').value = today;
+      document.getElementById('booking-delivery-date').value = today;
     });
 
     function renderFarmerBookings() {
@@ -1733,9 +1721,9 @@
           <td>${b.qty}</td>
           <td>₹${b.totalPrice}</td>
           <td>${b.deliveryDate}</td>
-          <td><span class="water-badge ${b.status === 'Approved & Cost Deducted' ? 'water-pure' : 'water-warning'}">${b.status}</span></td>
+          <td><span class="water-badge ${b.status.includes('Approved') ? 'water-pure' : 'water-warning'}">${b.status}</span></td>
           <td>
-            ${b.status === 'Approved & Cost Deducted' ? `<button class="btn btn-sm btn-gold" onclick="showRequirementSlip('${b.id}')"><i class="fa-solid fa-receipt"></i> Slip</button>` : '<span style="color:#888;">Pending</span>'}
+            ${b.status.includes('Approved') ? `<button class="btn btn-sm btn-gold" onclick="showRequirementSlip('${b.id}')"><i class="fa-solid fa-receipt"></i> Slip</button>` : '<span style="color:#888;">Pending</span>'}
           </td>
         </tr>
       `).join('');
@@ -1758,7 +1746,7 @@
           <td>${b.item} (x${b.qty})</td>
           <td>${b.deliveryDate}</td>
           <td><strong>₹${b.totalPrice}</strong></td>
-          <td><span class="water-badge ${b.status === 'Approved & Cost Deducted' ? 'water-pure' : 'water-warning'}">${b.status}</span></td>
+          <td><span class="water-badge ${b.status.includes('Approved') ? 'water-pure' : 'water-warning'}">${b.status}</span></td>
           <td>${getBillingPeriod(b.bookingDate)}</td>
           <td>
             ${b.status === 'Pending' ? `
@@ -1770,14 +1758,30 @@
       `).join('');
     }
 
-    function processRequirementOrder(bookingId, statusState) {
+    async function processRequirementOrder(bookingId, statusState) {
       const b = (DB.bookings || []).find(item => item.id === bookingId);
       if (b) {
         b.status = statusState;
         saveDB();
-        showAlert(`Order ${bookingId} updated to ${statusState}`);
+
+        // Dispatch Email Receipt to Farmer
+        const slipPayload = {
+            farmerName: b.farmerName,
+            farmerEmail: b.farmerEmail,
+            item: `${b.item} (x${b.qty})`,
+            bookingDate: b.bookingDate,
+            status: statusState.includes('Approved') ? 'APPROVED' : 'REJECTED',
+            deliveryDate: statusState.includes('Approved') ? b.deliveryDate : 'N/A',
+            cost: statusState.includes('Approved') ? b.totalPrice : 0
+        };
+
+        const isEmailed = await sendRequirementSlipEmail(slipPayload);
+        
+        showAlert(`Order ${bookingId} updated to ${statusState}. ${isEmailed ? 'Email receipt sent to farmer.' : ''}`);
         renderAgentBookings();
-        if (statusState === 'Approved & Cost Deducted') showRequirementSlip(bookingId);
+        if (statusState.includes('Approved')) {
+          showRequirementSlip(bookingId);
+        }
       }
     }
 
@@ -1801,7 +1805,7 @@
     function clearRequirements(role) {
       if (confirm('Are you sure you want to clear requirement history?')) {
         if (role === 'farmer' && currentFarmer) {
-          DB.bookings = DB.bookings.filter(b => b.farmerId !== currentFarmer.id);
+          DB.bookings = DB.bookings.filter(b => b.farmerId !== currentFarmer.id && b.farmerEmail !== currentFarmer.email);
         } else if (role === 'agent') {
           DB.bookings = [];
         }
@@ -1851,7 +1855,7 @@
       }
     }
 
-    document.getElementById('milk-form')?.addEventListener('submit', function(e) {
+    document.getElementById('milk-form')?.addEventListener('submit', async function(e) {
       e.preventDefault();
       const farmerId = document.getElementById('milk-farmer-id').value;
       const farmer = DB.farmers.find(f => f.id === farmerId);
@@ -1882,11 +1886,17 @@
 
       DB.collections.push(entry);
       saveDB();
-      showAlert('Milk entry recorded & dispatched to farmer!');
+
+      // Dispatch Milk Collection Receipt Email to Farmer
+      const isSent = await sendMilkBillReceipt(entry);
+
+      showAlert(`Milk entry recorded! ${isSent ? 'Milk receipt emailed to farmer.' : ''}`);
       addLog(`Recorded entry for ${entry.farmerName} - ${qty}L`);
       renderCollections();
       updateDashboardMetrics();
       this.reset();
+      
+      document.getElementById('milk-date').value = new Date().toISOString().slice(0, 10);
     });
 
     document.getElementById('deduction-form')?.addEventListener('submit', function(e) {
@@ -1998,8 +2008,8 @@
       const today = new Date().toISOString().slice(0, 10);
       const milkDate = document.getElementById('milk-date');
       const repDate = document.getElementById('report-start-date');
-      if (milkDate) milkDate.value = today;
-      if (repDate) repDate.value = today;
+      if (milkDate && !milkDate.value) milkDate.value = today;
+      if (repDate && !repDate.value) repDate.value = today;
 
       const farmerCountElem = document.getElementById('dash-farmer-count');
       if (farmerCountElem) farmerCountElem.innerText = DB.farmers.length;
@@ -2084,6 +2094,8 @@
       const toDate = document.getElementById('farmer-range-to')?.value;
       const cycleMode = document.getElementById('farmer-billing-cycle-mode')?.value || '10-DAY';
 
+      renderFarmerBookings();
+
       const farmerCollections = DB.collections.filter(c => {
         const matchesFarmer = (c.farmerId === currentFarmer.id || c.farmerEmail === currentFarmer.email);
         const matchesFrom = !fromDate || c.date >= fromDate;
@@ -2100,7 +2112,7 @@
           itemizedTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No milk collection history found.</td></tr>`;
         } else {
           itemizedTbody.innerHTML = farmerCollections.map(c => {
-            totalQty += c.qty;
+            totalQty += parseFloat(c.qty);
             totalEarnings += parseFloat(c.total);
             return `
               <tr>
@@ -2121,265 +2133,129 @@
 
       const farmerDeductions = (DB.bookings || []).filter(b => {
         const matchesFarmer = (b.farmerId === currentFarmer.id || b.farmerEmail === currentFarmer.email);
-        const isApproved = b.status === 'Approved & Cost Deducted';
-        return matchesFarmer && isApproved;
+        const matchesStatus = b.status.includes('Approved');
+        const matchesFrom = !fromDate || b.bookingDate >= fromDate;
+        const matchesTo = !toDate || b.bookingDate <= toDate;
+        return matchesFarmer && matchesStatus && matchesFrom && matchesTo;
       });
 
-      let totalDeductions = farmerDeductions.reduce((sum, b) => sum + b.totalPrice, 0);
-
-      const dedTbody = document.getElementById('farmer-deductions-tbody');
-      if (dedTbody) {
+      let totalDeductions = 0;
+      const deductionsTbody = document.getElementById('farmer-deductions-tbody');
+      if (deductionsTbody) {
         if (farmerDeductions.length === 0) {
-          dedTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888;">No product deductions found.</td></tr>`;
+          deductionsTbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888;">No product deductions in selected cycle.</td></tr>`;
         } else {
-          dedTbody.innerHTML = farmerDeductions.map(b => `
+          deductionsTbody.innerHTML = farmerDeductions.map(d => {
+            totalDeductions += parseFloat(d.totalPrice);
+            return `
+              <tr>
+                <td>${d.bookingDate}</td>
+                <td>${d.item} (x${d.qty})</td>
+                <td>${d.deliveryDate}</td>
+                <td>${getBillingPeriod(d.bookingDate, cycleMode)}</td>
+                <td style="color:var(--danger); font-weight:bold;">- ₹${d.totalPrice}</td>
+              </tr>
+            `;
+          }).join('');
+        }
+      }
+
+      const netPayable = totalEarnings - totalDeductions;
+      document.getElementById('farmer-total-qty').innerText = `${totalQty.toFixed(1)} L`;
+      document.getElementById('farmer-total-earnings').innerText = `₹ ${totalEarnings.toFixed(2)}`;
+      document.getElementById('farmer-total-deductions').innerText = `- ₹ ${totalDeductions.toFixed(2)}`;
+      document.getElementById('farmer-net-payable').innerText = `₹ ${netPayable.toFixed(2)}`;
+
+      // Image Report View Render
+      const imgTbody = document.getElementById('farmer-image-format-tbody');
+      if (imgTbody) {
+        if (farmerCollections.length === 0) {
+          imgTbody.innerHTML = `<tr><td colspan="5" style="text-align:center;">No records available</td></tr>`;
+        } else {
+          imgTbody.innerHTML = farmerCollections.slice(0, 10).map(c => `
             <tr>
-              <td>${b.bookingDate}</td>
-              <td>${b.item}</td>
-              <td>${b.deliveryDate}</td>
-              <td>${getBillingPeriod(b.bookingDate, cycleMode)}</td>
-              <td><strong>- ₹${b.totalPrice}</strong></td>
+              <td>${c.date.slice(8, 10)} (${c.shift[0]})</td>
+              <td>${c.qty}</td>
+              <td>${c.fat}</td>
+              <td>${c.rate}</td>
+              <td>${c.total}</td>
             </tr>
           `).join('');
         }
       }
-
-      const netPayable = Math.max(0, totalEarnings - totalDeductions);
-
-      const qtyElem = document.getElementById('farmer-total-qty');
-      const earningsElem = document.getElementById('farmer-total-earnings');
-      const dedElem = document.getElementById('farmer-total-deductions');
-      const netElem = document.getElementById('farmer-net-payable');
-
-      if (qtyElem) qtyElem.innerText = `${totalQty.toFixed(1)} L`;
-      if (earningsElem) earningsElem.innerText = `₹ ${totalEarnings.toFixed(2)}`;
-      if (dedElem) dedElem.innerText = `- ₹ ${totalDeductions.toFixed(2)}`;
-      if (netElem) netElem.innerText = `₹ ${netPayable.toFixed(2)}`;
-
-      const imgFormatTbody = document.getElementById('farmer-image-format-tbody');
-      if (imgFormatTbody) {
-        const months = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-        let imgHtml = '';
-        months.forEach((m, idx) => {
-          const mColls = farmerCollections.filter(c => new Date(c.date).getMonth() === idx);
-          const mQty = mColls.reduce((s, c) => s + c.qty, 0);
-          const mAvgFat = mColls.length ? (mColls.reduce((s, c) => s + c.fat, 0) / mColls.length).toFixed(1) : '0.0';
-          const mAvgRate = mColls.length ? (mColls.reduce((s, c) => s + parseFloat(c.rate), 0) / mColls.length).toFixed(1) : '0.0';
-          const mAmt = mColls.reduce((s, c) => s + parseFloat(c.total), 0);
-
-          if (mColls.length > 0) {
-            imgHtml += `
-              <tr class="month-header-row"><td colspan="5">${m}</td></tr>
-              <tr>
-                <td>Totals</td>
-                <td>${mQty.toFixed(1)}</td>
-                <td>${mAvgFat}%</td>
-                <td>₹${mAvgRate}</td>
-                <td>₹${mAmt.toFixed(2)}</td>
-              </tr>
-            `;
-          }
-        });
-        imgFormatTbody.innerHTML = imgHtml || `<tr><td colspan="5" style="text-align:center; color:#888;">No summary data found.</td></tr>`;
-      }
-
-      renderFarmerBookings();
     }
 
-    function handleReportTypeChange(val) {
-      const groupDate = document.getElementById('group-report-date');
-      const groupEndDate = document.getElementById('group-report-end-date');
-      const groupShift = document.getElementById('group-report-shift');
-      const groupFarmer = document.getElementById('group-report-farmer-id');
-
-      if (val === 'SHIFT_SUMMARY') {
-        groupDate?.classList.remove('hidden');
-        groupEndDate?.classList.add('hidden');
-        groupShift?.classList.remove('hidden');
-        groupFarmer?.classList.add('hidden');
-      } else if (val === 'MILK_BILL') {
-        groupDate?.classList.remove('hidden');
-        groupEndDate?.classList.remove('hidden');
-        groupShift?.classList.add('hidden');
-        groupFarmer?.classList.remove('hidden');
-      } else if (val === 'BILL_SUMMARY') {
-        groupDate?.classList.remove('hidden');
-        groupEndDate?.classList.remove('hidden');
-        groupShift?.classList.add('hidden');
-        groupFarmer?.classList.add('hidden');
-      }
+    function handleReportTypeChange(type) {
+      document.getElementById('group-report-end-date').classList.toggle('hidden', type === 'SHIFT_SUMMARY');
+      document.getElementById('group-report-shift').classList.toggle('hidden', type === 'MILK_BILL');
+      document.getElementById('group-report-farmer-id').classList.toggle('hidden', type !== 'MILK_BILL');
     }
 
     function generateSelectedReport() {
-      const reportType = document.getElementById('report-type-select').value;
+      const type = document.getElementById('report-type-select').value;
       const startDate = document.getElementById('report-start-date').value;
       const endDate = document.getElementById('report-end-date').value;
       const shift = document.getElementById('report-shift-select').value;
-      const farmerId = document.getElementById('report-farmer-code').value;
+      const farmerCode = document.getElementById('report-farmer-code').value;
 
+      const outputCard = document.getElementById('sheet-output-card');
       const titleElem = document.getElementById('sheet-report-title');
       const rangeElem = document.getElementById('sheet-range-display');
-      const headElem = document.getElementById('sheet-table-head');
-      const bodyElem = document.getElementById('sheet-table-body');
-      const footElem = document.getElementById('sheet-table-footer');
-      const outputCard = document.getElementById('sheet-output-card');
+      const thead = document.getElementById('sheet-table-head');
+      const tbody = document.getElementById('sheet-table-body');
+      const tfoot = document.getElementById('sheet-table-footer');
 
       outputCard.classList.remove('hidden');
 
-      if (reportType === 'SHIFT_SUMMARY') {
-        titleElem.innerText = `SHIFT SUMMARY REPORT - ${shift.toUpperCase()}`;
-        rangeElem.innerText = startDate || 'All Dates';
+      let filtered = DB.collections.filter(c => {
+        if (type === 'SHIFT_SUMMARY') {
+          return c.date === startDate && (shift === 'ALL' || c.shift === shift);
+        } else if (type === 'MILK_BILL') {
+          return c.farmerId === farmerCode && c.date >= startDate && c.date <= endDate;
+        } else {
+          return c.date >= startDate && c.date <= endDate;
+        }
+      });
 
-        headElem.innerHTML = `
+      if (type === 'SHIFT_SUMMARY') {
+        titleElem.innerText = `SHIFT SUMMARY REPORT (${shift.toUpperCase()})`;
+        rangeElem.innerText = startDate;
+
+        thead.innerHTML = `
           <tr>
-            <th>Farmer Code</th>
-            <th>Farmer Name</th>
-            <th>Shift</th>
-            <th>Milk Type</th>
-            <th>Qty (L)</th>
-            <th>FAT %</th>
-            <th>SNF %</th>
-            <th>Water %</th>
-            <th>Total (₹)</th>
+            <th>Time</th><th>Farmer</th><th>Shift</th><th>Qty (L)</th><th>Fat %</th><th>SNF %</th><th>Total (₹)</th>
+          </tr>
+        `;
+        
+        let sumQty = 0, sumTotal = 0;
+        tbody.innerHTML = filtered.map(c => {
+          sumQty += c.qty;
+          sumTotal += parseFloat(c.total);
+          return `<tr><td>${c.time}</td><td>${c.farmerName} (${c.farmerId})</td><td>${c.shift}</td><td>${c.qty}</td><td>${c.fat}</td><td>${c.snf}</td><td>₹${c.total}</td></tr>`;
+        }).join('');
+
+        tfoot.innerHTML = `<tr><td colspan="3">Total Volume & Value</td><td>${sumQty.toFixed(1)} L</td><td colspan="2"></td><td>₹${sumTotal.toFixed(2)}</td></tr>`;
+      } else {
+        titleElem.innerText = type === 'MILK_BILL' ? `FARMER MILK BILL STATEMENT` : `BILL SUMMARY PERIOD REPORT`;
+        rangeElem.innerText = `${startDate} to ${endDate || startDate}`;
+
+        thead.innerHTML = `
+          <tr>
+            <th>Date</th><th>Farmer</th><th>Shift</th><th>Qty (L)</th><th>Fat %</th><th>SNF %</th><th>Rate</th><th>Total (₹)</th>
           </tr>
         `;
 
-        const filtered = DB.collections.filter(c => {
-          const matchesDate = !startDate || c.date === startDate;
-          const matchesShift = shift === 'ALL' || c.shift === shift;
-          return matchesDate && matchesShift;
-        });
+        let sumQty = 0, sumTotal = 0;
+        tbody.innerHTML = filtered.map(c => {
+          sumQty += c.qty;
+          sumTotal += parseFloat(c.total);
+          return `<tr><td>${c.date}</td><td>${c.farmerName} (${c.farmerId})</td><td>${c.shift}</td><td>${c.qty}</td><td>${c.fat}</td><td>${c.snf}</td><td>₹${c.rate}</td><td>₹${c.total}</td></tr>`;
+        }).join('');
 
-        let totQty = 0, totAmt = 0;
-        bodyElem.innerHTML = filtered.map(c => {
-          totQty += c.qty;
-          totAmt += parseFloat(c.total);
-          return `
-            <tr>
-              <td>${c.farmerId}</td>
-              <td>${c.farmerName}</td>
-              <td>${c.shift}</td>
-              <td>${c.type}</td>
-              <td>${c.qty} L</td>
-              <td>${c.fat}%</td>
-              <td>${c.snf}%</td>
-              <td>${c.waterPct}%</td>
-              <td>₹${c.total}</td>
-            </tr>
-          `;
-        }).join('') || '<tr><td colspan="9" style="text-align:center;">No records found.</td></tr>';
-
-        footElem.innerHTML = `
-          <tr>
-            <td colspan="4">TOTALS</td>
-            <td>${totQty.toFixed(1)} L</td>
-            <td colspan="3"></td>
-            <td>₹${totAmt.toFixed(2)}</td>
-          </tr>
-        `;
-      } else if (reportType === 'MILK_BILL') {
-        const farmer = DB.farmers.find(f => f.id === farmerId);
-        titleElem.innerText = `INDIVIDUAL MILK BILL - ${farmer ? farmer.name : farmerId}`;
-        rangeElem.innerText = `${startDate || 'Start'} to ${endDate || 'End'}`;
-
-        headElem.innerHTML = `
-          <tr>
-            <th>Date</th>
-            <th>Shift</th>
-            <th>Type</th>
-            <th>Qty (L)</th>
-            <th>FAT %</th>
-            <th>SNF %</th>
-            <th>Rate/L</th>
-            <th>Amount (₹)</th>
-          </tr>
-        `;
-
-        const filtered = DB.collections.filter(c => {
-          const matchesFarmer = c.farmerId === farmerId;
-          const matchesFrom = !startDate || c.date >= startDate;
-          const matchesTo = !endDate || c.date <= endDate;
-          return matchesFarmer && matchesFrom && matchesTo;
-        });
-
-        let totQty = 0, totAmt = 0;
-        bodyElem.innerHTML = filtered.map(c => {
-          totQty += c.qty;
-          totAmt += parseFloat(c.total);
-          return `
-            <tr>
-              <td>${c.date}</td>
-              <td>${c.shift}</td>
-              <td>${c.type}</td>
-              <td>${c.qty} L</td>
-              <td>${c.fat}%</td>
-              <td>${c.snf}%</td>
-              <td>₹${c.rate}</td>
-              <td>₹${c.total}</td>
-            </tr>
-          `;
-        }).join('') || '<tr><td colspan="8" style="text-align:center;">No records found.</td></tr>';
-
-        footElem.innerHTML = `
-          <tr>
-            <td colspan="3">TOTAL PAYABLE</td>
-            <td>${totQty.toFixed(1)} L</td>
-            <td colspan="3"></td>
-            <td>₹${totAmt.toFixed(2)}</td>
-          </tr>
-        `;
-      } else if (reportType === 'BILL_SUMMARY') {
-        titleElem.innerText = 'CONSOLIDATED BILL SUMMARY REPORT';
-        rangeElem.innerText = `${startDate || 'Start'} to ${endDate || 'End'}`;
-
-        headElem.innerHTML = `
-          <tr>
-            <th>Farmer Code</th>
-            <th>Farmer Name</th>
-            <th>Total Volume (L)</th>
-            <th>Gross Earnings (₹)</th>
-            <th>Deductions (₹)</th>
-            <th>Net Payable (₹)</th>
-          </tr>
-        `;
-
-        let gQty = 0, gGross = 0, gDed = 0, gNet = 0;
-        bodyElem.innerHTML = DB.farmers.map(f => {
-          const fColls = DB.collections.filter(c => (c.farmerId === f.id || c.farmerEmail === f.email) && (!startDate || c.date >= startDate) && (!endDate || c.date <= endDate));
-          const fDeds = (DB.bookings || []).filter(b => (b.farmerId === f.id || b.farmerEmail === f.email) && b.status === 'Approved & Cost Deducted');
-
-          const fQty = fColls.reduce((sum, c) => sum + c.qty, 0);
-          const fGross = fColls.reduce((sum, c) => sum + parseFloat(c.total), 0);
-          const fDed = fDeds.reduce((sum, b) => sum + b.totalPrice, 0);
-          const fNet = fGross - fDed;
-
-          gQty += fQty;
-          gGross += fGross;
-          gDed += fDed;
-          gNet += fNet;
-
-          return `
-            <tr>
-              <td>${f.id}</td>
-              <td>${f.name}</td>
-              <td>${fQty.toFixed(1)} L</td>
-              <td>₹${fGross.toFixed(2)}</td>
-              <td>₹${fDed.toFixed(2)}</td>
-              <td><strong>₹${fNet.toFixed(2)}</strong></td>
-            </tr>
-          `;
-        }).join('') || '<tr><td colspan="6" style="text-align:center;">No farmers found.</td></tr>';
-
-        footElem.innerHTML = `
-          <tr>
-            <td colspan="2">GRAND TOTALS</td>
-            <td>${gQty.toFixed(1)} L</td>
-            <td>₹${gGross.toFixed(2)}</td>
-            <td>₹${gDed.toFixed(2)}</td>
-            <td>₹${gNet.toFixed(2)}</td>
-          </tr>
-        `;
+        tfoot.innerHTML = `<tr><td colspan="3">Grand Total</td><td>${sumQty.toFixed(1)} L</td><td colspan="3"></td><td>₹${sumTotal.toFixed(2)}</td></tr>`;
       }
+
+      outputCard.scrollIntoView({ behavior: 'smooth' });
     }
   </script>
 </body>

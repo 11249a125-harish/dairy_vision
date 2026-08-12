@@ -107,6 +107,11 @@ async function sendBrevoEmail({ toEmail, toName, subject, htmlContent }) {
   return response;
 }
 
+// 0. Server Health Check / Root Route
+app.get('/', (req, res) => {
+  res.json({ success: true, message: 'Dairy Vision Backend API is running running smoothly.' });
+});
+
 // 1. Send OTP Endpoint
 app.post('/api/send-otp', async (req, res) => {
   const { email, purpose } = req.body;
@@ -169,7 +174,6 @@ app.post('/api/send-milk-bill', async (req, res) => {
   }
 
   try {
-    // 1. Save entry to MongoDB Atlas
     const newBill = new MilkBill({
       farmerName: farmerName || 'Farmer',
       farmerEmail: recipientEmail.trim(),
@@ -183,7 +187,6 @@ app.post('/api/send-milk-bill', async (req, res) => {
     });
     await newBill.save();
 
-    // 2. Dispatch Email via Brevo
     await sendBrevoEmail({
       toEmail: recipientEmail.trim(),
       toName: farmerName || 'Farmer',
@@ -249,7 +252,6 @@ app.post('/api/send-requirement-slip', async (req, res) => {
   const statusColor = safeStatus === 'APPROVED' ? '#2e7d32' : safeStatus === 'REJECTED' ? '#c1121f' : '#e65100';
 
   try {
-    // 1. Save entry to MongoDB Atlas
     const newSlip = new RequirementSlip({
       farmerName: farmerName || 'Farmer',
       farmerEmail: recipientEmail.trim(),
@@ -261,7 +263,6 @@ app.post('/api/send-requirement-slip', async (req, res) => {
     });
     await newSlip.save();
 
-    // 2. Dispatch Email via Brevo
     await sendBrevoEmail({
       toEmail: recipientEmail.trim(),
       toName: farmerName || 'Farmer',
