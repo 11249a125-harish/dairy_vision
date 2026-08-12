@@ -17,6 +17,48 @@ app.use(cors({
 
 const otpStore = {};
 
+// Helper: Clean expired OTPs periodically to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  for (const email in otpStore) {
+    if (otpStore[email].expiresAt < now) {
+      delete otpStore[email];
+    }
+  }
+}, 5 * 60 * 1000);
+
+// Helper: Generic Brevo Email Dispatcher
+async function sendBrevoEmail({ toEmail, toName, subject, htmlContent }) {
+  const senderEmail = process.env.SENDER_EMAIL || 'karanamharish93@gmail.com';
+  const apiKey = process.env.BREVO_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('BREVO_API_KEY environment variable is missing.');
+  }
+
+  const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      'accept': 'application/json',
+      'api-key': apiKey,
+      'content-type': 'application/json'
+    },
+    body: JSON.stringify({
+      sender: { name: "Dairy Vision Portal", email: senderEmail },
+      to: [{ email: toEmail, name: toName || 'User' }],
+      subject,
+      htmlContent
+    })
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || `Brevo API rejected request with status ${response.status}`);
+  }
+
+  return response;
+}
+
 // 1. Send OTP Endpoint
 app.post('/api/send-otp', async (req, res) => {
   const { email, purpose } = req.body;
@@ -25,42 +67,30 @@ app.post('/api/send-otp', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Valid email required.' });
   }
 
-  const senderEmail = process.env.SENDER_EMAIL || 'karanamharish93@gmail.com'; 
+  const formattedEmail = email.toLowerCase().trim();
   const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
   const expiresAt = Date.now() + 5 * 60 * 1000;
   
-  otpStore[email.toLowerCase().trim()] = { otp: generatedOtp, expiresAt };
+  otpStore[formattedEmail] = { otp: generatedOtp, expiresAt };
 
   try {
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'accept': 'application/json',
-        'api-key': process.env.BREVO_API_KEY,
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({
-        sender: { name: "Dairy Vision Portal", email: senderEmail },
-        to: [{ email: email.trim() }],
-        subject: `Dairy Vision Verification Code: ${generatedOtp}`,
-        htmlContent: `
-          <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
-            <h2 style="color: #1b4332;">Dairy Vision Cloud System</h2>
-            <p>Your verification code for <strong>${purpose || 'Verification'}</strong> is:</p>
-            <h1 style="color: #ffb703; background: #1b4332; display: inline-block; padding: 10px 20px; border-radius: 5px;">${generatedOtp}</h1>
-            <p>This code expires in 5 minutes.</p>
-          </div>
-        `
-      })
+    await sendBrevoEmail({
+      toEmail: formattedEmail,
+      subject: `Dairy Vision Verification Code: ${generatedOtp}`,
+      htmlContent: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; color: #333;">
+          <h2 style="color: #1b4332;">Dairy Vision Cloud System</h2>
+          <p>Your verification code for <strong>${purpose || 'Verification'}</strong> is:</p>
+          <h1 style="color: #ffb703; background: #1b4332; display: inline-block; padding: 10px 20px; border-radius: 5px;">${generatedOtp}</h1>
+          <p>This code expires in 5 minutes.</p>
+        </div>
+      `
     });
-
-    if (!response.ok) {
-      return res.status(500).json({ success: false, message: 'Brevo API rejection.' });
-    }
 
     return res.json({ success: true, message: 'OTP sent successfully.' });
   } catch (err) {
-    return res.status(500).json({ success: false, message: 'Server error sending OTP.' });
+    console.error('Send OTP Error:', err.message);
+    return res.status(500).json({ success: false, message: 'Failed to send OTP email.' });
   }
 });
 
@@ -88,63 +118,54 @@ app.post('/api/send-milk-bill', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Valid farmer email address is required.' });
   }
 
-  const senderEmail = process.env.SENDER_EMAIL || 'karanamharish93@gmail.com';
-
   try {
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'accept': 'application/json',
-        'api-key': process.env.BREVO_API_KEY,
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({
-        sender: { name: "Dairy Vision Portal", email: senderEmail },
-        to: [{ email: farmerEmail.trim(), name: farmerName || 'Farmer' }],
-        subject: `Milk Collection Receipt - ${farmerName || 'Dairy Member'}`,
-        htmlContent: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-            <h2 style="color: #1b4332; text-align: center;">Dairy Vision Collection Receipt</h2>
-            <p>Dear <strong>${farmerName || 'Valued Farmer'}</strong>,</p>
-            <p>Your milk collection entry has been successfully registered. Below are your collection details:</p>
-            
-            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-              <tr style="background-color: #f2f2f2;">
-                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Milk Type:</strong></td>
-                <td style="padding: 10px; border: 1px solid #ddd;">${milkType || 'Standard Milk'}</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Shift:</strong></td>
-                <td style="padding: 10px; border: 1px solid #ddd;">${shift || 'Morning/Evening'}</td>
-              </tr>
-              <tr style="background-color: #f2f2f2;">
-                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Quantity (Liters):</strong></td>
-                <td style="padding: 10px; border: 1px solid #ddd;">${liters} L</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px; border: 1px solid #ddd;"><strong>FAT / SNF:</strong></td>
-                <td style="padding: 10px; border: 1px solid #ddd;">${fat}% / ${snf}%</td>
-              </tr>
-              <tr style="background-color: #f2f2f2;">
-                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Water %:</strong></td>
-                <td style="padding: 10px; border: 1px solid #ddd;">${water || '0'}%</td>
-              </tr>
-              <tr style="background-color: #e8f5e9;">
-                <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px;"><strong>Total Amount:</strong></td>
-                <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px; color: #2e7d32;"><strong>₹${totalAmount}</strong></td>
-              </tr>
-            </table>
+    await sendBrevoEmail({
+      toEmail: farmerEmail.trim(),
+      toName: farmerName || 'Farmer',
+      subject: `Milk Collection Receipt - ${farmerName || 'Dairy Member'}`,
+      htmlContent: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
+          <h2 style="color: #1b4332; text-align: center;">Dairy Vision Collection Receipt</h2>
+          <p>Dear <strong>${farmerName || 'Valued Farmer'}</strong>,</p>
+          <p>Your milk collection entry has been successfully registered. Below are your collection details:</p>
+          
+          <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+            <tr style="background-color: #f2f2f2;">
+              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Milk Type:</strong></td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${milkType || 'Standard Milk'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Shift:</strong></td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${shift || 'Morning/Evening'}</td>
+            </tr>
+            <tr style="background-color: #f2f2f2;">
+              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Quantity (Liters):</strong></td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${liters ?? 0} L</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border: 1px solid #ddd;"><strong>FAT / SNF:</strong></td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${fat ?? 0}% / ${snf ?? 0}%</td>
+            </tr>
+            <tr style="background-color: #f2f2f2;">
+              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Water %:</strong></td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${water ?? 0}%</td>
+            </tr>
+            <tr style="background-color: #e8f5e9;">
+              <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px;"><strong>Total Amount:</strong></td>
+              <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px; color: #2e7d32;"><strong>₹${totalAmount ?? 0}</strong></td>
+            </tr>
+          </table>
 
-            <p style="margin-top: 20px; font-size: 12px; color: #777; text-align: center;">
-              This is an automated receipt from Dairy Vision Cloud System.
-            </p>
-          </div>
-        `
-      })
+          <p style="margin-top: 20px; font-size: 12px; color: #777; text-align: center;">
+            This is an automated receipt from Dairy Vision Cloud System.
+          </p>
+        </div>
+      `
     });
 
     return res.json({ success: true, message: 'Milk bill emailed to farmer successfully.' });
   } catch (err) {
+    console.error('Send Milk Bill Error:', err.message);
     return res.status(500).json({ success: false, message: 'Internal server error while sending bill email.' });
   }
 });
@@ -157,59 +178,52 @@ app.post('/api/send-requirement-slip', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Valid farmer email is required.' });
   }
 
-  const senderEmail = process.env.SENDER_EMAIL || 'karanamharish93@gmail.com';
+  const safeStatus = (status || 'PENDING').toString();
 
   try {
-    const response = await fetch('https://api.brevo.com/v3/smtp/email', {
-      method: 'POST',
-      headers: {
-        'accept': 'application/json',
-        'api-key': process.env.BREVO_API_KEY,
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify({
-        sender: { name: "Dairy Vision Portal", email: senderEmail },
-        to: [{ email: farmerEmail.trim(), name: farmerName || 'Farmer' }],
-        subject: `Farmer Requirement Request Slip: ${status.toUpperCase()}`,
-        htmlContent: `
-          <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 2px solid #1b4332; border-radius: 8px;">
-            <h2 style="color: #1b4332; text-align: center;">Dairy Vision Requirement Slip</h2>
-            <p>Dear <strong>${farmerName || 'Farmer'}</strong>,</p>
-            <p>Your product requirement request status has been updated by the Agent:</p>
-            
-            <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-              <tr style="background-color: #f2f2f2;">
-                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Date of Booking:</strong></td>
-                <td style="padding: 10px; border: 1px solid #ddd;">${bookingDate}</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Requirement:</strong></td>
-                <td style="padding: 10px; border: 1px solid #ddd;">${item}</td>
-              </tr>
-              <tr style="background-color: #f2f2f2;">
-                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Status:</strong></td>
-                <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: ${status === 'Approved' ? '#2e7d32' : '#c1121f'};">${status}</td>
-              </tr>
-              <tr>
-                <td style="padding: 10px; border: 1px solid #ddd;"><strong>Delivery Date:</strong></td>
-                <td style="padding: 10px; border: 1px solid #ddd;">${deliveryDate || 'N/A'}</td>
-              </tr>
-              <tr style="background-color: #e8f5e9;">
-                <td style="padding: 12px; border: 1px solid #ddd;"><strong>Cost:</strong></td>
-                <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px; color: #2e7d32;"><strong>₹${cost}</strong></td>
-              </tr>
-            </table>
+    await sendBrevoEmail({
+      toEmail: farmerEmail.trim(),
+      toName: farmerName || 'Farmer',
+      subject: `Farmer Requirement Request Slip: ${safeStatus.toUpperCase()}`,
+      htmlContent: `
+        <div style="font-family: Arial, sans-serif; max-width: 500px; margin: auto; padding: 20px; border: 2px solid #1b4332; border-radius: 8px;">
+          <h2 style="color: #1b4332; text-align: center;">Dairy Vision Requirement Slip</h2>
+          <p>Dear <strong>${farmerName || 'Farmer'}</strong>,</p>
+          <p>Your product requirement request status has been updated by the Agent:</p>
+          
+          <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
+            <tr style="background-color: #f2f2f2;">
+              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Date of Booking:</strong></td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${bookingDate || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Requirement:</strong></td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${item || 'N/A'}</td>
+            </tr>
+            <tr style="background-color: #f2f2f2;">
+              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Status:</strong></td>
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: ${safeStatus.toLowerCase() === 'approved' ? '#2e7d32' : '#c1121f'};">${safeStatus}</td>
+            </tr>
+            <tr>
+              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Delivery Date:</strong></td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${deliveryDate || 'N/A'}</td>
+            </tr>
+            <tr style="background-color: #e8f5e9;">
+              <td style="padding: 12px; border: 1px solid #ddd;"><strong>Cost:</strong></td>
+              <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px; color: #2e7d32;"><strong>₹${cost ?? 0}</strong></td>
+            </tr>
+          </table>
 
-            <p style="margin-top: 20px; font-size: 12px; color: #777; text-align: center;">
-              This requirement cost will be automatically deducted from your respective 10-day / 15-day milk bill payment statement.
-            </p>
-          </div>
-        `
-      })
+          <p style="margin-top: 20px; font-size: 12px; color: #777; text-align: center;">
+            This requirement cost will be automatically deducted from your respective payment statement.
+          </p>
+        </div>
+      `
     });
 
     return res.json({ success: true, message: 'Requirement slip email sent successfully.' });
   } catch (err) {
+    console.error('Send Requirement Slip Error:', err.message);
     return res.status(500).json({ success: false, message: 'Internal server error while sending requirement slip.' });
   }
 });
