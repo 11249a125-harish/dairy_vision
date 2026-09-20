@@ -113,7 +113,6 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
-// Helper function to cleanly extract numbers even from strings like "12.3 L" or "4%"
 function parseCleanNumber(val, defaultVal = 0) {
   if (val === undefined || val === null || val === '') return defaultVal;
   if (typeof val === 'number') return isNaN(val) ? defaultVal : val;
@@ -261,17 +260,15 @@ app.post('/api/send-milk-bill', async (req, res) => {
 
   const finalQty = parseCleanNumber(req.body.qty !== undefined ? req.body.qty : req.body.liters, 0);
   const finalFat = parseCleanNumber(req.body.fat, 4.0);
-  const finalSnf = parseCleanNumber(req.body.snf, 8.5);
+  const finalSnf = parseCleanNumber(req.body.snf, 8.1);
   const finalWater = parseCleanNumber(req.body.waterPct !== undefined ? req.body.waterPct : req.body.water, 0);
 
-  // Rate calculation formula with standard dairy pricing fallback
   let finalRate = parseCleanNumber(req.body.rate, 0);
   if (finalRate <= 0) {
     finalRate = parseFloat((finalFat * 7 + finalSnf * 4).toFixed(2));
-    if (finalRate <= 0) finalRate = 42.0; // standard default minimum rate
+    if (finalRate <= 0) finalRate = 42.0;
   }
 
-  // Total calculation fallback
   let finalTotal = parseCleanNumber(req.body.total !== undefined ? req.body.total : req.body.totalAmount, 0);
   if (finalTotal <= 0 && finalQty > 0) {
     finalTotal = parseFloat((finalQty * finalRate).toFixed(2));
@@ -307,50 +304,50 @@ app.post('/api/send-milk-bill', async (req, res) => {
       toName: farmerName,
       subject: `Milk Collection Receipt - ${farmerName}`,
       htmlContent: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 25px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #ffffff;">
-          <h2 style="color: #1b4332; text-align: center; margin-bottom: 20px;">Dairy Vision Collection Receipt</h2>
-          <p style="font-size: 15px; color: #333;">Dear <strong>${farmerName}</strong>,</p>
-          <p style="font-size: 14px; color: #555;">Your milk collection entry has been successfully registered. Below are your collection details:</p>
+        <div style="font-family: Arial, sans-serif; max-width: 650px; margin: auto; padding: 25px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #ffffff;">
+          <h2 style="color: #1b4332; text-align: center; margin-bottom: 25px; font-weight: bold;">Dairy Vision Collection Receipt</h2>
+          <p style="font-size: 15px; color: #333; margin-bottom: 8px;">Dear <strong>${farmerName}</strong> ,</p>
+          <p style="font-size: 14px; color: #555; margin-bottom: 20px;">Your milk collection entry has been successfully registered. Below are your collection details:</p>
           
           <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px;">
-            <tr style="background-color: #f9f9f9;">
-              <td style="padding: 12px; border: 1px solid #e0e0e0; width: 45%;"><strong>Milk Type:</strong></td>
-              <td style="padding: 12px; border: 1px solid #e0e0e0;">${type || 'Standard Milk'}</td>
+            <tr style="background-color: #f7f7f7;">
+              <td style="padding: 12px; border: 1px solid #e5e7eb; width: 45%;"><strong>Milk Type:</strong></td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;">${type || 'Standard Milk'}</td>
             </tr>
             <tr>
-              <td style="padding: 12px; border: 1px solid #e0e0e0;"><strong>Shift:</strong></td>
-              <td style="padding: 12px; border: 1px solid #e0e0e0;">${shift || 'Morning'}</td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;"><strong>Shift:</strong></td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;">${shift || 'Morning'}</td>
             </tr>
-            <tr style="background-color: #f9f9f9;">
-              <td style="padding: 12px; border: 1px solid #e0e0e0;"><strong>Quantity (Liters):</strong></td>
-              <td style="padding: 12px; border: 1px solid #e0e0e0;">${finalQty} L</td>
-            </tr>
-            <tr>
-              <td style="padding: 12px; border: 1px solid #e0e0e0;"><strong>FAT / SNF:</strong></td>
-              <td style="padding: 12px; border: 1px solid #e0e0e0;">${finalFat}% / ${finalSnf}%</td>
-            </tr>
-            <tr style="background-color: #f9f9f9;">
-              <td style="padding: 12px; border: 1px solid #e0e0e0;"><strong>Water %:</strong></td>
-              <td style="padding: 12px; border: 1px solid #e0e0e0;">${finalWater}%</td>
+            <tr style="background-color: #f7f7f7;">
+              <td style="padding: 12px; border: 1px solid #e5e7eb;"><strong>Quantity (Liters):</strong></td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;">${finalQty} L</td>
             </tr>
             <tr>
-              <td style="padding: 12px; border: 1px solid #e0e0e0;"><strong>Rate per Liter:</strong></td>
-              <td style="padding: 12px; border: 1px solid #e0e0e0;">₹${finalRate.toFixed(2)}</td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;"><strong>FAT / SNF:</strong></td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;">${finalFat}% / ${finalSnf}%</td>
             </tr>
-            <tr style="background-color: #e8f5e9;">
+            <tr style="background-color: #f7f7f7;">
+              <td style="padding: 12px; border: 1px solid #e5e7eb;"><strong>Water %:</strong></td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;">${finalWater}%</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;"><strong>Rate per Liter:</strong></td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;">₹${finalRate.toFixed(2)}</td>
+            </tr>
+            <tr style="background-color: #eaf5ec;">
               <td style="padding: 14px; border: 1px solid #c8e6c9; font-size: 16px;"><strong>Total Amount:</strong></td>
               <td style="padding: 14px; border: 1px solid #c8e6c9; font-size: 18px; color: #2e7d32; font-weight: bold;">₹${finalTotal.toFixed(2)}</td>
             </tr>
           </table>
 
-          <p style="text-align: center; color: #888; font-size: 12px; margin-top: 25px;">
+          <p style="text-align: center; color: #777; font-size: 12px; margin-top: 25px;">
             This is an automated receipt from Dairy Vision Cloud System.
           </p>
         </div>
       `
     });
 
-    return res.json({ success: true, message: 'Milk collection bill saved to MongoDB & emailed successfully.', total: finalTotal });
+    return res.json({ success: true, message: 'Milk collection bill saved to MongoDB & emailed successfully.', total: finalTotal, rate: finalRate });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
