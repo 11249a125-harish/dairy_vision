@@ -20,6 +20,14 @@ let DB = JSON.parse(localStorage.getItem('SMART_DAIRY_GLOBAL_DB') || localStorag
     "11249a251@kanchiuniv.ac.in": { password: null },
     "11249a255@kanchiuniv.ac.in": { password: null }
   },
+  rates: {
+    cowFatRate: 7.0,
+    cowSnfRate: 4.0,
+    cowBaseRate: 45.0,
+    buffaloFatRate: 8.0,
+    buffaloSnfRate: 5.0,
+    buffaloBaseRate: 60.0
+  },
   farmers: [],
   collections: [],
   deductions: [],
@@ -65,16 +73,52 @@ function addAiLog(tagClass, tagText, msg) {
   container.insertBefore(entry, container.firstChild);
 }
 
+function togglePasswordVisibility(inputId, iconId) {
+  const inputElem = document.getElementById(inputId);
+  const iconElem = document.getElementById(iconId);
+  if (!inputElem || !iconElem) return;
+
+  if (inputElem.type === 'password') {
+    inputElem.type = 'text';
+    iconElem.className = 'fa-solid fa-eye-slash';
+  } else {
+    inputElem.type = 'password';
+    iconElem.className = 'fa-solid fa-eye';
+  }
+}
+
+function toggleRateSettingsCard() {
+  const body = document.getElementById('rate-settings-body');
+  const icon = document.getElementById('rate-settings-toggle-icon');
+  if (body) {
+    const isHidden = body.classList.contains('hidden');
+    body.classList.toggle('hidden', !isHidden);
+    if (icon) icon.innerHTML = isHidden ? '<i class="fa-solid fa-chevron-up"></i> Hide Rates' : '<i class="fa-solid fa-chevron-down"></i> Adjust Rates';
+  }
+}
+
+function loadRateSettings() {
+  const r = DB.rates || { cowFatRate: 7.0, cowSnfRate: 4.0, cowBaseRate: 45.0, buffaloFatRate: 8.0, buffaloSnfRate: 5.0, buffaloBaseRate: 60.0 };
+  if (document.getElementById('rate-cow-fat')) document.getElementById('rate-cow-fat').value = r.cowFatRate;
+  if (document.getElementById('rate-cow-snf')) document.getElementById('rate-cow-snf').value = r.cowSnfRate;
+  if (document.getElementById('rate-cow-base')) document.getElementById('rate-cow-base').value = r.cowBaseRate;
+  if (document.getElementById('rate-buffalo-fat')) document.getElementById('rate-buffalo-fat').value = r.buffaloFatRate;
+  if (document.getElementById('rate-buffalo-snf')) document.getElementById('rate-buffalo-snf').value = r.buffaloSnfRate;
+  if (document.getElementById('rate-buffalo-base')) document.getElementById('rate-buffalo-base').value = r.buffaloBaseRate;
+}
+
 async function syncFromMongoDB() {
   try {
     addLog('Connecting to MongoDB Database Service...');
     addAiLog('tag-db', 'AI-DB-SYNC', 'Querying MongoDB database collections...');
     
-    const [farmersRes, collectionsRes, bookingsRes, deductionsRes] = await Promise.allSettled([
+    const [farmersRes, collectionsRes, bookingsRes, deductionsRes, agentsRes, ratesRes] = await Promise.allSettled([
       fetch(`${API_BASE_URL}/api/farmers`),
       fetch(`${API_BASE_URL}/api/collections`),
       fetch(`${API_BASE_URL}/api/bookings`),
-      fetch(`${API_BASE_URL}/api/deductions`)
+      fetch(`${API_BASE_URL}/api/deductions`),
+      fetch(`${API_BASE_URL}/api/agents`),
+      fetch(`${API_BASE_URL}/api/rates`)
     ]);
 
     if (farmersRes.status === 'fulfilled' && farmersRes.value.ok) {
@@ -97,7 +141,25 @@ async function syncFromMongoDB() {
       if (data.deductions && data.deductions.length > 0) DB.deductions = data.deductions;
     }
 
+    if (agentsRes.status === 'fulfilled' && agentsRes.value.ok) {
+      const data = await agentsRes.value.json();
+      if (data.agents && data.agents.length > 0) {
+        data.agents.forEach(a => {
+          if (!DB.agentAccounts[a.email]) DB.agentAccounts[a.email] = {};
+          DB.agentAccounts[a.email].password = a.password;
+        });
+      }
+    }
+
+    if (ratesRes.status === 'fulfilled' && ratesRes.value.ok) {
+      const data = await ratesRes.value.json();
+      if (data.rates && data.rates.cowFatRate !== undefined) {
+        DB.rates = { ...DB.rates, ...data.rates };
+      }
+    }
+
     saveDB();
+    loadRateSettings();
     addLog('MongoDB Database sync complete!');
     addAiLog('tag-db', 'AI-DB-SYNC', 'MongoDB cloud database synchronized cleanly.');
   } catch (err) {
@@ -328,7 +390,7 @@ function switchTab(tabId) {
   document.getElementById(`tab-${tabId}`)?.classList.remove('hidden');
   
   if (tabId === 'farmers') renderFarmers();
-  else if (tabId === 'collection') { renderCollections(); populateDropdowns(); }
+  else if (tabId === 'collection') { renderCollections(); populateDropdowns(); loadRateSettings(); }
   else if (tabId === 'deduction') populateDropdowns();
   else if (tabId === 'bookings') renderAgentBookings();
   else if (tabId === 'reports') populateDropdowns();
@@ -367,7 +429,7 @@ function toggleFarmerResetPass(show) {
 
 function sendAgentLoginOtp() { handleSendOTP('agent-email-input', 'Agent Portal Login'); }
 function sendResetOtp() {
-  handleSendOTP('reset-agent-email', 'Password Reset');
+  handleSendOTP('reset-agent-email', 'Agent Registration Verification');
   document.getElementById('reset-otp-block')?.classList.remove('hidden');
   document.getElementById('reset-new-pass-block')?.classList.remove('hidden');
   document.getElementById('btn-send-reset-otp')?.classList.add('hidden');
@@ -375,7 +437,7 @@ function sendResetOtp() {
 }
 function sendFarmerLoginOtp() { handleSendOTP('farmer-login-email', 'Farmer Portal Access'); }
 function sendFarmerResetOtp() {
-  handleSendOTP('reset-farmer-email', 'Farmer Password Reset');
+  handleSendOTP('reset-farmer-email', 'Farmer Password Setup');
   document.getElementById('farmer-reset-otp-block')?.classList.remove('hidden');
   document.getElementById('farmer-reset-new-pass-block')?.classList.remove('hidden');
   document.getElementById('btn-send-farmer-reset-otp')?.classList.add('hidden');
@@ -408,6 +470,7 @@ function initAppView(role) {
     document.getElementById('sidebar')?.classList.remove('hidden');
     document.getElementById('farmer-portal-section')?.classList.add('hidden');
     document.getElementById('active-user-label').innerText = `Agent: ${currentAgentEmail}`;
+    loadRateSettings();
     updateDashboardMetrics();
     renderFarmers();
     renderAgentBookings();
@@ -677,9 +740,17 @@ document.getElementById('milk-form')?.addEventListener('submit', function(e) {
   const snf = parseFloat(document.getElementById('milk-snf').value) || 8.1;
   const waterRaw = document.getElementById('milk-water-pct')?.value || '0';
   const waterPct = parseFloat(String(waterRaw).replace(/[^0-9.]/g, '')) || 0;
+  const type = document.getElementById('milk-type').value;
 
-  let rate = parseFloat((fat * 7 + snf * 4).toFixed(2));
-  if (rate <= 0) rate = 42.0;
+  const isCow = type.toLowerCase().includes('cow');
+  const r = DB.rates || { cowFatRate: 7.0, cowSnfRate: 4.0, cowBaseRate: 45.0, buffaloFatRate: 8.0, buffaloSnfRate: 5.0, buffaloBaseRate: 60.0 };
+
+  const fatRate = isCow ? (parseFloat(r.cowFatRate) || 7.0) : (parseFloat(r.buffaloFatRate) || 8.0);
+  const snfRate = isCow ? (parseFloat(r.cowSnfRate) || 4.0) : (parseFloat(r.buffaloSnfRate) || 5.0);
+  const baseRate = isCow ? (parseFloat(r.cowBaseRate) || 45.0) : (parseFloat(r.buffaloBaseRate) || 60.0);
+
+  let rate = parseFloat((fat * fatRate + snf * snfRate).toFixed(2));
+  if (rate <= 0) rate = baseRate;
 
   const total = parseFloat((qty * rate).toFixed(2));
 
@@ -690,7 +761,7 @@ document.getElementById('milk-form')?.addEventListener('submit', function(e) {
     farmerId,
     farmerName: farmer ? farmer.name : 'Unknown',
     farmerEmail: farmer ? farmer.email : '',
-    type: document.getElementById('milk-type').value,
+    type,
     shift: document.getElementById('milk-shift').value,
     qty,
     liters: qty,
@@ -1289,9 +1360,10 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('agent-login-form')?.addEventListener('submit', function(e) {
     e.preventDefault();
     const email = document.getElementById('agent-email-input').value.trim().toLowerCase();
-    if (!ALLOWED_AGENTS.includes(email)) {
-      showAlert('Unauthorized Agent Email.', 'danger');
-      addAiLog('tag-security', 'AI-SECURITY', `Unauthorized login attempt for email ${email}`);
+    const isRegistered = ALLOWED_AGENTS.includes(email) || Boolean(DB.agentAccounts[email]);
+    if (!isRegistered) {
+      showAlert('Unregistered Agent Email. Please click "First Time Agent? Register / Set Password".', 'danger');
+      addAiLog('tag-security', 'AI-SECURITY', `Unauthorized/Unregistered login attempt for email ${email}`);
       return;
     }
 
@@ -1323,9 +1395,41 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!DB.agentAccounts[email]) DB.agentAccounts[email] = {};
       DB.agentAccounts[email].password = newPass;
       saveDB();
-      showAlert('Password reset successful! Please login.');
+
+      fetch(`${API_BASE_URL}/api/agents`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password: newPass })
+      }).catch(err => console.warn('Agent registration sync offline:', err));
+
+      showAlert(`Agent ${email} registered & password saved successfully! Please log in.`);
+      addAiLog('tag-security', 'AI-REGISTER', `Agent ${email} registered into Smart Dairy system.`);
       toggleAgentResetPass(false);
     });
+  });
+
+  document.getElementById('rate-settings-form')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const rates = {
+      cowFatRate: parseFloat(document.getElementById('rate-cow-fat').value) || 7.0,
+      cowSnfRate: parseFloat(document.getElementById('rate-cow-snf').value) || 4.0,
+      cowBaseRate: parseFloat(document.getElementById('rate-cow-base').value) || 45.0,
+      buffaloFatRate: parseFloat(document.getElementById('rate-buffalo-fat').value) || 8.0,
+      buffaloSnfRate: parseFloat(document.getElementById('rate-buffalo-snf').value) || 5.0,
+      buffaloBaseRate: parseFloat(document.getElementById('rate-buffalo-base').value) || 60.0
+    };
+
+    DB.rates = rates;
+    saveDB();
+
+    fetch(`${API_BASE_URL}/api/rates`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(rates)
+    }).catch(err => console.warn('Rate config sync offline:', err));
+
+    showAlert('Milk Rate Settings updated successfully!');
+    addAiLog('tag-audit', 'AI-RATES', 'Agent updated Cow & Buffalo milk rate settings.');
   });
 
   document.getElementById('farmer-login-form')?.addEventListener('submit', function(e) {

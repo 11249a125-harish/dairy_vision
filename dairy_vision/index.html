@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Dairy Vision - Global Cloud Collection & AI Intelligence System</title>
+  <title>Smart Dairy - Global Cloud Collection & AI Intelligence System</title>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="styles.css">
@@ -11,13 +11,13 @@
 </head>
 <body>
   <svg style="display:none;">
-    <symbol id="dairy-vision-logo-svg" viewBox="0 0 300 300">
+    <symbol id="smart-dairy-logo-svg" viewBox="0 0 300 300">
       <circle cx="150" cy="150" r="145" fill="#1b4332"/>
       <circle cx="150" cy="150" r="135" fill="none" stroke="#d8f3dc" stroke-width="4"/>
       <circle cx="150" cy="150" r="122" fill="#206a78"/>
       <path id="text-path-top" d="M 45 150 A 105 105 0 0 1 255 150" fill="none"/>
       <text font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="28" fill="#ffffff" letter-spacing="3">
-        <textPath href="#text-path-top" startOffset="50%" text-anchor="middle">DAIRY VISION</textPath>
+        <textPath href="#text-path-top" startOffset="50%" text-anchor="middle">SMART DAIRY</textPath>
       </text>
       <path id="text-path-bottom" d="M 240 160 A 95 95 0 0 1 60 160" fill="none"/>
       <text font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="13" fill="#d8f3dc" letter-spacing="2">
@@ -35,32 +35,26 @@
   <header>
     <div class="header-branding">
       <div class="brand-logo-container">
-        <svg class="brand-logo-img"><use href="#dairy-vision-logo-svg"/></svg>
-        <span class="brand-title">Dairy Vision</span>
+        <svg class="brand-logo-img"><use href="#smart-dairy-logo-svg"/></svg>
+        <span class="brand-title">Smart Dairy</span>
       </div>
       <span class="server-status-badge"><i class="fa-solid fa-brain"></i> AI & MONGODB ONLINE</span>
       <small style="margin-left: 10px; color: var(--accent);">
         Palamaner Center, AP | 
         <span class="can-edit-box">
           <strong>CAN:</strong> 
-          <input type="text" id="agent-can-input" value="CAN-PLM-2026-01" onchange="updateCanNumber(this.value)">
+          <input type="text" id="agent-can-input" value="CAN-PLM-2026-01">
         </span>
       </small>
     </div>
 
     <div class="header-controls">
       <button class="btn btn-gold btn-sm" onclick="backupToMongoDB()"><i class="fa-solid fa-cloud-arrow-up"></i> MongoDB Backup</button>
-      
-      <select id="lang-select" class="lang-selector" onchange="changeLanguage(this.value)">
-        <option value="en">English</option>
-        <option value="te">తెలుగు (Telugu)</option>
-        <option value="hi">हिंदी (Hindi)</option>
-      </select>
 
       <div id="user-status" class="hidden">
         <span id="active-user-label" style="font-weight: 600; color: var(--gold);">Agent</span> | 
         <button onclick="logout()" style="background:none; border:none; color:white; cursor:pointer; font-weight:bold; margin-left:8px;">
-          <i class="fa-solid fa-right-from-bracket"></i> <span data-i18n="logout">Logout</span>
+          <i class="fa-solid fa-right-from-bracket"></i> Logout
         </button>
       </div>
     </div>
@@ -68,14 +62,14 @@
 
   <div class="main-wrapper">
     <aside id="sidebar" class="hidden">
-      <button class="nav-btn active" onclick="switchTab('dashboard')"><i class="fa-solid fa-tachometer-alt"></i> <span data-i18n="nav_dashboard">Dashboard & Analytics</span></button>
+      <button class="nav-btn active" onclick="switchTab('dashboard')"><i class="fa-solid fa-tachometer-alt"></i> Dashboard & Analytics</button>
       <button class="nav-btn" onclick="switchTab('farmers')"><i class="fa-solid fa-file-excel"></i> Farmers Directory Sheet</button>
-      <button class="nav-btn" onclick="switchTab('collection')"><i class="fa-solid fa-fill-drip"></i> <span data-i18n="nav_collection">Milk Entry & Manage</span></button>
+      <button class="nav-btn" onclick="switchTab('collection')"><i class="fa-solid fa-fill-drip"></i> Milk Entry & Manage</button>
       <button class="nav-btn" onclick="switchTab('hardware')"><i class="fa-solid fa-microchip"></i> Hardware Ports & Devices</button>
       <button class="nav-btn" onclick="switchTab('deduction')"><i class="fa-solid fa-minus-circle"></i> Date Range Deductions</button>
       <button class="nav-btn" onclick="switchTab('bookings')"><i class="fa-solid fa-box-open"></i> Farmer Requirements & Orders</button>
       <button class="nav-btn" onclick="switchTab('developers')"><i class="fa-solid fa-laptop-code"></i> Developer Profiles</button>
-      <button class="nav-btn" onclick="switchTab('reports')"><i class="fa-solid fa-chart-line"></i> <span data-i18n="nav_reports">Clean Sheets & Print</span></button>
+      <button class="nav-btn" onclick="switchTab('reports')"><i class="fa-solid fa-chart-line"></i> Clean Sheets & Print</button>
     </aside>
 
     <div class="content-area">
@@ -85,8 +79,8 @@
         <div class="hero-auth-bg">
           <div id="login-card" class="auth-card-hero">
             <div style="text-align: center; margin-bottom: 15px;">
-              <svg class="brand-logo-img-lg"><use href="#dairy-vision-logo-svg"/></svg>
-              <h2>Dairy Vision Portal</h2>
+              <svg class="brand-logo-img-lg"><use href="#smart-dairy-logo-svg"/></svg>
+              <h2>Smart Dairy Portal</h2>
               <p class="auth-subtitle">Firewall & MongoDB Protected | Palamaner Station, AP</p>
             </div>
             
@@ -104,12 +98,17 @@
               <form id="agent-login-form">
                 <div class="form-group">
                   <label><i class="fa-solid fa-envelope"></i> Agent Gmail Address *</label>
-                  <input type="email" id="agent-email-input" placeholder="Enter authorized agent email" required>
+                  <input type="email" id="agent-email-input" placeholder="Enter agent email address" required>
                 </div>
 
                 <div id="agent-password-block" class="form-group">
                   <label><i class="fa-solid fa-lock"></i> Password *</label>
-                  <input type="password" id="agent-password-input" placeholder="Enter password" value="agent123">
+                  <div style="position: relative; display: flex; align-items: center;">
+                    <input type="password" id="agent-password-input" placeholder="Enter password" value="agent123" style="padding-right: 40px; width: 100%;">
+                    <button type="button" onclick="togglePasswordVisibility('agent-password-input', 'toggle-agent-pass-icon')" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: var(--primary); font-size: 1.1em;" title="Toggle Password Visibility">
+                      <i id="toggle-agent-pass-icon" class="fa-solid fa-eye"></i>
+                    </button>
+                  </div>
                 </div>
 
                 <div id="agent-login-otp-block" class="form-group hidden" style="background: var(--accent); padding: 12px; border-radius: 8px; border: 1px solid var(--secondary);">
@@ -119,7 +118,7 @@
                 </div>
 
                 <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:15px;">
-                  <a href="#" onclick="toggleAgentResetPass(true)" style="color:var(--primary); font-size:0.85em; font-weight:bold; text-decoration:none;">First Time / Reset Password?</a>
+                  <a href="#" onclick="toggleAgentResetPass(true)" style="color:var(--primary); font-size:0.85em; font-weight:bold; text-decoration:none;"><i class="fa-solid fa-user-plus"></i> First Time Agent? Register / Set Password</a>
                 </div>
 
                 <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px;"><i class="fa-solid fa-right-to-bracket"></i> Login to Agent Portal</button>
@@ -127,10 +126,10 @@
             </div>
 
             <form id="agent-reset-form" class="hidden">
-              <h3 style="color:var(--primary); text-align:center; margin-bottom:12px;"><i class="fa-solid fa-key"></i> First Time / Reset Password</h3>
+              <h3 style="color:var(--primary); text-align:center; margin-bottom:12px;"><i class="fa-solid fa-user-plus"></i> First Time Agent Registration & Password Setup</h3>
               <div class="form-group">
                 <label>Agent Gmail Address</label>
-                <input type="email" id="reset-agent-email" placeholder="Enter authorized agent email" required>
+                <input type="email" id="reset-agent-email" placeholder="Enter agent email address" required>
               </div>
 
               <div id="reset-otp-block" class="form-group hidden">
@@ -140,16 +139,21 @@
 
               <div id="reset-new-pass-block" class="form-group hidden">
                 <label>Set New Password</label>
-                <input type="password" id="reset-new-password" placeholder="Create new password">
+                <div style="position: relative; display: flex; align-items: center;">
+                  <input type="password" id="reset-new-password" placeholder="Create new password" style="padding-right: 40px; width: 100%;">
+                  <button type="button" onclick="togglePasswordVisibility('reset-new-password', 'toggle-reset-agent-pass-icon')" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: var(--primary); font-size: 1.1em;" title="Toggle Password Visibility">
+                    <i id="toggle-reset-agent-pass-icon" class="fa-solid fa-eye"></i>
+                  </button>
+                </div>
               </div>
 
               <div style="display:flex; gap:10px; flex-direction:column;">
                 <button type="button" id="btn-send-reset-otp" class="btn btn-gold btn-sm" onclick="sendResetOtp()"><i class="fa-solid fa-paper-plane"></i> Send Gmail OTP</button>
-                <button type="submit" id="btn-save-reset-pass" class="btn btn-success btn-sm hidden"><i class="fa-solid fa-save"></i> Set Password & Complete Reset</button>
+                <button type="submit" id="btn-save-reset-pass" class="btn btn-success btn-sm hidden"><i class="fa-solid fa-save"></i> Register Agent & Save Password</button>
               </div>
 
               <p style="text-align:center; margin-top:12px;">
-                <a href="#" onclick="toggleAgentResetPass(false)" style="color:#666; font-size:0.85em;">Back to Login</a>
+                <a href="#" onclick="toggleAgentResetPass(false)" style="color:#666; font-size:0.85em;">Back to Agent Login</a>
               </p>
             </form>
 
@@ -167,7 +171,12 @@
 
                 <div id="farmer-password-block" class="form-group">
                   <label><i class="fa-solid fa-lock"></i> Password *</label>
-                  <input type="password" id="farmer-password-input" placeholder="Enter password" value="farmer123">
+                  <div style="position: relative; display: flex; align-items: center;">
+                    <input type="password" id="farmer-password-input" placeholder="Enter password" value="farmer123" style="padding-right: 40px; width: 100%;">
+                    <button type="button" onclick="togglePasswordVisibility('farmer-password-input', 'toggle-farmer-pass-icon')" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: var(--primary); font-size: 1.1em;" title="Toggle Password Visibility">
+                      <i id="toggle-farmer-pass-icon" class="fa-solid fa-eye"></i>
+                    </button>
+                  </div>
                 </div>
 
                 <div id="farmer-login-otp-block" class="form-group hidden" style="background: var(--accent); padding: 12px; border-radius: 8px;">
@@ -177,7 +186,7 @@
                 </div>
 
                 <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:15px;">
-                  <a href="#" onclick="toggleFarmerResetPass(true)" style="color:var(--primary); font-size:0.85em; font-weight:bold; text-decoration:none;">First Time / Set Password?</a>
+                  <a href="#" onclick="toggleFarmerResetPass(true)" style="color:var(--primary); font-size:0.85em; font-weight:bold; text-decoration:none;"><i class="fa-solid fa-user-plus"></i> First Time Farmer? Register / Set Password</a>
                 </div>
 
                 <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px;"><i class="fa-solid fa-tractor"></i> Access Farmer Portal</button>
@@ -185,7 +194,7 @@
             </div>
 
             <form id="farmer-reset-form" class="hidden">
-              <h3 style="color:var(--primary); text-align:center; margin-bottom:12px;"><i class="fa-solid fa-key"></i> Farmer Password Reset</h3>
+              <h3 style="color:var(--primary); text-align:center; margin-bottom:12px;"><i class="fa-solid fa-user-plus"></i> First Time Farmer Registration & Password Setup</h3>
               <div class="form-group">
                 <label>Registered Gmail Address</label>
                 <input type="email" id="reset-farmer-email" placeholder="Enter your registered Gmail" required>
@@ -198,12 +207,17 @@
 
               <div id="farmer-reset-new-pass-block" class="form-group hidden">
                 <label>Set New Password</label>
-                <input type="password" id="reset-farmer-new-password" placeholder="Create new password">
+                <div style="position: relative; display: flex; align-items: center;">
+                  <input type="password" id="reset-farmer-new-password" placeholder="Create new password" style="padding-right: 40px; width: 100%;">
+                  <button type="button" onclick="togglePasswordVisibility('reset-farmer-new-password', 'toggle-reset-farmer-pass-icon')" style="position: absolute; right: 10px; background: none; border: none; cursor: pointer; color: var(--primary); font-size: 1.1em;" title="Toggle Password Visibility">
+                    <i id="toggle-reset-farmer-pass-icon" class="fa-solid fa-eye"></i>
+                  </button>
+                </div>
               </div>
 
               <div style="display:flex; gap:10px; flex-direction:column;">
                 <button type="button" id="btn-send-farmer-reset-otp" class="btn btn-gold btn-sm" onclick="sendFarmerResetOtp()"><i class="fa-solid fa-paper-plane"></i> Send Gmail OTP</button>
-                <button type="submit" id="btn-save-farmer-reset-pass" class="btn btn-success btn-sm hidden"><i class="fa-solid fa-save"></i> Set Password & Finish</button>
+                <button type="submit" id="btn-save-farmer-reset-pass" class="btn btn-success btn-sm hidden"><i class="fa-solid fa-save"></i> Save Password & Finish</button>
               </div>
 
               <p style="text-align:center; margin-top:12px;">
@@ -218,7 +232,6 @@
       <div id="app-section" class="hidden">
         
         <div id="tab-dashboard" class="tab-content">
-          
           <div class="ai-dashboard-card">
             <div class="ai-header-bar">
               <div>
@@ -253,7 +266,7 @@
             <h5 style="color:#b7e4c7; margin-bottom:8px;"><i class="fa-solid fa-stream"></i> Real-Time AI Activity & Event Monitor Stream</h5>
             <div class="ai-log-stream" id="ai-log-stream-box">
               <div class="ai-log-entry"><span class="ai-tag tag-db">AI-CORE</span> System booted. MongoDB cloud synchronization active.</div>
-              <div class="ai-log-entry"><span class="ai-tag tag-audit">AI-AUDIT</span> Enforcing date range requirement validation on report generator.</div>
+              <div class="ai-log-entry"><span class="ai-tag tag-audit">AI-AUDIT</span> Enforcing date range and volume validation on collection entries.</div>
             </div>
           </div>
 
@@ -287,7 +300,7 @@
           <div id="active-dash-charts" class="hidden">
             <div class="card">
               <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                <h3><i class="fa-solid fa-bolt"></i> Dairy Vision Server Console & MongoDB Engine</h3>
+                <h3><i class="fa-solid fa-bolt"></i> Smart Dairy Server Console & MongoDB Engine</h3>
                 <div>
                   <button class="btn btn-gold btn-sm" onclick="backupToMongoDB()"><i class="fa-solid fa-database"></i> Backup Files & Data to MongoDB</button>
                   <button class="btn btn-outline btn-sm" onclick="exportMongoDBBackup()"><i class="fa-solid fa-download"></i> Download JSON Backup</button>
@@ -332,14 +345,10 @@
                   <label>Village Name</label>
                   <input type="text" id="farmer-village" value="Palamaner Village">
                 </div>
-                <div class="form-group">
-                  <label>Aadhaar Number *</label>
-                  <input type="text" id="farmer-aadhaar" placeholder="12-digit Aadhaar" required pattern="[0-9]{12}">
-                </div>
 
                 <div class="form-group">
                   <label>Select Respective Bank Name *</label>
-                  <select id="farmer-bank-name" onchange="autoFillIfscCode(this.value)" required>
+                  <select id="farmer-bank-name" required>
                     <option value="">-- Select Bank --</option>
                     <option value="State Bank of India (SBI)">State Bank of India (SBI)</option>
                     <option value="Union Bank of India (Andhra Bank)">Union Bank of India (Andhra Bank)</option>
@@ -409,6 +418,44 @@
         </div>
 
         <div id="tab-collection" class="tab-content hidden">
+          <div class="card" style="margin-bottom: 20px; border-left: 4px solid var(--gold);">
+            <div style="display: flex; justify-content: space-between; align-items: center; cursor: pointer;" onclick="toggleRateSettingsCard()">
+              <h3 style="margin: 0; color: var(--primary);"><i class="fa-solid fa-sliders"></i> Agent Configured Milk Rate Settings (Cow & Buffalo)</h3>
+              <span id="rate-settings-toggle-icon" class="btn btn-sm btn-outline"><i class="fa-solid fa-chevron-down"></i> Adjust Rates</span>
+            </div>
+            <div id="rate-settings-body" class="hidden" style="margin-top: 15px; border-top: 1px dashed #ccc; padding-top: 15px;">
+              <form id="rate-settings-form">
+                <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+                  <div class="form-group">
+                    <label><i class="fa-solid fa-cow"></i> Cow FAT Multiplier (₹/FAT)</label>
+                    <input type="number" step="0.1" id="rate-cow-fat" value="7.0" required>
+                  </div>
+                  <div class="form-group">
+                    <label><i class="fa-solid fa-cow"></i> Cow SNF Multiplier (₹/SNF)</label>
+                    <input type="number" step="0.1" id="rate-cow-snf" value="4.0" required>
+                  </div>
+                  <div class="form-group">
+                    <label><i class="fa-solid fa-cow"></i> Cow Base Rate (₹/L Min)</label>
+                    <input type="number" step="0.1" id="rate-cow-base" value="45.0" required>
+                  </div>
+                  <div class="form-group">
+                    <label><i class="fa-solid fa-cloud-sun"></i> Buffalo FAT Multiplier (₹/FAT)</label>
+                    <input type="number" step="0.1" id="rate-buffalo-fat" value="8.0" required>
+                  </div>
+                  <div class="form-group">
+                    <label><i class="fa-solid fa-cloud-sun"></i> Buffalo SNF Multiplier (₹/SNF)</label>
+                    <input type="number" step="0.1" id="rate-buffalo-snf" value="5.0" required>
+                  </div>
+                  <div class="form-group">
+                    <label><i class="fa-solid fa-cloud-sun"></i> Buffalo Base Rate (₹/L Min)</label>
+                    <input type="number" step="0.1" id="rate-buffalo-base" value="60.0" required>
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-success btn-sm" style="margin-top: 10px;"><i class="fa-solid fa-save"></i> Save Agent Rate Settings</button>
+              </form>
+            </div>
+          </div>
+
           <div class="card">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 15px;">
               <h3><i class="fa-solid fa-flask"></i> Milk Collection Entry Point</h3>
@@ -446,15 +493,15 @@
                 </div>
                 <div class="form-group">
                   <label>Quantity (Liters) *</label>
-                  <input type="number" step="0.1" id="milk-qty" required placeholder="0.0">
+                  <input type="number" step="0.1" min="0.1" id="milk-qty" required placeholder="e.g. 5.5">
                 </div>
                 <div class="form-group">
                   <label>FAT % *</label>
-                  <input type="number" step="0.1" id="milk-fat" required placeholder="0.0">
+                  <input type="number" step="0.1" min="1.0" id="milk-fat" required placeholder="e.g. 4.2">
                 </div>
                 <div class="form-group">
                   <label>SNF % *</label>
-                  <input type="number" step="0.1" id="milk-snf" oninput="calculateWaterPercentage()" required placeholder="0.0">
+                  <input type="number" step="0.1" min="5.0" id="milk-snf" oninput="calculateWaterPercentage()" required placeholder="e.g. 8.5">
                 </div>
                 <div class="form-group">
                   <label>Calculated Water %</label>
@@ -586,7 +633,7 @@
           <div id="printable-req-slip" class="req-slip-box hidden">
             <div class="req-slip-header">
               <div class="req-slip-title"><i class="fa-solid fa-receipt"></i> FARMER REQUIREMENT SLIP</div>
-              <p style="font-size:0.85em; color:#555;">Dairy Vision Cloud System - Official Confirmation</p>
+              <p style="font-size:0.85em; color:#555;">Smart Dairy Cloud System - Official Confirmation</p>
             </div>
             <div class="req-slip-row"><span>Farmer Code / Name:</span><strong id="slip-farmer-name">--</strong></div>
             <div class="req-slip-row"><span>Date of Booking:</span><strong id="slip-booking-date">--</strong></div>
@@ -679,8 +726,8 @@
           <div id="sheet-output-card" class="sheet-view hidden">
             <div class="sheet-header">
               <div style="text-align: center; margin-bottom: 10px;">
-                <svg class="brand-logo-img-lg" style="width: 80px; height: 80px; margin-bottom: 5px;"><use href="#dairy-vision-logo-svg"/></svg>
-                <h2 style="color: var(--primary);">DAIRY VISION - PALAMANER COLLECTION STATION</h2>
+                <svg class="brand-logo-img-lg" style="width: 80px; height: 80px; margin-bottom: 5px;"><use href="#smart-dairy-logo-svg"/></svg>
+                <h2 style="color: var(--primary);">SMART DAIRY - PALAMANER COLLECTION STATION</h2>
                 <p style="font-weight: bold; font-size:1.1em; color:var(--teal-brand);" id="sheet-report-title">SHIFT SUMMARY REPORT</p>
               </div>
               <div style="margin-top: 15px; display: flex; justify-content: space-between; font-size:0.9em;">
@@ -869,7 +916,7 @@
 
   <footer class="no-print">
     <p>Developed by: <strong>K Harish, N Adithya and A Naveen</strong> | Agent Contact: <strong>+91 9100447663, +91 6300218108, +91 7780475917</strong></p>
-    <p><small>Dairy Vision Global Cloud & AI Edition | Palamaner Collection Center | Chittoor, AP</small></p>
+    <p><small>Smart Dairy Global Cloud & AI Edition | Palamaner Collection Center | Chittoor, AP</small></p>
   </footer>
 
   <script src="app.js"></script>

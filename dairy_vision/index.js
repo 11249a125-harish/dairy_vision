@@ -31,6 +31,22 @@ if (!MONGODB_URI) {
     .catch(err => console.error('❌ MongoDB Connection Error:', err.message));
 }
 
+const agentSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const rateConfigSchema = new mongoose.Schema({
+  cowFatRate: { type: Number, default: 7.0 },
+  cowSnfRate: { type: Number, default: 4.0 },
+  cowBaseRate: { type: Number, default: 45.0 },
+  buffaloFatRate: { type: Number, default: 8.0 },
+  buffaloSnfRate: { type: Number, default: 5.0 },
+  buffaloBaseRate: { type: Number, default: 60.0 },
+  updatedAt: { type: Date, default: Date.now }
+});
+
 const farmerSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true },
   name: { type: String, required: true },
@@ -98,6 +114,8 @@ const backupSchema = new mongoose.Schema({
   backupData: { type: Object, required: true }
 });
 
+const Agent = mongoose.model('Agent', agentSchema);
+const RateConfig = mongoose.model('RateConfig', rateConfigSchema);
 const Farmer = mongoose.model('Farmer', farmerSchema);
 const Collection = mongoose.model('Collection', collectionSchema);
 const Booking = mongoose.model('Booking', bookingSchema);
@@ -123,7 +141,7 @@ function parseCleanNumber(val, defaultVal = 0) {
 
 async function sendEmailHelper({ toEmail, toName, subject, htmlContent }) {
   const senderEmail = process.env.SENDER_EMAIL || process.env.SMTP_USER || 'karanamharish93@gmail.com';
-  const senderName = process.env.SENDER_NAME || 'Dairy Vision Portal';
+  const senderName = process.env.SENDER_NAME || 'Smart Dairy Portal';
 
   if (process.env.SMTP_USER && (process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD)) {
     try {
@@ -190,7 +208,7 @@ app.get('/', (req, res) => {
   res.json({
     success: true,
     status: 'ONLINE',
-    system: 'Dairy Vision Cloud Server',
+    system: 'Smart Dairy Cloud Server',
     database: mongoose.connection.readyState === 1 ? 'Connected to MongoDB' : 'Disconnected / Standalone',
     timestamp: new Date().toISOString()
   });
@@ -198,6 +216,58 @@ app.get('/', (req, res) => {
 
 app.get('/api/health', (req, res) => {
   res.json({ success: true, status: 'Healthy', dbState: mongoose.connection.readyState });
+});
+
+app.get('/api/agents', async (req, res) => {
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const agents = await Agent.find().sort({ createdAt: -1 });
+      return res.json({ success: true, agents });
+    }
+    res.json({ success: true, agents: [] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/agents', async (req, res) => {
+  const email = (req.body.email || '').toLowerCase().trim();
+  const password = req.body.password;
+  if (!email || !password) return res.status(400).json({ success: false, message: 'Email and password required.' });
+
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const agent = await Agent.findOneAndUpdate({ email }, { email, password }, { upsert: true, new: true });
+      return res.json({ success: true, agent });
+    }
+    res.json({ success: true, agent: { email, password } });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.get('/api/rates', async (req, res) => {
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const rates = await RateConfig.findOne();
+      return res.json({ success: true, rates: rates || {} });
+    }
+    res.json({ success: true, rates: {} });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/rates', async (req, res) => {
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const rates = await RateConfig.findOneAndUpdate({}, req.body, { upsert: true, new: true });
+      return res.json({ success: true, rates });
+    }
+    res.json({ success: true, rates: req.body });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
 });
 
 app.post('/api/send-otp', async (req, res) => {
@@ -214,10 +284,10 @@ app.post('/api/send-otp', async (req, res) => {
   try {
     await sendEmailHelper({
       toEmail: formattedEmail,
-      subject: `Dairy Vision Verification Code: ${generatedOtp}`,
+      subject: `Smart Dairy Verification Code: ${generatedOtp}`,
       htmlContent: `
         <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 500px; border: 2px solid #1b4332; border-radius: 8px;">
-          <h2 style="color: #1b4332; text-align: center;">Dairy Vision Cloud System</h2>
+          <h2 style="color: #1b4332; text-align: center;">Smart Dairy Cloud System</h2>
           <p>Dear User,</p>
           <p>Your security verification code for <strong>${purpose || 'Portal Access'}</strong> is:</p>
           <div style="text-align: center; margin: 20px 0;">
@@ -251,7 +321,7 @@ app.post('/api/verify-otp', (req, res) => {
 
 app.post('/api/send-milk-bill', async (req, res) => {
   const recipientEmail = req.body.farmerEmail || req.body.email || req.body.toEmail;
-  const farmerName = req.body.farmerName || req.body.name || 'Farmer';
+  const farmerName = (req.body.farmerName || req.body.name || 'Farmer').trim();
   const { id, date, time, farmerId, type, shift } = req.body;
 
   if (!recipientEmail || typeof recipientEmail !== 'string' || !recipientEmail.includes('@')) {
@@ -262,11 +332,14 @@ app.post('/api/send-milk-bill', async (req, res) => {
   const finalFat = parseCleanNumber(req.body.fat, 4.0);
   const finalSnf = parseCleanNumber(req.body.snf, 8.1);
   const finalWater = parseCleanNumber(req.body.waterPct !== undefined ? req.body.waterPct : req.body.water, 0);
+  const isCow = (type || '').toLowerCase().includes('cow');
 
   let finalRate = parseCleanNumber(req.body.rate, 0);
   if (finalRate <= 0) {
-    finalRate = parseFloat((finalFat * 7 + finalSnf * 4).toFixed(2));
-    if (finalRate <= 0) finalRate = 42.0;
+    const fatMultiplier = isCow ? 7.0 : 8.0;
+    const snfMultiplier = isCow ? 4.0 : 5.0;
+    finalRate = parseFloat((finalFat * fatMultiplier + finalSnf * snfMultiplier).toFixed(2));
+    if (finalRate <= 0) finalRate = isCow ? 45.0 : 60.0;
   }
 
   let finalTotal = parseCleanNumber(req.body.total !== undefined ? req.body.total : req.body.totalAmount, 0);
@@ -274,7 +347,7 @@ app.post('/api/send-milk-bill', async (req, res) => {
     finalTotal = parseFloat((finalQty * finalRate).toFixed(2));
   }
 
-  console.log(`[RECEIPT DEBUG] Qty: ${finalQty}, Rate: ${finalRate}, Total: ${finalTotal}`);
+  console.log(`[RECEIPT DEBUG] Farmer: ${farmerName}, Qty: ${finalQty}, Rate: ${finalRate}, Total: ${finalTotal}`);
 
   try {
     if (mongoose.connection.readyState === 1) {
@@ -288,7 +361,7 @@ app.post('/api/send-milk-bill', async (req, res) => {
           farmerId: farmerId || 'FARM-000',
           farmerName: farmerName,
           farmerEmail: recipientEmail.trim(),
-          type: type || 'Standard Milk',
+          type: type || 'Cow Milk',
           shift: shift || 'Morning',
           qty: finalQty,
           fat: finalFat,
@@ -304,17 +377,17 @@ app.post('/api/send-milk-bill', async (req, res) => {
     await sendEmailHelper({
       toEmail: recipientEmail.trim(),
       toName: farmerName,
-      subject: `Milk Collection Receipt - ${farmerName}`,
+      subject: `Smart Dairy Collection Receipt - ${farmerName}`,
       htmlContent: `
         <div style="font-family: Arial, sans-serif; max-width: 650px; margin: auto; padding: 25px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #ffffff;">
-          <h2 style="color: #1b4332; text-align: center; margin-bottom: 25px; font-weight: bold;">Dairy Vision Collection Receipt</h2>
-          <p style="font-size: 15px; color: #333; margin-bottom: 8px;">Dear <strong>${farmerName}</strong> ,</p>
+          <h2 style="color: #1b4332; text-align: center; margin-bottom: 25px; font-weight: bold;">Smart Dairy Collection Receipt</h2>
+          <p style="font-size: 15px; color: #333; margin-bottom: 8px;">Dear <strong>${farmerName}</strong>,</p>
           <p style="font-size: 14px; color: #555; margin-bottom: 20px;">Your milk collection entry has been successfully registered. Below are your collection details:</p>
           
           <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px;">
             <tr style="background-color: #f7f7f7;">
               <td style="padding: 12px; border: 1px solid #e5e7eb; width: 45%;"><strong>Milk Type:</strong></td>
-              <td style="padding: 12px; border: 1px solid #e5e7eb;">${type || 'Standard Milk'}</td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;">${type || 'Cow Milk'}</td>
             </tr>
             <tr>
               <td style="padding: 12px; border: 1px solid #e5e7eb;"><strong>Shift:</strong></td>
@@ -343,7 +416,7 @@ app.post('/api/send-milk-bill', async (req, res) => {
           </table>
 
           <p style="text-align: center; color: #777; font-size: 12px; margin-top: 25px;">
-            This is an automated receipt from Dairy Vision Cloud System.
+            This is an automated receipt from Smart Dairy Cloud System.
           </p>
         </div>
       `
@@ -357,7 +430,7 @@ app.post('/api/send-milk-bill', async (req, res) => {
 
 app.post('/api/send-requirement-slip', async (req, res) => {
   const recipientEmail = req.body.farmerEmail || req.body.email || req.body.toEmail;
-  const farmerName = req.body.farmerName || req.body.name || 'Farmer';
+  const farmerName = (req.body.farmerName || req.body.name || 'Farmer').trim();
   const { id, bookingDate, item, status, deliveryDate, cost, totalPrice, qty, farmerId } = req.body;
 
   if (!recipientEmail || typeof recipientEmail !== 'string' || !recipientEmail.includes('@')) {
@@ -381,11 +454,11 @@ app.post('/api/send-requirement-slip', async (req, res) => {
     await sendEmailHelper({
       toEmail: recipientEmail.trim(),
       toName: farmerName,
-      subject: `Requirement Request Slip [${safeStatus.toUpperCase()}] - ${farmerName}`,
+      subject: `Smart Dairy Requirement Slip [${safeStatus.toUpperCase()}] - ${farmerName}`,
       htmlContent: `
         <div style="font-family: Arial, sans-serif; max-width: 550px; margin: auto; padding: 22px; border: 2px solid #1b4332; border-radius: 10px; background: #ffffff;">
           <div style="text-align: center; border-bottom: 2px dashed #1b4332; padding-bottom: 12px; margin-bottom: 15px;">
-            <h2 style="color: #1b4332; margin: 0;">DAIRY VISION REQUIREMENT SLIP</h2>
+            <h2 style="color: #1b4332; margin: 0;">SMART DAIRY REQUIREMENT SLIP</h2>
             <p style="font-size: 0.85em; color: #555; margin-top: 4px;">Official Farmer Confirmation Receipt</p>
           </div>
 
