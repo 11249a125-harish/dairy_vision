@@ -38,6 +38,19 @@ function saveDB() {
   localStorage.setItem('SMART_DAIRY_GLOBAL_DB', JSON.stringify(DB));
 }
 
+function getLocalDateString(d = new Date()) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function getTomorrowDateString(d = new Date()) {
+  const tomorrow = new Date(d);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return getLocalDateString(tomorrow);
+}
+
 let currentAgentEmail = null;
 let currentFarmer = null;
 let agentAuthMode = 'password';
@@ -373,11 +386,8 @@ async function sendMilkBillReceipt(entry) {
 function handleBookingDateChange() {
   const bookingDateInput = document.getElementById('booking-date');
   const deliveryDateInput = document.getElementById('booking-delivery-date');
-  const today = new Date().toISOString().slice(0, 10);
-
-  const tomorrowObj = new Date();
-  tomorrowObj.setDate(tomorrowObj.getDate() + 1);
-  const tomorrowStr = tomorrowObj.toISOString().slice(0, 10);
+  const today = getLocalDateString();
+  const tomorrowStr = getTomorrowDateString();
 
   if (bookingDateInput) {
     bookingDateInput.min = today;
@@ -568,10 +578,13 @@ document.getElementById('farmer-booking-form')?.addEventListener('submit', async
   renderFarmerBookings();
   this.reset();
   
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalDateString();
+  const tomorrow = getTomorrowDateString();
   document.getElementById('booking-date').value = today;
-  document.getElementById('booking-delivery-date').value = today;
-  document.getElementById('booking-delivery-date').min = today;
+  document.getElementById('booking-date').min = today;
+  document.getElementById('booking-date').max = today;
+  document.getElementById('booking-delivery-date').value = tomorrow;
+  document.getElementById('booking-delivery-date').min = tomorrow;
 });
 
 function renderFarmerBookings() {
@@ -805,7 +818,7 @@ document.getElementById('milk-form')?.addEventListener('submit', function(e) {
   renderCollections();
   updateDashboardMetrics();
   this.reset();
-  document.getElementById('milk-date').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('milk-date').value = getLocalDateString();
 });
 
 document.getElementById('deduction-form')?.addEventListener('submit', function(e) {
@@ -914,7 +927,7 @@ function exportFarmersToCsv() {
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `Smart_Dairy_Farmers_Directory_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = `Smart_Dairy_Farmers_Directory_${getLocalDateString()}.csv`;
   a.click();
 }
 
@@ -976,7 +989,7 @@ function populateDropdowns() {
 }
 
 function updateDashboardMetrics() {
-  const today = new Date().toISOString().slice(0, 10);
+  const today = getLocalDateString();
   const milkDate = document.getElementById('milk-date');
   if (milkDate) milkDate.value = today;
 
