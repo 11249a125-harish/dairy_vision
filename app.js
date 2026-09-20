@@ -299,7 +299,7 @@ async function sendMilkBillReceipt(entry) {
       body: JSON.stringify(entry)
     });
     const data = await res.json();
-    if (data.success) {
+    if (data && data.success) {
       addLog(`Emailed milk collection receipt to ${entry.farmerEmail}`);
       addAiLog('tag-audit', 'AI-EMAIL', `Collection receipt emailed to ${entry.farmerEmail}`);
     }

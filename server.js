@@ -274,6 +274,8 @@ app.post('/api/send-milk-bill', async (req, res) => {
     finalTotal = parseFloat((finalQty * finalRate).toFixed(2));
   }
 
+  console.log(`[RECEIPT DEBUG] Qty: ${finalQty}, Rate: ${finalRate}, Total: ${finalTotal}`);
+
   try {
     if (mongoose.connection.readyState === 1) {
       const entryId = id || `COL-${Date.now()}`;
