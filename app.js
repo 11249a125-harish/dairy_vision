@@ -118,6 +118,78 @@ function loadRateSettings() {
   if (document.getElementById('rate-buffalo-fat')) document.getElementById('rate-buffalo-fat').value = r.buffaloFatRate;
   if (document.getElementById('rate-buffalo-snf')) document.getElementById('rate-buffalo-snf').value = r.buffaloSnfRate;
   if (document.getElementById('rate-buffalo-base')) document.getElementById('rate-buffalo-base').value = r.buffaloBaseRate;
+  updateNoticeBoardRates();
+}
+
+function updateNoticeBoardRates() {
+  const r = DB.rates || { cowFatRate: 7.0, cowSnfRate: 4.0, cowBaseRate: 45.0, buffaloFatRate: 8.0, buffaloSnfRate: 5.0, buffaloBaseRate: 60.0 };
+  const noticeBox = document.getElementById('notice-current-rates');
+  if (noticeBox) {
+    noticeBox.innerHTML = `
+      <i class="fa-solid fa-sliders"></i> <strong>Active Station Payout Multipliers:</strong><br>
+      Cow Milk FAT: ₹${r.cowFatRate}/FAT, SNF: ₹${r.cowSnfRate}/SNF (Base: ₹${r.cowBaseRate}/L) | 
+      Buffalo Milk FAT: ₹${r.buffaloFatRate}/FAT, SNF: ₹${r.buffaloSnfRate}/SNF (Base: ₹${r.buffaloBaseRate}/L)
+    `;
+  }
+}
+
+function renderDeductions() {
+  const tbody = document.getElementById('deductions-table-body');
+  if (!tbody) return;
+
+  const allDeductions = DB.deductions || [];
+  if (allDeductions.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888;">No bill deductions recorded yet.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = allDeductions.map(d => {
+    const farmer = DB.farmers.find(f => f.id === d.farmerId);
+    const farmerDisplayName = farmer ? `${farmer.name} (${d.farmerId})` : (d.farmerName || d.farmerId);
+    return `
+      <tr>
+        <td>${d.date}</td>
+        <td><strong>${farmerDisplayName}</strong></td>
+        <td>${d.type}</td>
+        <td><strong style="color:var(--danger);">₹${parseFloat(d.amount).toFixed(2)}</strong></td>
+        <td><button class="btn btn-sm btn-danger" onclick="deleteDeduction('${d.id}')"><i class="fa-solid fa-trash"></i></button></td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function deleteDeduction(id) {
+  if (confirm('Delete this deduction record?')) {
+    DB.deductions = (DB.deductions || []).filter(d => d.id !== id);
+    saveDB();
+    fetch(`${API_BASE_URL}/api/deductions/${id}`, { method: 'DELETE' }).catch(err => console.warn(err));
+    renderDeductions();
+    showAlert('Deduction record removed.');
+  }
+}
+
+function renderAgentFeedbacks() {
+  const container = document.getElementById('agent-feedbacks-box');
+  if (!container) return;
+
+  const feedbacks = DB.feedbacks || [];
+  if (feedbacks.length === 0) {
+    container.innerHTML = `<p style="color:#888;">No farmer feedback submitted yet.</p>`;
+    return;
+  }
+
+  container.innerHTML = feedbacks.map(fb => {
+    const stars = '⭐'.repeat(fb.rating || 5);
+    return `
+      <div style="background: #f8fdf9; border: 1px solid #d8f3dc; border-left: 4px solid var(--primary); padding: 10px 14px; border-radius: 6px; margin-bottom: 8px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <strong style="color:var(--primary);">${fb.farmerName} (${fb.farmerId || fb.farmerEmail})</strong>
+          <span style="font-size:0.9em;">${stars}</span>
+        </div>
+        <p style="margin: 6px 0 0 0; font-size: 0.9em; color: #333;">${fb.text}</p>
+      </div>
+    `;
+  }).join('');
 }
 
 async function syncFromMongoDB() {
@@ -125,13 +197,14 @@ async function syncFromMongoDB() {
     addLog('Connecting to MongoDB Database Service...');
     addAiLog('tag-db', 'AI-DB-SYNC', 'Querying MongoDB database collections...');
     
-    const [farmersRes, collectionsRes, bookingsRes, deductionsRes, agentsRes, ratesRes] = await Promise.allSettled([
+    const [farmersRes, collectionsRes, bookingsRes, deductionsRes, agentsRes, ratesRes, feedbacksRes] = await Promise.allSettled([
       fetch(`${API_BASE_URL}/api/farmers`),
       fetch(`${API_BASE_URL}/api/collections`),
       fetch(`${API_BASE_URL}/api/bookings`),
       fetch(`${API_BASE_URL}/api/deductions`),
       fetch(`${API_BASE_URL}/api/agents`),
-      fetch(`${API_BASE_URL}/api/rates`)
+      fetch(`${API_BASE_URL}/api/rates`),
+      fetch(`${API_BASE_URL}/api/feedbacks`)
     ]);
 
     if (farmersRes.status === 'fulfilled' && farmersRes.value.ok) {
@@ -154,6 +227,11 @@ async function syncFromMongoDB() {
       if (data.deductions && data.deductions.length > 0) DB.deductions = data.deductions;
     }
 
+    if (feedbacksRes.status === 'fulfilled' && feedbacksRes.value.ok) {
+      const data = await feedbacksRes.value.json();
+      if (data.feedbacks && data.feedbacks.length > 0) DB.feedbacks = data.feedbacks;
+    }
+
     if (agentsRes.status === 'fulfilled' && agentsRes.value.ok) {
       const data = await agentsRes.value.json();
       if (data.agents && data.agents.length > 0) {
@@ -173,6 +251,9 @@ async function syncFromMongoDB() {
 
     saveDB();
     loadRateSettings();
+    updateNoticeBoardRates();
+    renderDeductions();
+    renderAgentFeedbacks();
     addLog('MongoDB Database sync complete!');
     addAiLog('tag-db', 'AI-DB-SYNC', 'MongoDB cloud database synchronized cleanly.');
   } catch (err) {
@@ -660,6 +741,28 @@ async function processRequirementOrder(bookingId, statusState) {
   if (!b) return;
 
   b.status = statusState;
+
+  if (statusState === 'Approved & Cost Deducted' || statusState === 'APPROVED') {
+    const dedEntry = {
+      id: `DED-${b.id}`,
+      farmerId: b.farmerId,
+      farmerName: b.farmerName,
+      type: `Requirement: ${b.item} (x${b.qty})`,
+      amount: b.totalPrice,
+      date: b.bookingDate
+    };
+    if (!DB.deductions) DB.deductions = [];
+    const existingIdx = DB.deductions.findIndex(d => d.id === dedEntry.id);
+    if (existingIdx >= 0) DB.deductions[existingIdx] = dedEntry;
+    else DB.deductions.push(dedEntry);
+
+    fetch(`${API_BASE_URL}/api/deductions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(dedEntry)
+    }).catch(err => console.warn('Deduction sync offline:', err));
+  }
+
   saveDB();
 
   fetch(`${API_BASE_URL}/api/bookings/${bookingId}/status`, {
@@ -671,6 +774,7 @@ async function processRequirementOrder(bookingId, statusState) {
   showAlert(`Requirement order ${bookingId} updated to ${statusState}!`);
   addAiLog('tag-audit', 'AI-APPROVAL', `Order ${bookingId} set to ${statusState} by Agent.`);
   renderAgentBookings();
+  renderDeductions();
 
   showRequirementSlip(bookingId);
   await sendRequirementSlipEmail(b);
@@ -862,11 +966,13 @@ document.getElementById('farmer-verification-form')?.addEventListener('submit', 
 
   handleVerifyOTP('farmer-email', 'farmer-aadhaar-otp', () => {
     const id = `FARM-${String(DB.farmers.length + 1).padStart(3, '0')}`;
+    const address = (document.getElementById('farmer-address')?.value || '').trim();
     const newFarmer = {
       id,
       name: document.getElementById('farmer-name').value.trim(),
       mobile: mobile,
       email: email,
+      address: address,
       village: document.getElementById('farmer-village').value.trim(),
       bankName: document.getElementById('farmer-bank-name').value,
       account: document.getElementById('farmer-account').value.trim(),
@@ -899,7 +1005,7 @@ function renderFarmers() {
   if (!tbody) return;
 
   if (DB.farmers.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;">No farmers registered yet.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;">No farmers registered yet.</td></tr>`;
     return;
   }
 
@@ -907,6 +1013,7 @@ function renderFarmers() {
     <tr>
       <td><strong>${f.id}</strong></td>
       <td>${f.name}</td>
+      <td>${f.address || 'N/A'}</td>
       <td>${f.village}</td>
       <td>${f.mobile}</td>
       <td>${f.email}</td>
@@ -1480,8 +1587,47 @@ document.addEventListener('DOMContentLoaded', () => {
       body: JSON.stringify(rates)
     }).catch(err => console.warn('Rate config sync offline:', err));
 
+    updateNoticeBoardRates();
     showAlert('Milk Rate Settings updated successfully!');
     addAiLog('tag-audit', 'AI-RATES', 'Agent updated Cow & Buffalo milk rate settings.');
+  });
+
+  document.getElementById('farmer-feedback-form')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    if (!currentFarmer) return;
+
+    const rating = parseInt(document.getElementById('feedback-rating').value, 10) || 5;
+    const text = document.getElementById('feedback-text').value.trim();
+
+    if (!text) {
+      showAlert('Please enter your feedback text.', 'danger');
+      return;
+    }
+
+    const fb = {
+      id: `FB-${Date.now()}`,
+      farmerId: currentFarmer.id,
+      farmerName: currentFarmer.name,
+      farmerEmail: currentFarmer.email,
+      rating,
+      text,
+      createdAt: new Date().toISOString()
+    };
+
+    if (!DB.feedbacks) DB.feedbacks = [];
+    DB.feedbacks.push(fb);
+    saveDB();
+
+    fetch(`${API_BASE_URL}/api/feedbacks`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(fb)
+    }).catch(err => console.warn('Feedback sync offline:', err));
+
+    showAlert('Thank you! Your feedback has been submitted to the station agent.');
+    addAiLog('tag-audit', 'AI-FEEDBACK', `Farmer ${currentFarmer.name} submitted a ${rating}-star feedback.`);
+    this.reset();
+    renderAgentFeedbacks();
   });
 
   document.getElementById('farmer-login-form')?.addEventListener('submit', function(e) {

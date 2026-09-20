@@ -52,6 +52,7 @@ const farmerSchema = new mongoose.Schema({
   name: { type: String, required: true },
   mobile: { type: String, required: true, unique: true, index: true }, // Unique Key
   email: { type: String, required: true, unique: true, index: true }, // Unique Key / Alternate PK
+  address: { type: String, default: '' },
   village: { type: String, default: 'Palamaner Village' },
   aadhaar: { type: String, default: '' },
   bankName: { type: String, required: true },
@@ -98,9 +99,20 @@ const bookingSchema = new mongoose.Schema({
 const deductionSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true, index: true },
   farmerId: { type: String, required: true, ref: 'Farmer', index: true }, // Foreign Key -> Farmer.id
+  farmerName: { type: String, default: '' },
   type: { type: String, required: true },
   amount: { type: Number, required: true },
   date: { type: String, required: true },
+  createdAt: { type: Date, default: Date.now }
+});
+
+const feedbackSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true, index: true },
+  farmerId: { type: String, required: true, ref: 'Farmer', index: true },
+  farmerName: { type: String, required: true },
+  farmerEmail: { type: String, required: true },
+  rating: { type: Number, required: true },
+  text: { type: String, required: true },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -111,6 +123,7 @@ const backupSchema = new mongoose.Schema({
   collectionsCount: { type: Number, default: 0 },
   bookingsCount: { type: Number, default: 0 },
   deductionsCount: { type: Number, default: 0 },
+  feedbacksCount: { type: Number, default: 0 },
   backupData: { type: Object, required: true }
 });
 
@@ -120,6 +133,7 @@ const Farmer = mongoose.model('Farmer', farmerSchema);
 const Collection = mongoose.model('Collection', collectionSchema);
 const Booking = mongoose.model('Booking', bookingSchema);
 const Deduction = mongoose.model('Deduction', deductionSchema);
+const Feedback = mongoose.model('Feedback', feedbackSchema);
 const SystemBackup = mongoose.model('SystemBackup', backupSchema);
 
 const otpStore = {};
@@ -346,8 +360,6 @@ app.post('/api/send-milk-bill', async (req, res) => {
   if (finalTotal <= 0 && finalQty > 0) {
     finalTotal = parseFloat((finalQty * finalRate).toFixed(2));
   }
-
-  console.log(`[RECEIPT DEBUG] Farmer: ${farmerName}, Qty: ${finalQty}, Rate: ${finalRate}, Total: ${finalTotal}`);
 
   try {
     if (mongoose.connection.readyState === 1) {
@@ -653,17 +665,42 @@ app.post('/api/deductions', async (req, res) => {
   }
 });
 
+app.get('/api/feedbacks', async (req, res) => {
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const feedbacks = await Feedback.find().sort({ createdAt: -1 });
+      return res.json({ success: true, feedbacks });
+    }
+    res.json({ success: true, feedbacks: [] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/feedbacks', async (req, res) => {
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const fb = await Feedback.findOneAndUpdate({ id: req.body.id }, req.body, { upsert: true, new: true });
+      return res.json({ success: true, feedback: fb });
+    }
+    res.json({ success: true, feedback: req.body });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 app.get('/api/backup/export', async (req, res) => {
   try {
-    let farmers = [], collections = [], bookings = [], deductions = [];
+    let farmers = [], collections = [], bookings = [], deductions = [], feedbacks = [];
     if (mongoose.connection.readyState === 1) {
       farmers = await Farmer.find();
       collections = await Collection.find();
       bookings = await Booking.find();
       deductions = await Deduction.find();
+      feedbacks = await Feedback.find();
     }
 
-    const backupData = { version: '1.0', exportedAt: new Date().toISOString(), farmers, collections, bookings, deductions };
+    const backupData = { version: '1.0', exportedAt: new Date().toISOString(), farmers, collections, bookings, deductions, feedbacks };
 
     if (mongoose.connection.readyState === 1) {
       const snapshot = new SystemBackup({
@@ -671,6 +708,7 @@ app.get('/api/backup/export', async (req, res) => {
         collectionsCount: collections.length,
         bookingsCount: bookings.length,
         deductionsCount: deductions.length,
+        feedbacksCount: feedbacks.length,
         backupData
       });
       await snapshot.save();
@@ -683,7 +721,7 @@ app.get('/api/backup/export', async (req, res) => {
 });
 
 app.post('/api/backup/restore', async (req, res) => {
-  const { farmers, collections, bookings, deductions } = req.body;
+  const { farmers, collections, bookings, deductions, feedbacks } = req.body;
   try {
     if (mongoose.connection.readyState === 1) {
       if (Array.isArray(farmers)) {
@@ -697,6 +735,9 @@ app.post('/api/backup/restore', async (req, res) => {
       }
       if (Array.isArray(deductions)) {
         for (const d of deductions) await Deduction.findOneAndUpdate({ id: d.id }, d, { upsert: true });
+      }
+      if (Array.isArray(feedbacks)) {
+        for (const fb of feedbacks) await Feedback.findOneAndUpdate({ id: fb.id }, fb, { upsert: true });
       }
     }
     res.json({ success: true, message: 'Data backup successfully restored into MongoDB Database!' });
