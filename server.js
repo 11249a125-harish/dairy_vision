@@ -242,7 +242,6 @@ app.post('/api/verify-otp', (req, res) => {
   return res.status(400).json({ success: false, message: 'Invalid or expired OTP. Please try again.' });
 });
 
-// Accurate Quantity parsing and receipt dispatch
 app.post('/api/send-milk-bill', async (req, res) => {
   const recipientEmail = req.body.farmerEmail || req.body.email || req.body.toEmail;
   const farmerName = req.body.farmerName || req.body.name || 'Farmer';
@@ -256,9 +255,19 @@ app.post('/api/send-milk-bill', async (req, res) => {
   const parsedQty = parseFloat(rawQtyVal);
   const finalQty = (!isNaN(parsedQty) && parsedQty > 0) ? parsedQty : 0;
 
+  const finalFat = parseFloat(fat) || 0;
+  const finalSnf = parseFloat(snf) || 0;
+
+  let finalRate = parseFloat(rate) || 0;
+  if (finalRate <= 0 && (finalFat > 0 || finalSnf > 0)) {
+    finalRate = parseFloat((finalFat * 7 + finalSnf * 4).toFixed(2));
+  }
+
   const rawTotalVal = (total !== undefined && total !== null && total !== '') ? total : totalAmount;
-  const parsedTotal = parseFloat(rawTotalVal);
-  const finalTotal = !isNaN(parsedTotal) ? parsedTotal : 0;
+  let finalTotal = parseFloat(rawTotalVal) || 0;
+  if (finalTotal <= 0 && finalQty > 0 && finalRate > 0) {
+    finalTotal = parseFloat((finalQty * finalRate).toFixed(2));
+  }
 
   try {
     if (mongoose.connection.readyState === 1) {
@@ -275,10 +284,10 @@ app.post('/api/send-milk-bill', async (req, res) => {
           type: type || 'Standard Milk',
           shift: shift || 'Morning',
           qty: finalQty,
-          fat: parseFloat(fat) || 0,
-          snf: parseFloat(snf) || 0,
+          fat: finalFat,
+          snf: finalSnf,
           waterPct: parseFloat(waterPct !== undefined ? waterPct : water) || 0,
-          rate: parseFloat(rate) || 0,
+          rate: finalRate,
           total: finalTotal
         },
         { upsert: true, new: true }
@@ -288,7 +297,7 @@ app.post('/api/send-milk-bill', async (req, res) => {
     await sendEmailHelper({
       toEmail: recipientEmail.trim(),
       toName: farmerName,
-      subject: `Milk Collection Receipt - ${farmerName} (${finalQty} L)`,
+      subject: `Milk Collection Receipt - ${farmerName} (₹${finalTotal.toFixed(2)})`,
       htmlContent: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
           <h2 style="color: #1b4332; text-align: center;">Smart Dairy Collection Receipt</h2>
@@ -310,11 +319,11 @@ app.post('/api/send-milk-bill', async (req, res) => {
             </tr>
             <tr>
               <td style="padding: 10px; border: 1px solid #ddd;"><strong>FAT / SNF:</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;">${fat ?? 0}% / ${snf ?? 0}%</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${finalFat}% / ${finalSnf}%</td>
             </tr>
             <tr style="background-color: #f2f2f2;">
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Water %:</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;">${waterPct ?? water ?? 0}%</td>
+              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Rate per Liter:</strong></td>
+              <td style="padding: 10px; border: 1px solid #ddd;">₹${finalRate.toFixed(2)}</td>
             </tr>
             <tr style="background-color: #e8f5e9;">
               <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px;"><strong>Total Amount:</strong></td>
