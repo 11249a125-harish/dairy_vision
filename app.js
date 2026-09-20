@@ -5,8 +5,7 @@
 
 const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? 'http://localhost:5000'
-  : 'https://dairy-vision.onrender.com';
-
+  : 'https://all-labs.onrender.com';
 const ALLOWED_AGENTS = [
   "karanamharish93@gmail.com",
   "11249a251@kanchiuniv.ac.in",
