@@ -1,0 +1,877 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dairy Vision - Global Cloud Collection & AI Intelligence System</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <svg style="display:none;">
+    <symbol id="dairy-vision-logo-svg" viewBox="0 0 300 300">
+      <circle cx="150" cy="150" r="145" fill="#1b4332"/>
+      <circle cx="150" cy="150" r="135" fill="none" stroke="#d8f3dc" stroke-width="4"/>
+      <circle cx="150" cy="150" r="122" fill="#206a78"/>
+      <path id="text-path-top" d="M 45 150 A 105 105 0 0 1 255 150" fill="none"/>
+      <text font-family="'Segoe UI', Arial, sans-serif" font-weight="900" font-size="28" fill="#ffffff" letter-spacing="3">
+        <textPath href="#text-path-top" startOffset="50%" text-anchor="middle">DAIRY VISION</textPath>
+      </text>
+      <path id="text-path-bottom" d="M 240 160 A 95 95 0 0 1 60 160" fill="none"/>
+      <text font-family="'Segoe UI', Arial, sans-serif" font-weight="700" font-size="13" fill="#d8f3dc" letter-spacing="2">
+        <textPath href="#text-path-bottom" startOffset="50%" text-anchor="middle">PURE QUALITY. FUTURE FOCUS.</textPath>
+      </text>
+      <circle cx="150" cy="145" r="68" fill="#e2f6f8"/>
+      <circle cx="178" cy="125" r="16" fill="#ffb703"/>
+      <path d="M 108 148 C 128 120, 172 120, 192 148 C 172 176, 128 176, 108 148 Z" fill="#ffffff" stroke="#206a78" stroke-width="3"/>
+      <circle cx="150" cy="148" r="14" fill="#206a78"/>
+      <circle cx="153" cy="145" r="5" fill="#ffffff"/>
+      <path d="M 120 135 C 115 110, 135 90, 155 90 C 170 90, 180 100, 180 112 C 160 128, 142 135, 120 135 Z" fill="#206a78"/>
+    </symbol>
+  </svg>
+
+  <header>
+    <div class="header-branding">
+      <div class="brand-logo-container">
+        <svg class="brand-logo-img"><use href="#dairy-vision-logo-svg"/></svg>
+        <span class="brand-title">Dairy Vision</span>
+      </div>
+      <span class="server-status-badge"><i class="fa-solid fa-brain"></i> AI & MONGODB ONLINE</span>
+      <small style="margin-left: 10px; color: var(--accent);">
+        Palamaner Center, AP | 
+        <span class="can-edit-box">
+          <strong>CAN:</strong> 
+          <input type="text" id="agent-can-input" value="CAN-PLM-2026-01" onchange="updateCanNumber(this.value)">
+        </span>
+      </small>
+    </div>
+
+    <div class="header-controls">
+      <button class="btn btn-gold btn-sm" onclick="backupToMongoDB()"><i class="fa-solid fa-cloud-arrow-up"></i> MongoDB Backup</button>
+      
+      <select id="lang-select" class="lang-selector" onchange="changeLanguage(this.value)">
+        <option value="en">English</option>
+        <option value="te">తెలుగు (Telugu)</option>
+        <option value="hi">हिंदी (Hindi)</option>
+      </select>
+
+      <div id="user-status" class="hidden">
+        <span id="active-user-label" style="font-weight: 600; color: var(--gold);">Agent</span> | 
+        <button onclick="logout()" style="background:none; border:none; color:white; cursor:pointer; font-weight:bold; margin-left:8px;">
+          <i class="fa-solid fa-right-from-bracket"></i> <span data-i18n="logout">Logout</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="main-wrapper">
+    <aside id="sidebar" class="hidden">
+      <button class="nav-btn active" onclick="switchTab('dashboard')"><i class="fa-solid fa-tachometer-alt"></i> <span data-i18n="nav_dashboard">Dashboard & Analytics</span></button>
+      <button class="nav-btn" onclick="switchTab('farmers')"><i class="fa-solid fa-file-excel"></i> Farmers Directory Sheet</button>
+      <button class="nav-btn" onclick="switchTab('collection')"><i class="fa-solid fa-fill-drip"></i> <span data-i18n="nav_collection">Milk Entry & Manage</span></button>
+      <button class="nav-btn" onclick="switchTab('hardware')"><i class="fa-solid fa-microchip"></i> Hardware Ports & Devices</button>
+      <button class="nav-btn" onclick="switchTab('deduction')"><i class="fa-solid fa-minus-circle"></i> Date Range Deductions</button>
+      <button class="nav-btn" onclick="switchTab('bookings')"><i class="fa-solid fa-box-open"></i> Farmer Requirements & Orders</button>
+      <button class="nav-btn" onclick="switchTab('developers')"><i class="fa-solid fa-laptop-code"></i> Developer Profiles</button>
+      <button class="nav-btn" onclick="switchTab('reports')"><i class="fa-solid fa-chart-line"></i> <span data-i18n="nav_reports">Clean Sheets & Print</span></button>
+    </aside>
+
+    <div class="content-area">
+      <div id="notification" class="alert hidden"></div>
+
+      <div id="auth-section">
+        <div class="hero-auth-bg">
+          <div id="login-card" class="auth-card-hero">
+            <div style="text-align: center; margin-bottom: 15px;">
+              <svg class="brand-logo-img-lg"><use href="#dairy-vision-logo-svg"/></svg>
+              <h2>Dairy Vision Portal</h2>
+              <p class="auth-subtitle">Firewall & MongoDB Protected | Palamaner Station, AP</p>
+            </div>
+            
+            <div class="role-toggle">
+              <button class="role-btn active" id="btn-role-agent" onclick="switchLoginRole('agent')"><i class="fa-solid fa-user-gear"></i> Agent Login</button>
+              <button class="role-btn" id="btn-role-farmer" onclick="switchLoginRole('farmer')"><i class="fa-solid fa-tractor"></i> Farmer Portal</button>
+            </div>
+
+            <div id="agent-auth-wrapper">
+              <div class="login-method-toggle">
+                <button type="button" class="method-btn active" id="btn-agent-pass-mode" onclick="toggleAgentAuthMode('password')">Password Login</button>
+                <button type="button" class="method-btn" id="btn-agent-otp-mode" onclick="toggleAgentAuthMode('otp')">Gmail OTP Login</button>
+              </div>
+
+              <form id="agent-login-form">
+                <div class="form-group">
+                  <label><i class="fa-solid fa-envelope"></i> Agent Gmail Address *</label>
+                  <input type="email" id="agent-email-input" placeholder="Enter authorized agent email" required>
+                </div>
+
+                <div id="agent-password-block" class="form-group">
+                  <label><i class="fa-solid fa-lock"></i> Password *</label>
+                  <input type="password" id="agent-password-input" placeholder="Enter password" value="agent123">
+                </div>
+
+                <div id="agent-login-otp-block" class="form-group hidden" style="background: var(--accent); padding: 12px; border-radius: 8px; border: 1px solid var(--secondary);">
+                  <label style="color: var(--primary);"><i class="fa-solid fa-key"></i> Enter Gmail OTP *</label>
+                  <input type="text" id="agent-login-otp" placeholder="Enter 6-digit OTP" pattern="[0-9]{6}">
+                  <button type="button" class="btn btn-gold btn-sm" style="margin-top:8px; width:100%;" onclick="sendAgentLoginOtp()"><i class="fa-solid fa-paper-plane"></i> Send Gmail OTP</button>
+                </div>
+
+                <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:15px;">
+                  <a href="#" onclick="toggleAgentResetPass(true)" style="color:var(--primary); font-size:0.85em; font-weight:bold; text-decoration:none;">First Time / Reset Password?</a>
+                </div>
+
+                <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px;"><i class="fa-solid fa-right-to-bracket"></i> Login to Agent Portal</button>
+              </form>
+            </div>
+
+            <form id="agent-reset-form" class="hidden">
+              <h3 style="color:var(--primary); text-align:center; margin-bottom:12px;"><i class="fa-solid fa-key"></i> First Time / Reset Password</h3>
+              <div class="form-group">
+                <label>Agent Gmail Address</label>
+                <input type="email" id="reset-agent-email" placeholder="Enter authorized agent email" required>
+              </div>
+
+              <div id="reset-otp-block" class="form-group hidden">
+                <label>Enter 6-Digit Gmail OTP</label>
+                <input type="text" id="reset-agent-otp" placeholder="Enter OTP received in Gmail">
+              </div>
+
+              <div id="reset-new-pass-block" class="form-group hidden">
+                <label>Set New Password</label>
+                <input type="password" id="reset-new-password" placeholder="Create new password">
+              </div>
+
+              <div style="display:flex; gap:10px; flex-direction:column;">
+                <button type="button" id="btn-send-reset-otp" class="btn btn-gold btn-sm" onclick="sendResetOtp()"><i class="fa-solid fa-paper-plane"></i> Send Gmail OTP</button>
+                <button type="submit" id="btn-save-reset-pass" class="btn btn-success btn-sm hidden"><i class="fa-solid fa-save"></i> Set Password & Complete Reset</button>
+              </div>
+
+              <p style="text-align:center; margin-top:12px;">
+                <a href="#" onclick="toggleAgentResetPass(false)" style="color:#666; font-size:0.85em;">Back to Login</a>
+              </p>
+            </form>
+
+            <div id="farmer-auth-wrapper" class="hidden">
+              <div class="login-method-toggle">
+                <button type="button" class="method-btn active" id="btn-farmer-pass-mode" onclick="toggleFarmerAuthMode('password')">Password Login</button>
+                <button type="button" class="method-btn" id="btn-farmer-otp-mode" onclick="toggleFarmerAuthMode('otp')">Gmail OTP Login</button>
+              </div>
+
+              <form id="farmer-login-form">
+                <div class="form-group">
+                  <label><i class="fa-solid fa-envelope"></i> Registered Farmer Gmail *</label>
+                  <input type="email" id="farmer-login-email" placeholder="Enter registered Gmail" required>
+                </div>
+
+                <div id="farmer-password-block" class="form-group">
+                  <label><i class="fa-solid fa-lock"></i> Password *</label>
+                  <input type="password" id="farmer-password-input" placeholder="Enter password" value="farmer123">
+                </div>
+
+                <div id="farmer-login-otp-block" class="form-group hidden" style="background: var(--accent); padding: 12px; border-radius: 8px;">
+                  <label style="color:var(--primary);"><i class="fa-solid fa-key"></i> Gmail OTP *</label>
+                  <input type="text" id="farmer-login-otp" placeholder="Enter 6-digit OTP">
+                  <button type="button" id="btn-send-farmer-otp" class="btn btn-gold btn-sm" style="width: 100%; margin-top: 8px;" onclick="sendFarmerLoginOtp()"><i class="fa-solid fa-paper-plane"></i> Send OTP to Gmail</button>
+                </div>
+
+                <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:15px;">
+                  <a href="#" onclick="toggleFarmerResetPass(true)" style="color:var(--primary); font-size:0.85em; font-weight:bold; text-decoration:none;">First Time / Set Password?</a>
+                </div>
+
+                <button type="submit" class="btn btn-success" style="width: 100%; padding: 12px;"><i class="fa-solid fa-tractor"></i> Access Farmer Portal</button>
+              </form>
+            </div>
+
+            <form id="farmer-reset-form" class="hidden">
+              <h3 style="color:var(--primary); text-align:center; margin-bottom:12px;"><i class="fa-solid fa-key"></i> Farmer Password Reset</h3>
+              <div class="form-group">
+                <label>Registered Gmail Address</label>
+                <input type="email" id="reset-farmer-email" placeholder="Enter your registered Gmail" required>
+              </div>
+
+              <div id="farmer-reset-otp-block" class="form-group hidden">
+                <label>Enter 6-Digit Gmail OTP</label>
+                <input type="text" id="reset-farmer-otp" placeholder="Enter OTP received in Gmail">
+              </div>
+
+              <div id="farmer-reset-new-pass-block" class="form-group hidden">
+                <label>Set New Password</label>
+                <input type="password" id="reset-farmer-new-password" placeholder="Create new password">
+              </div>
+
+              <div style="display:flex; gap:10px; flex-direction:column;">
+                <button type="button" id="btn-send-farmer-reset-otp" class="btn btn-gold btn-sm" onclick="sendFarmerResetOtp()"><i class="fa-solid fa-paper-plane"></i> Send Gmail OTP</button>
+                <button type="submit" id="btn-save-farmer-reset-pass" class="btn btn-success btn-sm hidden"><i class="fa-solid fa-save"></i> Set Password & Finish</button>
+              </div>
+
+              <p style="text-align:center; margin-top:12px;">
+                <a href="#" onclick="toggleFarmerResetPass(false)" style="color:#666; font-size:0.85em;">Back to Farmer Login</a>
+              </p>
+            </form>
+
+          </div>
+        </div>
+      </div>
+
+      <div id="app-section" class="hidden">
+        
+        <div id="tab-dashboard" class="tab-content">
+          
+          <div class="ai-dashboard-card">
+            <div class="ai-header-bar">
+              <div>
+                <span class="ai-pulse-dot"></span>
+                <span style="font-size:1.3em; font-weight:bold; margin-left:8px; vertical-align:middle;">AI System Monitor & Event Console</span>
+              </div>
+              <div>
+                <span class="ai-badge"><i class="fa-solid fa-robot"></i> AI ACTIVE</span>
+                <span class="server-status-badge" style="margin-left:8px;"><i class="fa-solid fa-shield-halved"></i> 99.8% HEALTH</span>
+              </div>
+            </div>
+
+            <div class="grid" style="margin-bottom:18px;">
+              <div class="ai-metric-box">
+                <h5>AI Security & Audit Score</h5>
+                <h2 id="ai-security-score">100%</h2>
+              </div>
+              <div class="ai-metric-box">
+                <h5>Adulteration Anomaly Detector</h5>
+                <h2 id="ai-anomaly-count" style="color:var(--gold);">0 Alerts</h2>
+              </div>
+              <div class="ai-metric-box">
+                <h5>MongoDB Auto-Sync Health</h5>
+                <h2 id="ai-sync-status" style="color:#00ffcc;">Optimal</h2>
+              </div>
+              <div class="ai-metric-box">
+                <h5>Email Dispatch Success Rate</h5>
+                <h2 id="ai-email-success">100%</h2>
+              </div>
+            </div>
+
+            <h5 style="color:#b7e4c7; margin-bottom:8px;"><i class="fa-solid fa-stream"></i> Real-Time AI Activity & Event Monitor Stream</h5>
+            <div class="ai-log-stream" id="ai-log-stream-box">
+              <div class="ai-log-entry"><span class="ai-tag tag-db">AI-CORE</span> System booted. MongoDB cloud synchronization active.</div>
+              <div class="ai-log-entry"><span class="ai-tag tag-audit">AI-AUDIT</span> Enforcing date range requirement validation on report generator.</div>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="card" style="border-left: 5px solid var(--primary);">
+              <h4>Registered Farmers</h4>
+              <h2 id="dash-farmer-count" style="color: var(--primary); margin-top: 8px;">0</h2>
+            </div>
+            <div class="card" style="border-left: 5px solid var(--gold);">
+              <h4>Today's Total Milk (L)</h4>
+              <h2 id="dash-milk-total" style="color: #b58302; margin-top: 8px;">0.0 L</h2>
+            </div>
+            <div class="card" style="border-left: 5px solid var(--danger);">
+              <h4>Water Adulteration Alerts</h4>
+              <h2 id="dash-water-alerts" style="color: var(--danger); margin-top: 8px;">0</h2>
+            </div>
+          </div>
+
+          <div id="empty-dash-banner" class="card" style="text-align: center; padding: 40px; background: #fdfbf7; border: 2px dashed #ffb703;">
+            <i class="fa-solid fa-cloud-arrow-up" style="font-size: 3em; color: var(--gold); margin-bottom: 12px;"></i>
+            <h3 style="color: var(--primary);">Global Cloud Storage & MongoDB Database Ready</h3>
+            <p style="color: #666; margin-top: 6px; max-width: 500px; margin-left: auto; margin-right: auto;">
+              No records found on central server. Perform a farmer registration and record your first milk collection.
+            </p>
+            <div style="display:flex; gap:10px; justify-content:center; margin-top: 15px;">
+              <button class="btn btn-gold" onclick="switchTab('farmers')"><i class="fa-solid fa-user-plus"></i> Register First Farmer</button>
+              <button class="btn btn-outline" onclick="exportMongoDBBackup()"><i class="fa-solid fa-download"></i> Export MongoDB Backup</button>
+            </div>
+          </div>
+
+          <div id="active-dash-charts" class="hidden">
+            <div class="card">
+              <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+                <h3><i class="fa-solid fa-bolt"></i> Dairy Vision Server Console & MongoDB Engine</h3>
+                <div>
+                  <button class="btn btn-gold btn-sm" onclick="backupToMongoDB()"><i class="fa-solid fa-database"></i> Backup Files & Data to MongoDB</button>
+                  <button class="btn btn-outline btn-sm" onclick="exportMongoDBBackup()"><i class="fa-solid fa-download"></i> Download JSON Backup</button>
+                </div>
+              </div>
+              <div class="status-log" id="status-log-container" style="margin-top:10px;">
+                <div>[SERVER ONLINE] Connected to MongoDB Atlas & SMTP Notification Engine...</div>
+              </div>
+            </div>
+
+            <div class="grid" style="margin-top: 15px;">
+              <div class="card">
+                <h3><i class="fa-solid fa-chart-line"></i> Daily Volume Trends</h3>
+                <canvas id="milkTrendChart" style="max-height: 220px; margin-top: 10px;"></canvas>
+              </div>
+              <div class="card">
+                <h3><i class="fa-solid fa-droplet"></i> Milk Quality Breakdown</h3>
+                <canvas id="milkQualityChart" style="max-height: 220px; margin-top: 10px;"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-farmers" class="tab-content hidden">
+          <div class="card">
+            <h3><i class="fa-solid fa-user-plus"></i> Register New Farmer (Agent Portal)</h3>
+            <form id="farmer-verification-form">
+              <div class="grid">
+                <div class="form-group">
+                  <label>Full Name *</label>
+                  <input type="text" id="farmer-name" placeholder="e.g. K. Venkat" required>
+                </div>
+                <div class="form-group">
+                  <label>Mobile Number *</label>
+                  <input type="tel" id="farmer-mobile" placeholder="10-digit mobile" required pattern="[0-9]{10}">
+                </div>
+                <div class="form-group">
+                  <label>Gmail Address (Required for Portal Access & Emails) *</label>
+                  <input type="email" id="farmer-email" placeholder="e.g. farmer@gmail.com" required>
+                </div>
+                <div class="form-group">
+                  <label>Village Name</label>
+                  <input type="text" id="farmer-village" value="Palamaner Village">
+                </div>
+                <div class="form-group">
+                  <label>Aadhaar Number *</label>
+                  <input type="text" id="farmer-aadhaar" placeholder="12-digit Aadhaar" required pattern="[0-9]{12}">
+                </div>
+
+                <div class="form-group">
+                  <label>Select Respective Bank Name *</label>
+                  <select id="farmer-bank-name" onchange="autoFillIfscCode(this.value)" required>
+                    <option value="">-- Select Bank --</option>
+                    <option value="State Bank of India (SBI)">State Bank of India (SBI)</option>
+                    <option value="Union Bank of India (Andhra Bank)">Union Bank of India (Andhra Bank)</option>
+                    <option value="HDFC Bank">HDFC Bank</option>
+                    <option value="ICICI Bank">ICICI Bank</option>
+                    <option value="Canara Bank">Canara Bank</option>
+                    <option value="Indian Bank">Indian Bank</option>
+                    <option value="Bank of Baroda">Bank of Baroda</option>
+                    <option value="Punjab National Bank">Punjab National Bank</option>
+                    <option value="Other Regional Cooperative Bank">Other Regional Cooperative Bank</option>
+                  </select>
+                </div>
+
+                <div class="form-group">
+                  <label>Bank Account Number *</label>
+                  <input type="text" id="farmer-account" required placeholder="Account number">
+                </div>
+
+                <div class="form-group">
+                  <label>Bank IFSC Code *</label>
+                  <input type="text" id="farmer-ifsc" required placeholder="e.g. SBIN0001234" value="SBIN0001234">
+                </div>
+              </div>
+
+              <div id="aadhaar-otp-block" class="grid hidden" style="background: var(--accent); padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <div class="form-group" style="margin-bottom:0;">
+                  <label style="color: var(--primary);">Enter 6-Digit Gmail OTP *</label>
+                  <input type="text" id="farmer-aadhaar-otp" placeholder="Enter OTP received in Gmail inbox" pattern="[0-9]{6}">
+                </div>
+                <div style="display:flex; align-items:flex-end;">
+                  <p style="font-size:0.85em; color:var(--primary); font-weight:600;"><i class="fa-solid fa-envelope-circle-check"></i> Verification OTP dispatched to email inbox.</p>
+                </div>
+              </div>
+
+              <div style="display: flex; gap: 10px;">
+                <button type="button" id="send-otp-btn" class="btn btn-gold" onclick="verifyGmailOtp()"><i class="fa-solid fa-envelope"></i> Send Verification OTP to Farmer</button>
+                <button type="submit" id="complete-reg-btn" class="btn btn-success hidden"><i class="fa-solid fa-cloud-arrow-up"></i> Register & Authorize Farmer</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+              <h3><i class="fa-solid fa-file-excel" style="color: #217346;"></i> Registered Farmers Directory</h3>
+              <button class="btn btn-success btn-sm" onclick="exportFarmersToCsv()"><i class="fa-solid fa-file-csv"></i> Export to Excel (.CSV)</button>
+            </div>
+
+            <div style="overflow-x: auto;">
+              <table class="excel-sheet-table">
+                <thead>
+                  <tr>
+                    <th># ID</th>
+                    <th>Farmer Name</th>
+                    <th>Village</th>
+                    <th>Mobile Number</th>
+                    <th>Gmail Address</th>
+                    <th>Bank Name</th>
+                    <th>Account Number</th>
+                    <th>Registered By Agent</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="farmer-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-collection" class="tab-content hidden">
+          <div class="card">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; margin-bottom: 15px;">
+              <h3><i class="fa-solid fa-flask"></i> Milk Collection Entry Point</h3>
+              <div style="display: flex; gap: 10px;">
+                <button type="button" class="btn btn-outline" onclick="toggleEntryMode('manual')" id="btn-mode-manual"><i class="fa-solid fa-keyboard"></i> Manual Entry Mode</button>
+                <button type="button" class="btn btn-gold" onclick="toggleEntryMode('auto')" id="btn-mode-auto"><i class="fa-solid fa-plug"></i> Hardware Machine Auto-Sync</button>
+              </div>
+            </div>
+
+            <form id="milk-form">
+              <div class="grid">
+                <div class="form-group">
+                  <label>Collection Date *</label>
+                  <input type="date" id="milk-date" required>
+                </div>
+                <div class="form-group">
+                  <label>Select Verified Farmer *</label>
+                  <select id="milk-farmer-id" required>
+                    <option value="">Select Farmer</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Milk Type *</label>
+                  <select id="milk-type" onchange="calculateWaterPercentage()" required>
+                    <option value="Cow Milk">Cow Milk (Std SNF 8.5%)</option>
+                    <option value="Buffalo Milk">Buffalo Milk (Std SNF 9.0%)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Shift *</label>
+                  <select id="milk-shift" required>
+                    <option value="Morning">Morning Shift</option>
+                    <option value="Evening">Evening Shift</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Quantity (Liters) *</label>
+                  <input type="number" step="0.1" id="milk-qty" required placeholder="0.0">
+                </div>
+                <div class="form-group">
+                  <label>FAT % *</label>
+                  <input type="number" step="0.1" id="milk-fat" required placeholder="0.0">
+                </div>
+                <div class="form-group">
+                  <label>SNF % *</label>
+                  <input type="number" step="0.1" id="milk-snf" oninput="calculateWaterPercentage()" required placeholder="0.0">
+                </div>
+                <div class="form-group">
+                  <label>Calculated Water %</label>
+                  <input type="text" id="milk-water-pct" readonly style="font-weight: bold; background: #e9ecef; color: var(--danger);" value="0.0 %">
+                </div>
+              </div>
+
+              <div id="water-quality-alert" class="alert alert-success" style="text-align: left; font-weight: bold;">
+                <i class="fa-solid fa-circle-check"></i> Pure Milk Sample Detected
+              </div>
+
+              <button type="submit" class="btn btn-gold" style="width: 100%; padding: 12px;"><i class="fa-solid fa-paper-plane"></i> Save to MongoDB & Dispatch Gmail Receipt to Farmer</button>
+            </form>
+          </div>
+
+          <div class="card">
+            <h3><i class="fa-solid fa-list-check"></i> Globally Synced Collection Entries</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Farmer</th>
+                  <th>Type</th>
+                  <th>Shift</th>
+                  <th>Qty (L)</th>
+                  <th>FAT %</th>
+                  <th>SNF %</th>
+                  <th>Water %</th>
+                  <th>Total (₹)</th>
+                  <th>Manage Entry</th>
+                </tr>
+              </thead>
+              <tbody id="collection-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="tab-hardware" class="tab-content hidden">
+          <div class="card">
+            <h3><i class="fa-solid fa-microchip"></i> Connected Collection Hardware Ports</h3>
+            <div class="grid" style="margin-top:15px;">
+              <div class="card" style="border-top: 4px solid var(--primary);">
+                <h4><i class="fa-solid fa-flask"></i> Ultrasonic Milk Analyzer</h4>
+                <p style="font-size:0.85em; margin: 8px 0;">Port: <strong>COM4 (USB Serial)</strong></p>
+                <button class="btn btn-sm btn-gold" style="margin-top: 15px; width: 100%;" onclick="syncHardwareSensor('analyzer')">Fetch FAT & SNF Data</button>
+              </div>
+
+              <div class="card" style="border-top: 4px solid var(--primary);">
+                <h4><i class="fa-solid fa-weight-hanging"></i> Electronic Weighing Scale</h4>
+                <p style="font-size:0.85em; margin: 8px 0;">Port: <strong>COM3 (RS232 Serial)</strong></p>
+                <button class="btn btn-sm btn-gold" style="margin-top: 15px; width: 100%;" onclick="syncHardwareSensor('weight')">Fetch Weight Data</button>
+              </div>
+
+              <div class="card" style="border-top: 4px solid var(--primary);">
+                <h4><i class="fa-solid fa-rotate"></i> Motorized Sample Stirrer</h4>
+                <p style="font-size:0.85em; margin: 8px 0;">Port: <strong>RELAY-PORT-1</strong></p>
+                <button class="btn btn-sm btn-success" style="margin-top: 15px; width: 100%;" onclick="showAlert('Stirrer activated for 10 seconds.', 'info')">Pulse Sample Stirrer</button>
+              </div>
+
+              <div class="card" style="border-top: 4px solid var(--primary);">
+                <h4><i class="fa-solid fa-print"></i> Thermal Slip Printer</h4>
+                <p style="font-size:0.85em; margin: 8px 0;">Port: <strong>USB001 Slip Printer</strong></p>
+                <button class="btn btn-sm btn-success" style="margin-top: 15px; width: 100%;" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Test Receipt</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-deduction" class="tab-content hidden">
+          <div class="card">
+            <h3><i class="fa-solid fa-calculator"></i> Date Range Bill Deduction</h3>
+            <form id="deduction-form" style="margin-top: 15px;">
+              <div class="grid">
+                <div class="form-group">
+                  <label>Select Farmer *</label>
+                  <select id="deduction-farmer-id" required>
+                    <option value="">Select Farmer</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Deduction Reason *</label>
+                  <select id="deduction-type" required>
+                    <option value="Cattle Feed">Cattle Feed Purchase</option>
+                    <option value="Advance Payment">Advance Cash Payment</option>
+                    <option value="Veterinary Medicine">Veterinary Medicine</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>Deduction Date *</label>
+                  <input type="date" id="deduction-date" required>
+                </div>
+                <div class="form-group">
+                  <label>Amount (₹) *</label>
+                  <input type="number" id="deduction-amount" required placeholder="0.00">
+                </div>
+              </div>
+              <button type="submit" class="btn btn-success"><i class="fa-solid fa-save"></i> Save Bill Deduction to MongoDB</button>
+            </form>
+          </div>
+        </div>
+
+        <div id="tab-bookings" class="tab-content hidden">
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+              <h3><i class="fa-solid fa-box-open"></i> Farmer Requirements & Supply Orders</h3>
+              <button class="btn btn-danger btn-sm" onclick="clearRequirements('agent')"><i class="fa-solid fa-trash-can"></i> Clear Requirements History</button>
+            </div>
+            <p style="color:#666; font-size:0.9em; margin-top:5px; margin-bottom:15px;">
+              Review and process requirement requests. Approving or Rejecting automatically generates the official requirement slip, <strong>dispatches email notifications to farmers</strong>, updates status in MongoDB, and deducts product costs from the respective billing cycle.
+            </p>
+
+            <table>
+              <thead>
+                <tr>
+                  <th>Date of Booking</th>
+                  <th>Farmer Details</th>
+                  <th>Requirement</th>
+                  <th>Delivery Date</th>
+                  <th>Cost (₹)</th>
+                  <th>Status</th>
+                  <th>Target Billing Cycle</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="agent-bookings-tbody"></tbody>
+            </table>
+          </div>
+
+          <div id="printable-req-slip" class="req-slip-box hidden">
+            <div class="req-slip-header">
+              <div class="req-slip-title"><i class="fa-solid fa-receipt"></i> FARMER REQUIREMENT SLIP</div>
+              <p style="font-size:0.85em; color:#555;">Dairy Vision Cloud System - Official Confirmation</p>
+            </div>
+            <div class="req-slip-row"><span>Farmer Code / Name:</span><strong id="slip-farmer-name">--</strong></div>
+            <div class="req-slip-row"><span>Date of Booking:</span><strong id="slip-booking-date">--</strong></div>
+            <div class="req-slip-row"><span>Requirement Item:</span><strong id="slip-item-name">--</strong></div>
+            <div class="req-slip-row"><span>Delivery Date:</span><strong id="slip-delivery-date">--</strong></div>
+            <div class="req-slip-row"><span>Status:</span><strong id="slip-status">--</strong></div>
+            <div class="req-slip-row"><span>Cost:</span><strong id="slip-cost" style="color:var(--primary); font-size:1.1em;">₹0</strong></div>
+            <div class="req-slip-row"><span>Bill Deduction Cycle:</span><strong id="slip-billing-cycle">--</strong></div>
+            <div style="margin-top:20px; text-align:center;" class="no-print">
+              <button class="btn btn-success btn-sm" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Requirement Slip</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-developers" class="tab-content hidden">
+          <div class="card">
+            <h2><i class="fa-solid fa-code"></i> Project Engineers & Developers</h2>
+            <div class="grid" style="margin-top:20px;">
+              <div class="dev-card">
+                <div class="dev-avatar"><i class="fa-solid fa-user-gear"></i></div>
+                <div class="dev-name">K Harish</div>
+                <div class="dev-role">Lead Full-Stack Developer</div>
+                <div class="dev-phone"><i class="fa-solid fa-phone"></i> +91 9100447663</div>
+              </div>
+
+              <div class="dev-card">
+                <div class="dev-avatar"><i class="fa-solid fa-user-gear"></i></div>
+                <div class="dev-name">N Adithya</div>
+                <div class="dev-role">Hardware & IoT Architect</div>
+                <div class="dev-phone"><i class="fa-solid fa-phone"></i> +91 6300218108</div>
+              </div>
+
+              <div class="dev-card">
+                <div class="dev-avatar"><i class="fa-solid fa-user-gear"></i></div>
+                <div class="dev-name">A Naveen</div>
+                <div class="dev-role">Database & Security Lead</div>
+                <div class="dev-phone"><i class="fa-solid fa-phone"></i> +91 7780475917</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="tab-reports" class="tab-content hidden">
+          <div class="card no-print">
+            <h3><i class="fa-solid fa-file-invoice"></i> Clean Sheet Reports Generator</h3>
+            <p style="color:#666; font-size:0.9em; margin-top:4px; margin-bottom:15px;">
+              Select report type and date range to view and generate clean printable statements.
+            </p>
+
+            <div class="grid" style="margin-top:15px;">
+              <div class="form-group">
+                <label>Select Report Type *</label>
+                <select id="report-type-select" onchange="handleReportTypeChange(this.value)" required>
+                  <option value="SHIFT_SUMMARY">1. Shift Summary (Pouring List)</option>
+                  <option value="MILK_BILL">2. Milk Bill (Individual Farmer Code)</option>
+                  <option value="BILL_SUMMARY">3. Bill Summary (Consolidated Summary)</option>
+                </select>
+              </div>
+
+              <div class="form-group" id="group-report-date">
+                <label id="label-report-date">From Date *</label>
+                <input type="date" id="report-start-date" required>
+              </div>
+
+              <div class="form-group" id="group-report-end-date">
+                <label>To Date *</label>
+                <input type="date" id="report-end-date" required>
+              </div>
+
+              <div class="form-group" id="group-report-shift">
+                <label>Shift *</label>
+                <select id="report-shift-select">
+                  <option value="ALL">All Shifts</option>
+                  <option value="Morning">Morning Shift</option>
+                  <option value="Evening">Evening Shift</option>
+                </select>
+              </div>
+
+              <div class="form-group hidden" id="group-report-farmer-id">
+                <label>Select Farmer Code / ID *</label>
+                <select id="report-farmer-code">
+                  <option value="">Select Farmer Code</option>
+                </select>
+              </div>
+            </div>
+
+            <button class="btn btn-success" onclick="generateSelectedReport()"><i class="fa-solid fa-file-export"></i> Generate Selected Report</button>
+          </div>
+
+          <div id="sheet-output-card" class="sheet-view hidden">
+            <div class="sheet-header">
+              <div style="text-align: center; margin-bottom: 10px;">
+                <svg class="brand-logo-img-lg" style="width: 80px; height: 80px; margin-bottom: 5px;"><use href="#dairy-vision-logo-svg"/></svg>
+                <h2 style="color: var(--primary);">DAIRY VISION - PALAMANER COLLECTION STATION</h2>
+                <p style="font-weight: bold; font-size:1.1em; color:var(--teal-brand);" id="sheet-report-title">SHIFT SUMMARY REPORT</p>
+              </div>
+              <div style="margin-top: 15px; display: flex; justify-content: space-between; font-size:0.9em;">
+                <div>
+                  <p><strong>CAN Number:</strong> <span class="sync-can-display">CAN-PLM-2026-01</span></p>
+                  <p id="sheet-sub-detail"><strong>Center:</strong> Palamaner, AP</p>
+                </div>
+                <div>
+                  <p><strong>Date / Period:</strong> <span id="sheet-range-display">--</span></p>
+                </div>
+              </div>
+            </div>
+
+            <table id="sheet-report-table">
+              <thead id="sheet-table-head"></thead>
+              <tbody id="sheet-table-body"></tbody>
+              <tfoot id="sheet-table-footer" style="background:#f4f7f6; font-weight:bold;"></tfoot>
+            </table>
+
+            <div style="margin-top: 30px; display: flex; justify-content: space-between; align-items: flex-end;" class="no-print">
+              <button class="btn btn-success" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Clean Sheet</button>
+              <p style="font-size: 0.85em; color: #777;">Developed by: K Harish, N Adithya and A Naveen</p>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div id="farmer-portal-section" class="hidden">
+        <div class="card no-print" style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white;">
+          <h2>Global Farmer Portal</h2>
+          <p style="margin-top: 5px;">Farmer: <span id="farmer-portal-name">--</span> | Registered Gmail: <span id="farmer-portal-phone">--</span></p>
+        </div>
+
+        <div class="card no-print" style="border-left: 5px solid var(--gold);">
+          <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+            <h3><i class="fa-solid fa-box-open"></i> Request Supplies & Requirements (Feed, Mineral Mixture, FAT Powder)</h3>
+            <button class="btn btn-danger btn-sm" onclick="clearRequirements('farmer')"><i class="fa-solid fa-trash-can"></i> Clear Requirements History</button>
+          </div>
+          
+          <form id="farmer-booking-form" style="margin-top:15px;">
+            <div class="grid">
+              <div class="form-group">
+                <label>Select Requirement Item & Price *</label>
+                <select id="booking-item-type" required>
+                  <option value="Cattle Feed (10kg Bag)|320">Cattle Feed (10kg Bag) - ₹320</option>
+                  <option value="Cattle Feed (50kg Bag)|1600">Cattle Feed (50kg Bag) - ₹1,600</option>
+                  <option value="Chelated Mineral Mixture (1kg)|220">Chelated Mineral Mixture (1kg) - ₹220</option>
+                  <option value="Bypass FAT Powder (1kg)|350">Bypass FAT Powder (1kg) - ₹350</option>
+                  <option value="Calcium Tonic / Supplement (5L)|650">Calcium Tonic / Supplement (5L) - ₹650</option>
+                </select>
+              </div>
+
+              <div class="form-group">
+                <label>Quantity / Packs *</label>
+                <input type="number" id="booking-qty" min="1" value="1" required>
+              </div>
+
+              <div class="form-group">
+                <label>Date of Booking *</label>
+                <input type="date" id="booking-date" required onchange="handleBookingDateChange()">
+              </div>
+
+              <div class="form-group">
+                <label>Requested Delivery Date * (Must be >= Booking Date)</label>
+                <input type="date" id="booking-delivery-date" required>
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-gold"><i class="fa-solid fa-cart-shopping"></i> Submit Requirement Request</button>
+          </form>
+
+          <div style="margin-top: 15px;">
+            <h4 style="color:var(--primary);">My Requirements Request Status</h4>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date of Booking</th>
+                  <th>Item Requested</th>
+                  <th>Unit Price</th>
+                  <th>Qty</th>
+                  <th>Total Cost</th>
+                  <th>Delivery Date</th>
+                  <th>Status</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody id="farmer-booking-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card no-print">
+          <h3><i class="fa-solid fa-chart-line"></i> Farmers Reports Section & Date Range Filter</h3>
+          <p style="color:#666; font-size:0.88em; margin-bottom:15px;">
+            <strong>Note:</strong> Select both <strong>From Date</strong> and <strong>To Date</strong> to generate and view your milk report and bill deductions.
+          </p>
+          <div class="grid">
+            <div class="form-group" style="margin-bottom:0;">
+              <label>Billing Cycle Mode *</label>
+              <select id="farmer-billing-cycle-mode" onchange="renderFarmerPortal()">
+                <option value="10-DAY">10-Days Billing Cycle (1-10, 11-20, 21-31)</option>
+                <option value="15-DAY">15-Days Billing Cycle (1-15, 16-31)</option>
+              </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>From Date *</label>
+              <input type="date" id="farmer-range-from" onchange="renderFarmerPortal()">
+            </div>
+            <div class="form-group" style="margin-bottom:0;">
+              <label>To Date *</label>
+              <input type="date" id="farmer-range-to" onchange="renderFarmerPortal()">
+            </div>
+          </div>
+        </div>
+
+        <div id="farmer-date-prompt" class="card no-print" style="text-align: center; padding: 35px; border: 2px dashed var(--primary); background: #fbfdfb;">
+          <i class="fa-solid fa-calendar-circle-exclamation" style="font-size: 3em; color: var(--primary); margin-bottom: 12px;"></i>
+          <h3 style="color: var(--primary);">Select Date Range to View Report</h3>
+          <p style="color: #666; margin-top: 6px; max-width: 480px; margin-left: auto; margin-right: auto;">
+            Please select both <strong>From Date</strong> and <strong>To Date</strong> in the filter above to generate your milk statement, earnings, and product deduction details.
+          </p>
+        </div>
+
+        <div id="farmer-report-container" class="hidden">
+          <div class="grid no-print">
+            <div class="card" style="border-left: 5px solid var(--gold);">
+              <h4>Supplied Milk Volume</h4>
+              <h2 id="farmer-total-qty" style="color: var(--gold); margin-top: 6px;">0.0 L</h2>
+            </div>
+            <div class="card" style="border-left: 5px solid var(--primary);">
+              <h4>Gross Milk Earnings</h4>
+              <h2 id="farmer-total-earnings" style="color: var(--primary); margin-top: 6px;">₹ 0.00</h2>
+            </div>
+            <div class="card" style="border-left: 5px solid var(--danger);">
+              <h4>Product Deductions</h4>
+              <h2 id="farmer-total-deductions" style="color: var(--danger); margin-top: 6px;">- ₹ 0.00</h2>
+            </div>
+            <div class="card" style="border-left: 5px solid #40916c;">
+              <h4>Net Payable Amount</h4>
+              <h2 id="farmer-net-payable" style="color: #40916c; margin-top: 6px;">₹ 0.00</h2>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3><i class="fa-solid fa-list-check"></i> Shift-wise Milk Details</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Shift</th>
+                  <th>Milk Type</th>
+                  <th>Qty (L)</th>
+                  <th>FAT %</th>
+                  <th>SNF %</th>
+                  <th>Water %</th>
+                  <th>Rate/L (₹)</th>
+                  <th>Amount (₹)</th>
+                </tr>
+              </thead>
+              <tbody id="farmer-itemized-tbody"></tbody>
+            </table>
+          </div>
+
+          <div class="card">
+            <h3><i class="fa-solid fa-calculator"></i> Product Requirements Bill Deductions Log</h3>
+            <table>
+              <thead>
+                <tr>
+                  <th>Date of Booking</th>
+                  <th>Requirement Item</th>
+                  <th>Delivery Date</th>
+                  <th>Target Billing Cycle</th>
+                  <th>Amount Deducted (₹)</th>
+                </tr>
+              </thead>
+              <tbody id="farmer-deductions-tbody"></tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <footer class="no-print">
+    <p>Developed by: <strong>K Harish, N Adithya and A Naveen</strong> | Agent Contact: <strong>+91 9100447663, +91 6300218108, +91 7780475917</strong></p>
+    <p><small>Dairy Vision Global Cloud & AI Edition | Palamaner Collection Center | Chittoor, AP</small></p>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
