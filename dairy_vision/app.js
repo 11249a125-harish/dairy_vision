@@ -373,9 +373,15 @@ async function sendMilkBillReceipt(entry) {
 function handleBookingDateChange() {
   const bookingDateInput = document.getElementById('booking-date');
   const deliveryDateInput = document.getElementById('booking-delivery-date');
-  if (bookingDateInput && deliveryDateInput) {
+  const today = new Date().toISOString().slice(0, 10);
+  if (bookingDateInput) {
+    bookingDateInput.max = today;
+    if (bookingDateInput.value && bookingDateInput.value > today) {
+      bookingDateInput.value = today;
+      showAlert(`Validation Error: Date of Booking cannot be in the future! (Max allowed: ${today})`, 'danger');
+    }
     const bDate = bookingDateInput.value;
-    if (bDate) {
+    if (bDate && deliveryDateInput) {
       deliveryDateInput.min = bDate;
       if (deliveryDateInput.value && deliveryDateInput.value < bDate) {
         deliveryDateInput.value = bDate;
@@ -506,6 +512,14 @@ document.getElementById('farmer-booking-form')?.addEventListener('submit', async
 
   if (!bookingDate || !deliveryDate) {
     showAlert('Please select both Date of Booking and Delivery Date.', 'danger');
+    return;
+  }
+
+  const todayStr = new Date().toISOString().slice(0, 10);
+  if (bookingDate > todayStr) {
+    showAlert(`Validation Error: Date of Booking (${bookingDate}) cannot be in the future! (Max allowed: ${todayStr})`, 'danger');
+    addAiLog('tag-anomaly', 'AI-VALIDATE', `Rejected requirement: Booking date (${bookingDate}) is in the future.`);
+    document.getElementById('booking-date').focus();
     return;
   }
 
@@ -813,18 +827,31 @@ document.getElementById('deduction-form')?.addEventListener('submit', function(e
 document.getElementById('farmer-verification-form')?.addEventListener('submit', function(e) {
   e.preventDefault();
   const email = document.getElementById('farmer-email').value.trim().toLowerCase();
+  const mobile = document.getElementById('farmer-mobile').value.trim();
+
+  const existingEmail = DB.farmers.find(f => f.email === email);
+  if (existingEmail) {
+    showAlert(`Registration Error: Farmer with Gmail (${email}) is already registered! (Primary Key: ${existingEmail.id})`, 'danger');
+    return;
+  }
+
+  const existingMobile = DB.farmers.find(f => f.mobile === mobile);
+  if (existingMobile) {
+    showAlert(`Registration Error: Farmer with Mobile Number (${mobile}) is already registered! (Primary Key: ${existingMobile.id})`, 'danger');
+    return;
+  }
 
   handleVerifyOTP('farmer-email', 'farmer-aadhaar-otp', () => {
     const id = `FARM-${String(DB.farmers.length + 1).padStart(3, '0')}`;
     const newFarmer = {
       id,
-      name: document.getElementById('farmer-name').value,
-      mobile: document.getElementById('farmer-mobile').value,
+      name: document.getElementById('farmer-name').value.trim(),
+      mobile: mobile,
       email: email,
-      village: document.getElementById('farmer-village').value,
+      village: document.getElementById('farmer-village').value.trim(),
       bankName: document.getElementById('farmer-bank-name').value,
-      account: document.getElementById('farmer-account').value,
-      ifsc: document.getElementById('farmer-ifsc').value,
+      account: document.getElementById('farmer-account').value.trim(),
+      ifsc: document.getElementById('farmer-ifsc').value.trim(),
       password: 'farmer123',
       registeredBy: currentAgentEmail
     };
@@ -838,8 +865,8 @@ document.getElementById('farmer-verification-form')?.addEventListener('submit', 
       body: JSON.stringify(newFarmer)
     }).catch(err => console.warn('Farmer cloud sync offline:', err));
 
-    showAlert(`Farmer ${newFarmer.name} registered with ID: ${id}`);
-    addAiLog('tag-security', 'AI-REGISTER', `Farmer ${newFarmer.name} (${id}) registered.`);
+    showAlert(`Farmer ${newFarmer.name} registered successfully! (Primary Key: ${id})`);
+    addAiLog('tag-security', 'AI-REGISTER', `Farmer ${newFarmer.name} (PK: ${id}) registered.`);
     populateDropdowns();
     renderFarmers();
     this.reset();

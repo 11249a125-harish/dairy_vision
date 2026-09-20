@@ -32,7 +32,7 @@ if (!MONGODB_URI) {
 }
 
 const agentSchema = new mongoose.Schema({
-  email: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true, index: true },
   password: { type: String, required: true },
   createdAt: { type: Date, default: Date.now }
 });
@@ -48,10 +48,10 @@ const rateConfigSchema = new mongoose.Schema({
 });
 
 const farmerSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+  id: { type: String, required: true, unique: true, index: true }, // Primary Key
   name: { type: String, required: true },
-  mobile: { type: String, required: true },
-  email: { type: String, required: true },
+  mobile: { type: String, required: true, unique: true, index: true }, // Unique Key
+  email: { type: String, required: true, unique: true, index: true }, // Unique Key / Alternate PK
   village: { type: String, default: 'Palamaner Village' },
   aadhaar: { type: String, default: '' },
   bankName: { type: String, required: true },
@@ -63,10 +63,10 @@ const farmerSchema = new mongoose.Schema({
 });
 
 const collectionSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
+  id: { type: String, required: true, unique: true, index: true },
   date: { type: String, required: true },
   time: { type: String, default: '' },
-  farmerId: { type: String, required: true },
+  farmerId: { type: String, required: true, ref: 'Farmer', index: true }, // Foreign Key -> Farmer.id
   farmerName: { type: String, required: true },
   farmerEmail: { type: String, default: '' },
   type: { type: String, required: true },
@@ -81,8 +81,8 @@ const collectionSchema = new mongoose.Schema({
 });
 
 const bookingSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
-  farmerId: { type: String, required: true },
+  id: { type: String, required: true, unique: true, index: true },
+  farmerId: { type: String, required: true, ref: 'Farmer', index: true }, // Foreign Key -> Farmer.id
   farmerName: { type: String, required: true },
   farmerEmail: { type: String, required: true },
   item: { type: String, required: true },
@@ -96,8 +96,8 @@ const bookingSchema = new mongoose.Schema({
 });
 
 const deductionSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
-  farmerId: { type: String, required: true },
+  id: { type: String, required: true, unique: true, index: true },
+  farmerId: { type: String, required: true, ref: 'Farmer', index: true }, // Foreign Key -> Farmer.id
   type: { type: String, required: true },
   amount: { type: Number, required: true },
   date: { type: String, required: true },
@@ -516,9 +516,23 @@ app.get('/api/farmers', async (req, res) => {
 });
 
 app.post('/api/farmers', async (req, res) => {
+  const email = (req.body.email || '').toLowerCase().trim();
+  const mobile = (req.body.mobile || '').trim();
+  const id = req.body.id;
+
   try {
     if (mongoose.connection.readyState === 1) {
-      const newFarmer = await Farmer.findOneAndUpdate({ id: req.body.id }, req.body, { upsert: true, new: true });
+      const existingEmail = await Farmer.findOne({ email, id: { $ne: id } });
+      if (existingEmail) {
+        return res.status(400).json({ success: false, message: `Farmer Registration Error: Email ${email} is already registered to Farmer ID ${existingEmail.id}!` });
+      }
+
+      const existingMobile = await Farmer.findOne({ mobile, id: { $ne: id } });
+      if (existingMobile) {
+        return res.status(400).json({ success: false, message: `Farmer Registration Error: Mobile number ${mobile} is already registered to Farmer ID ${existingMobile.id}!` });
+      }
+
+      const newFarmer = await Farmer.findOneAndUpdate({ id }, req.body, { upsert: true, new: true });
       return res.json({ success: true, farmer: newFarmer });
     }
     res.json({ success: true, farmer: req.body });
