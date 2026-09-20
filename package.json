@@ -1,7 +1,7 @@
 {
-  "name": "dairy_vision",
+  "name": "smart_dairy",
   "version": "1.0.0",
-  "description": "Dairy Vision - Global Cloud Collection & Requirements System",
+  "description": "Smart Dairy - Global Cloud Collection & Requirements System",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

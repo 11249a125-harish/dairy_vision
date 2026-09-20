@@ -1,5 +1,5 @@
 /**
- * Dairy Vision - Global Cloud Collection, AI Intelligence & Reports System
+ * Smart Dairy - Global Cloud Collection, AI Intelligence & Reports System
  * app.js - Frontend Application Engine & AI Monitoring Console
  */
 
@@ -13,7 +13,7 @@ const ALLOWED_AGENTS = [
   "11249a255@kanchiuniv.ac.in"
 ];
 
-let DB = JSON.parse(localStorage.getItem('DAIRY_VISION_GLOBAL_DB') || JSON.stringify({
+let DB = JSON.parse(localStorage.getItem('SMART_DAIRY_GLOBAL_DB') || localStorage.getItem('DAIRY_VISION_GLOBAL_DB') || JSON.stringify({
   agentCAN: "CAN-PLM-2026-01",
   agentAccounts: {
     "karanamharish93@gmail.com": { password: null },
@@ -27,7 +27,7 @@ let DB = JSON.parse(localStorage.getItem('DAIRY_VISION_GLOBAL_DB') || JSON.strin
 }));
 
 function saveDB() {
-  localStorage.setItem('DAIRY_VISION_GLOBAL_DB', JSON.stringify(DB));
+  localStorage.setItem('SMART_DAIRY_GLOBAL_DB', JSON.stringify(DB));
 }
 
 let currentAgentEmail = null;
@@ -122,7 +122,7 @@ async function backupToMongoDB() {
 
     const data = await response.json();
     if (response.ok && data.success) {
-      showAlert('🍃 MongoDB Database & File Backup successfully completed!');
+      showAlert('MongoDB Database & File Backup successfully completed!');
       addLog('Full backup created in MongoDB database.');
       addAiLog('tag-db', 'AI-BACKUP', 'Backup snapshot saved to MongoDB atlas.');
     } else {
@@ -154,7 +154,7 @@ async function exportMongoDBBackup() {
     const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `Dairy_Vision_MongoDB_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+    a.download = `Smart_Dairy_MongoDB_Backup_${new Date().toISOString().slice(0, 10)}.json`;
     a.click();
     showAlert('MongoDB Backup JSON file downloaded successfully!');
     addAiLog('tag-audit', 'AI-EXPORTS', 'Generated JSON database backup archive.');
@@ -502,7 +502,6 @@ function renderFarmerBookings() {
 
   tbody.innerHTML = farmerBookings.map(b => {
     const isApproved = b.status === 'Approved & Cost Deducted' || b.status === 'APPROVED';
-    const isRejected = b.status === 'Rejected' || b.status === 'REJECTED';
     const badgeClass = isApproved ? 'water-pure' : 'water-warning';
     
     return `
@@ -648,21 +647,34 @@ function calculateWaterPercentage() {
   }
 }
 
+// Fixed milk-form submission handling: validates positive quantity to eliminate 0-value bugs
 document.getElementById('milk-form')?.addEventListener('submit', function(e) {
   e.preventDefault();
   const farmerId = document.getElementById('milk-farmer-id').value;
-  const farmer = DB.farmers.find(f => f.id === farmerId);
+  if (!farmerId) {
+    showAlert('Please select a valid registered farmer.', 'danger');
+    return;
+  }
 
-  const qty = parseFloat(document.getElementById('milk-qty').value);
-  const fat = parseFloat(document.getElementById('milk-fat').value);
-  const snf = parseFloat(document.getElementById('milk-snf').value);
-  const waterPct = parseFloat(document.getElementById('milk-water-pct').value);
-  const rate = (fat * 7 + snf * 4).toFixed(2);
-  const total = (qty * rate).toFixed(2);
+  const farmer = DB.farmers.find(f => f.id === farmerId);
+  const qtyInputVal = document.getElementById('milk-qty').value.trim();
+  const qty = parseFloat(qtyInputVal);
+
+  if (isNaN(qty) || qty <= 0) {
+    showAlert('Validation Error: Milk Quantity must be greater than 0 Liters!', 'danger');
+    document.getElementById('milk-qty').focus();
+    return;
+  }
+
+  const fat = parseFloat(document.getElementById('milk-fat').value) || 0;
+  const snf = parseFloat(document.getElementById('milk-snf').value) || 0;
+  const waterPct = parseFloat(document.getElementById('milk-water-pct').value) || 0;
+  const rate = parseFloat((fat * 7 + snf * 4).toFixed(2));
+  const total = parseFloat((qty * rate).toFixed(2));
 
   const entry = {
     id: `COL-${Date.now()}`,
-    date: document.getElementById('milk-date').value,
+    date: document.getElementById('milk-date').value || new Date().toISOString().slice(0, 10),
     time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     farmerId,
     farmerName: farmer ? farmer.name : 'Unknown',
@@ -670,6 +682,7 @@ document.getElementById('milk-form')?.addEventListener('submit', function(e) {
     type: document.getElementById('milk-type').value,
     shift: document.getElementById('milk-shift').value,
     qty,
+    liters: qty,
     fat,
     snf,
     waterPct,
@@ -682,12 +695,14 @@ document.getElementById('milk-form')?.addEventListener('submit', function(e) {
 
   sendMilkBillReceipt(entry);
 
-  showAlert('Milk entry recorded & dispatched to farmer!');
+  showAlert(`Milk entry (${qty} L) recorded & dispatched to farmer email!`);
   addLog(`Recorded entry for ${entry.farmerName} - ${qty}L`);
   addAiLog('tag-audit', 'AI-COLLECTION', `Milk entry logged: ${entry.farmerName} - ${qty}L (FAT: ${fat}%)`);
+  
   renderCollections();
   updateDashboardMetrics();
   this.reset();
+  document.getElementById('milk-date').value = new Date().toISOString().slice(0, 10);
 });
 
 document.getElementById('deduction-form')?.addEventListener('submit', function(e) {
@@ -724,7 +739,6 @@ document.getElementById('farmer-verification-form')?.addEventListener('submit', 
       mobile: document.getElementById('farmer-mobile').value,
       email: email,
       village: document.getElementById('farmer-village').value,
-      aadhaar: document.getElementById('farmer-aadhaar').value,
       bankName: document.getElementById('farmer-bank-name').value,
       account: document.getElementById('farmer-account').value,
       ifsc: document.getElementById('farmer-ifsc').value,
@@ -784,7 +798,7 @@ function exportFarmersToCsv() {
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `Farmers_Directory_${new Date().toISOString().slice(0,10)}.csv`;
+  a.download = `Smart_Dairy_Farmers_Directory_${new Date().toISOString().slice(0,10)}.csv`;
   a.click();
 }
 
@@ -854,7 +868,7 @@ function updateDashboardMetrics() {
   if (farmerCountElem) farmerCountElem.innerText = DB.farmers.length;
 
   const todayCollections = DB.collections.filter(c => c.date === today);
-  const totalQty = todayCollections.reduce((sum, c) => sum + c.qty, 0);
+  const totalQty = todayCollections.reduce((sum, c) => sum + (parseFloat(c.qty) || 0), 0);
   const waterAlerts = DB.collections.filter(c => c.waterPct > 0).length;
 
   const totalQtyElem = document.getElementById('dash-milk-total');
@@ -892,7 +906,7 @@ function renderDashboardCharts() {
 
   const dates = [...new Set(DB.collections.map(c => c.date))].sort().slice(-7);
   const dailyTotals = dates.map(d => {
-    return DB.collections.filter(c => c.date === d).reduce((acc, curr) => acc + curr.qty, 0);
+    return DB.collections.filter(c => c.date === d).reduce((acc, curr) => acc + (parseFloat(curr.qty) || 0), 0);
   });
 
   window.trendChartInst = new Chart(trendCtx, {
@@ -970,14 +984,15 @@ function renderFarmerPortal() {
       itemizedTbody.innerHTML = `<tr><td colspan="9" style="text-align:center; color:#888;">No milk collection records found between ${fromDate} and ${toDate}.</td></tr>`;
     } else {
       itemizedTbody.innerHTML = farmerCollections.map(c => {
-        totalQty += c.qty;
-        totalEarnings += parseFloat(c.total);
+        const itemQty = parseFloat(c.qty) || 0;
+        totalQty += itemQty;
+        totalEarnings += parseFloat(c.total) || 0;
         return `
           <tr>
             <td>${c.date}</td>
             <td>${c.shift}</td>
             <td>${c.type}</td>
-            <td>${c.qty} L</td>
+            <td>${itemQty} L</td>
             <td>${c.fat}%</td>
             <td>${c.snf}%</td>
             <td><span class="water-badge ${c.waterPct > 0 ? 'water-warning' : 'water-pure'}">${c.waterPct}%</span></td>
@@ -997,7 +1012,7 @@ function renderFarmerPortal() {
     return matchesFarmer && isApproved && matchesFrom && matchesTo;
   });
 
-  let totalDeductions = farmerDeductions.reduce((sum, b) => sum + b.totalPrice, 0);
+  let totalDeductions = farmerDeductions.reduce((sum, b) => sum + (parseFloat(b.totalPrice) || 0), 0);
 
   const dedTbody = document.getElementById('farmer-deductions-tbody');
   if (dedTbody) {
@@ -1108,15 +1123,16 @@ function generateSelectedReport() {
 
     let totQty = 0, totAmt = 0;
     bodyElem.innerHTML = filtered.map(c => {
-      totQty += c.qty;
-      totAmt += parseFloat(c.total);
+      const q = parseFloat(c.qty) || 0;
+      totQty += q;
+      totAmt += parseFloat(c.total) || 0;
       return `
         <tr>
           <td>${c.farmerId}</td>
           <td>${c.farmerName}</td>
           <td>${c.shift}</td>
           <td>${c.type}</td>
-          <td>${c.qty} L</td>
+          <td>${q} L</td>
           <td>${c.fat}%</td>
           <td>${c.snf}%</td>
           <td>${c.waterPct}%</td>
@@ -1160,14 +1176,15 @@ function generateSelectedReport() {
 
     let totQty = 0, totAmt = 0;
     bodyElem.innerHTML = filtered.map(c => {
-      totQty += c.qty;
-      totAmt += parseFloat(c.total);
+      const q = parseFloat(c.qty) || 0;
+      totQty += q;
+      totAmt += parseFloat(c.total) || 0;
       return `
         <tr>
           <td>${c.date}</td>
           <td>${c.shift}</td>
           <td>${c.type}</td>
-          <td>${c.qty} L</td>
+          <td>${q} L</td>
           <td>${c.fat}%</td>
           <td>${c.snf}%</td>
           <td>₹${c.rate}</td>
@@ -1204,9 +1221,9 @@ function generateSelectedReport() {
       const fColls = DB.collections.filter(c => (c.farmerId === f.id || c.farmerEmail === f.email) && c.date >= startDate && c.date <= endDate);
       const fDeds = (DB.bookings || []).filter(b => (b.farmerId === f.id || b.farmerEmail === f.email) && (b.status === 'Approved & Cost Deducted' || b.status === 'APPROVED') && b.bookingDate >= startDate && b.bookingDate <= endDate);
 
-      const fQty = fColls.reduce((sum, c) => sum + c.qty, 0);
-      const fGross = fColls.reduce((sum, c) => sum + parseFloat(c.total), 0);
-      const fDed = fDeds.reduce((sum, b) => sum + b.totalPrice, 0);
+      const fQty = fColls.reduce((sum, c) => sum + (parseFloat(c.qty) || 0), 0);
+      const fGross = fColls.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
+      const fDed = fDeds.reduce((sum, b) => sum + (parseFloat(b.totalPrice) || 0), 0);
       const fNet = fGross - fDed;
 
       gQty += fQty;
@@ -1244,7 +1261,10 @@ document.addEventListener('DOMContentLoaded', () => {
   const today = new Date().toISOString().slice(0, 10);
   const bookingDateInput = document.getElementById('booking-date');
   const deliveryDateInput = document.getElementById('booking-delivery-date');
+  const milkDateInput = document.getElementById('milk-date');
   
+  if (milkDateInput) milkDateInput.value = today;
+
   if (bookingDateInput) {
     bookingDateInput.value = today;
     bookingDateInput.addEventListener('change', handleBookingDateChange);

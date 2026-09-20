@@ -115,7 +115,7 @@ setInterval(() => {
 
 async function sendEmailHelper({ toEmail, toName, subject, htmlContent }) {
   const senderEmail = process.env.SENDER_EMAIL || process.env.SMTP_USER || 'karanamharish93@gmail.com';
-  const senderName = process.env.SENDER_NAME || 'Dairy Vision Cloud System';
+  const senderName = process.env.SENDER_NAME || 'Smart Dairy Cloud System';
 
   if (process.env.SMTP_USER && (process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD)) {
     try {
@@ -183,7 +183,7 @@ app.get('/', (req, res) => {
   res.json({
     success: true,
     status: 'ONLINE',
-    system: 'Dairy Vision Global Cloud Server',
+    system: 'Smart Dairy Global Cloud Server',
     database: mongoose.connection.readyState === 1 ? 'Connected to MongoDB' : 'Disconnected / Standalone',
     timestamp: new Date().toISOString()
   });
@@ -207,10 +207,10 @@ app.post('/api/send-otp', async (req, res) => {
   try {
     await sendEmailHelper({
       toEmail: formattedEmail,
-      subject: `Dairy Vision Verification Code: ${generatedOtp}`,
+      subject: `Smart Dairy Verification Code: ${generatedOtp}`,
       htmlContent: `
         <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 500px; border: 2px solid #1b4332; border-radius: 8px;">
-          <h2 style="color: #1b4332; text-align: center;">Dairy Vision Cloud System</h2>
+          <h2 style="color: #1b4332; text-align: center;">Smart Dairy Cloud System</h2>
           <p>Dear User,</p>
           <p>Your security verification code for <strong>${purpose || 'Portal Access'}</strong> is:</p>
           <div style="text-align: center; margin: 20px 0;">
@@ -242,6 +242,7 @@ app.post('/api/verify-otp', (req, res) => {
   return res.status(400).json({ success: false, message: 'Invalid or expired OTP. Please try again.' });
 });
 
+// Accurate Quantity parsing and receipt dispatch
 app.post('/api/send-milk-bill', async (req, res) => {
   const recipientEmail = req.body.farmerEmail || req.body.email || req.body.toEmail;
   const farmerName = req.body.farmerName || req.body.name || 'Farmer';
@@ -251,8 +252,13 @@ app.post('/api/send-milk-bill', async (req, res) => {
     return res.status(400).json({ success: false, message: 'Valid farmer email address is required.' });
   }
 
-  const finalQty = parseFloat(qty || liters) || 0;
-  const finalTotal = parseFloat(total || totalAmount) || 0;
+  const rawQtyVal = (qty !== undefined && qty !== null && qty !== '') ? qty : liters;
+  const parsedQty = parseFloat(rawQtyVal);
+  const finalQty = (!isNaN(parsedQty) && parsedQty > 0) ? parsedQty : 0;
+
+  const rawTotalVal = (total !== undefined && total !== null && total !== '') ? total : totalAmount;
+  const parsedTotal = parseFloat(rawTotalVal);
+  const finalTotal = !isNaN(parsedTotal) ? parsedTotal : 0;
 
   try {
     if (mongoose.connection.readyState === 1) {
@@ -271,7 +277,7 @@ app.post('/api/send-milk-bill', async (req, res) => {
           qty: finalQty,
           fat: parseFloat(fat) || 0,
           snf: parseFloat(snf) || 0,
-          waterPct: parseFloat(waterPct || water) || 0,
+          waterPct: parseFloat(waterPct !== undefined ? waterPct : water) || 0,
           rate: parseFloat(rate) || 0,
           total: finalTotal
         },
@@ -282,12 +288,12 @@ app.post('/api/send-milk-bill', async (req, res) => {
     await sendEmailHelper({
       toEmail: recipientEmail.trim(),
       toName: farmerName,
-      subject: `Milk Collection Receipt - ${farmerName}`,
+      subject: `Milk Collection Receipt - ${farmerName} (${finalQty} L)`,
       htmlContent: `
         <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-          <h2 style="color: #1b4332; text-align: center;">Dairy Vision Collection Receipt</h2>
+          <h2 style="color: #1b4332; text-align: center;">Smart Dairy Collection Receipt</h2>
           <p>Dear <strong>${farmerName}</strong>,</p>
-          <p>Your milk collection entry has been registered. Details below:</p>
+          <p>Your milk collection entry has been registered successfully. Details below:</p>
           
           <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
             <tr style="background-color: #f2f2f2;">
@@ -296,11 +302,11 @@ app.post('/api/send-milk-bill', async (req, res) => {
             </tr>
             <tr>
               <td style="padding: 10px; border: 1px solid #ddd;"><strong>Shift:</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;">${shift || 'Morning/Evening'}</td>
+              <td style="padding: 10px; border: 1px solid #ddd;">${shift || 'Morning'}</td>
             </tr>
             <tr style="background-color: #f2f2f2;">
               <td style="padding: 10px; border: 1px solid #ddd;"><strong>Quantity (Liters):</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;">${finalQty} L</td>
+              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: #1b4332;">${finalQty} L</td>
             </tr>
             <tr>
               <td style="padding: 10px; border: 1px solid #ddd;"><strong>FAT / SNF:</strong></td>
@@ -312,7 +318,7 @@ app.post('/api/send-milk-bill', async (req, res) => {
             </tr>
             <tr style="background-color: #e8f5e9;">
               <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px;"><strong>Total Amount:</strong></td>
-              <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px; color: #2e7d32;"><strong>₹${finalTotal}</strong></td>
+              <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px; color: #2e7d32;"><strong>₹${finalTotal.toFixed(2)}</strong></td>
             </tr>
           </table>
         </div>
@@ -355,7 +361,7 @@ app.post('/api/send-requirement-slip', async (req, res) => {
       htmlContent: `
         <div style="font-family: Arial, sans-serif; max-width: 550px; margin: auto; padding: 22px; border: 2px solid #1b4332; border-radius: 10px; background: #ffffff;">
           <div style="text-align: center; border-bottom: 2px dashed #1b4332; padding-bottom: 12px; margin-bottom: 15px;">
-            <h2 style="color: #1b4332; margin: 0;">DAIRY VISION REQUIREMENT SLIP</h2>
+            <h2 style="color: #1b4332; margin: 0;">SMART DAIRY REQUIREMENT SLIP</h2>
             <p style="font-size: 0.85em; color: #555; margin-top: 4px;">Official Farmer Confirmation Receipt</p>
           </div>
 
@@ -590,5 +596,5 @@ app.post('/api/backup/restore', async (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Dairy Vision Cloud Server running on port ${PORT}`);
+  console.log(`🚀 Smart Dairy Cloud Server running on port ${PORT}`);
 });
