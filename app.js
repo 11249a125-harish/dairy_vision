@@ -655,7 +655,6 @@ function calculateWaterPercentage() {
   }
 }
 
-// Fixed milk-form submission handling: guarantees valid, positive numbers across all fields
 document.getElementById('milk-form')?.addEventListener('submit', function(e) {
   e.preventDefault();
   const farmerId = document.getElementById('milk-farmer-id').value;
@@ -675,7 +674,7 @@ document.getElementById('milk-form')?.addEventListener('submit', function(e) {
   }
 
   const fat = parseFloat(document.getElementById('milk-fat').value) || 4.0;
-  const snf = parseFloat(document.getElementById('milk-snf').value) || 8.5;
+  const snf = parseFloat(document.getElementById('milk-snf').value) || 8.1;
   const waterRaw = document.getElementById('milk-water-pct')?.value || '0';
   const waterPct = parseFloat(String(waterRaw).replace(/[^0-9.]/g, '')) || 0;
 
