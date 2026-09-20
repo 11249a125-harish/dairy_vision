@@ -787,12 +787,12 @@
               </div>
 
               <div class="form-group">
-                <label>Date of Booking *</label>
+                <label>Date of Booking * (Current Day Only)</label>
                 <input type="date" id="booking-date" required onchange="handleBookingDateChange()">
               </div>
 
               <div class="form-group">
-                <label>Requested Delivery Date * (Must be >= Booking Date)</label>
+                <label>Requested Delivery Date * (Must be strictly after Booking Date)</label>
                 <input type="date" id="booking-delivery-date" required>
               </div>
             </div>

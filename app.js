@@ -374,18 +374,24 @@ function handleBookingDateChange() {
   const bookingDateInput = document.getElementById('booking-date');
   const deliveryDateInput = document.getElementById('booking-delivery-date');
   const today = new Date().toISOString().slice(0, 10);
+
+  const tomorrowObj = new Date();
+  tomorrowObj.setDate(tomorrowObj.getDate() + 1);
+  const tomorrowStr = tomorrowObj.toISOString().slice(0, 10);
+
   if (bookingDateInput) {
+    bookingDateInput.min = today;
     bookingDateInput.max = today;
-    if (bookingDateInput.value && bookingDateInput.value > today) {
+    if (bookingDateInput.value !== today) {
       bookingDateInput.value = today;
-      showAlert(`Validation Error: Date of Booking cannot be in the future! (Max allowed: ${today})`, 'danger');
+      showAlert(`Validation Error: Requirement booking can only be done on the current day (${today})!`, 'danger');
     }
-    const bDate = bookingDateInput.value;
-    if (bDate && deliveryDateInput) {
-      deliveryDateInput.min = bDate;
-      if (deliveryDateInput.value && deliveryDateInput.value < bDate) {
-        deliveryDateInput.value = bDate;
-      }
+  }
+
+  if (deliveryDateInput) {
+    deliveryDateInput.min = tomorrowStr;
+    if (!deliveryDateInput.value || deliveryDateInput.value <= today) {
+      deliveryDateInput.value = tomorrowStr;
     }
   }
 }
@@ -516,9 +522,9 @@ document.getElementById('farmer-booking-form')?.addEventListener('submit', async
   }
 
   const todayStr = new Date().toISOString().slice(0, 10);
-  if (bookingDate > todayStr) {
-    showAlert(`Validation Error: Date of Booking (${bookingDate}) cannot be in the future! (Max allowed: ${todayStr})`, 'danger');
-    addAiLog('tag-anomaly', 'AI-VALIDATE', `Rejected requirement: Booking date (${bookingDate}) is in the future.`);
+  if (bookingDate !== todayStr) {
+    showAlert(`Validation Error: Requirement booking can only be done on the current day (${todayStr})!`, 'danger');
+    addAiLog('tag-anomaly', 'AI-VALIDATE', `Rejected requirement: Booking date (${bookingDate}) is not current day.`);
     document.getElementById('booking-date').focus();
     return;
   }
@@ -526,9 +532,9 @@ document.getElementById('farmer-booking-form')?.addEventListener('submit', async
   const bDateObj = new Date(bookingDate);
   const dDateObj = new Date(deliveryDate);
 
-  if (dDateObj < bDateObj) {
-    showAlert('Validation Error: The delivery date cannot be earlier than the booking date!', 'danger');
-    addAiLog('tag-anomaly', 'AI-VALIDATE', `Rejected requirement: Delivery date (${deliveryDate}) < Booking date (${bookingDate})`);
+  if (dDateObj <= bDateObj) {
+    showAlert('Validation Error: Requested delivery date must be strictly after the current booking day!', 'danger');
+    addAiLog('tag-anomaly', 'AI-VALIDATE', `Rejected requirement: Delivery date (${deliveryDate}) <= Booking date (${bookingDate})`);
     document.getElementById('booking-delivery-date').focus();
     return;
   }
@@ -1369,6 +1375,10 @@ document.addEventListener('DOMContentLoaded', () => {
   syncFromMongoDB();
 
   const today = new Date().toISOString().slice(0, 10);
+  const tomorrowObj = new Date();
+  tomorrowObj.setDate(tomorrowObj.getDate() + 1);
+  const tomorrowStr = tomorrowObj.toISOString().slice(0, 10);
+
   const bookingDateInput = document.getElementById('booking-date');
   const deliveryDateInput = document.getElementById('booking-delivery-date');
   const milkDateInput = document.getElementById('milk-date');
@@ -1377,11 +1387,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
   if (bookingDateInput) {
     bookingDateInput.value = today;
+    bookingDateInput.min = today;
+    bookingDateInput.max = today;
     bookingDateInput.addEventListener('change', handleBookingDateChange);
   }
   if (deliveryDateInput) {
-    deliveryDateInput.value = today;
-    deliveryDateInput.min = today;
+    deliveryDateInput.value = tomorrowStr;
+    deliveryDateInput.min = tomorrowStr;
   }
 
   document.getElementById('agent-login-form')?.addEventListener('submit', function(e) {
