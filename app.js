@@ -6,6 +6,7 @@
 const API_BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
   ? 'http://localhost:5000'
   : 'https://all-labs.onrender.com';
+
 const ALLOWED_AGENTS = [
   "karanamharish93@gmail.com",
   "11249a251@kanchiuniv.ac.in",
@@ -292,13 +293,16 @@ async function sendMilkBillReceipt(entry) {
   if (!entry || !entry.farmerEmail) return;
 
   try {
-    await fetch(`${API_BASE_URL}/api/send-milk-bill`, {
+    const res = await fetch(`${API_BASE_URL}/api/send-milk-bill`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(entry)
     });
-    addLog(`Emailed milk collection receipt to ${entry.farmerEmail}`);
-    addAiLog('tag-audit', 'AI-EMAIL', `Collection receipt emailed to ${entry.farmerEmail}`);
+    const data = await res.json();
+    if (data.success) {
+      addLog(`Emailed milk collection receipt to ${entry.farmerEmail}`);
+      addAiLog('tag-audit', 'AI-EMAIL', `Collection receipt emailed to ${entry.farmerEmail}`);
+    }
   } catch (err) {
     console.error('Milk Bill Email Error:', err);
   }
@@ -432,8 +436,8 @@ document.getElementById('farmer-booking-form')?.addEventListener('submit', async
 
   const itemVal = document.getElementById('booking-item-type').value;
   const [itemName, unitPriceStr] = itemVal.split('|');
-  const unitPrice = parseFloat(unitPriceStr);
-  const qty = parseInt(document.getElementById('booking-qty').value, 10);
+  const unitPrice = parseFloat(unitPriceStr) || 0;
+  const qty = parseInt(document.getElementById('booking-qty').value, 10) || 1;
   const bookingDate = document.getElementById('booking-date').value;
   const deliveryDate = document.getElementById('booking-delivery-date').value;
 
@@ -630,23 +634,28 @@ function calculateWaterPercentage() {
 
   let waterPct = 0;
   if (snf < stdSnf && snf > 0) {
-    waterPct = (((stdSnf - snf) / stdSnf) * 100).toFixed(1);
+    waterPct = parseFloat((((stdSnf - snf) / stdSnf) * 100).toFixed(1));
   }
 
-  document.getElementById('milk-water-pct').value = `${waterPct} %`;
+  const waterInput = document.getElementById('milk-water-pct');
+  if (waterInput) {
+    waterInput.value = waterPct;
+  }
 
   const alertBadge = document.getElementById('water-quality-alert');
-  if (waterPct > 0) {
-    alertBadge.className = 'alert alert-danger';
-    alertBadge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Water Adulteration Detected (${waterPct}%)`;
-    addAiLog('tag-anomaly', 'AI-ANOMALY', `Water adulteration detected: ${waterPct}%`);
-  } else {
-    alertBadge.className = 'alert alert-success';
-    alertBadge.innerHTML = `<i class="fa-solid fa-circle-check"></i> Pure Milk Sample Detected`;
+  if (alertBadge) {
+    if (waterPct > 0) {
+      alertBadge.className = 'alert alert-danger';
+      alertBadge.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> Water Adulteration Detected (${waterPct}%)`;
+      addAiLog('tag-anomaly', 'AI-ANOMALY', `Water adulteration detected: ${waterPct}%`);
+    } else {
+      alertBadge.className = 'alert alert-success';
+      alertBadge.innerHTML = `<i class="fa-solid fa-circle-check"></i> Pure Milk Sample Detected`;
+    }
   }
 }
 
-// Fixed milk-form submission handling: validates positive quantity to eliminate 0-value bugs
+// Fixed milk-form submission handling: guarantees valid, positive numbers across all fields
 document.getElementById('milk-form')?.addEventListener('submit', function(e) {
   e.preventDefault();
   const farmerId = document.getElementById('milk-farmer-id').value;
@@ -665,10 +674,14 @@ document.getElementById('milk-form')?.addEventListener('submit', function(e) {
     return;
   }
 
-  const fat = parseFloat(document.getElementById('milk-fat').value) || 0;
-  const snf = parseFloat(document.getElementById('milk-snf').value) || 0;
-  const waterPct = parseFloat(document.getElementById('milk-water-pct').value) || 0;
-  const rate = parseFloat((fat * 7 + snf * 4).toFixed(2));
+  const fat = parseFloat(document.getElementById('milk-fat').value) || 4.0;
+  const snf = parseFloat(document.getElementById('milk-snf').value) || 8.5;
+  const waterRaw = document.getElementById('milk-water-pct')?.value || '0';
+  const waterPct = parseFloat(String(waterRaw).replace(/[^0-9.]/g, '')) || 0;
+
+  let rate = parseFloat((fat * 7 + snf * 4).toFixed(2));
+  if (rate <= 0) rate = 42.0;
+
   const total = parseFloat((qty * rate).toFixed(2));
 
   const entry = {
@@ -686,7 +699,8 @@ document.getElementById('milk-form')?.addEventListener('submit', function(e) {
     snf,
     waterPct,
     rate,
-    total
+    total,
+    totalAmount: total
   };
 
   DB.collections.push(entry);
@@ -694,9 +708,9 @@ document.getElementById('milk-form')?.addEventListener('submit', function(e) {
 
   sendMilkBillReceipt(entry);
 
-  showAlert(`Milk entry (${qty} L) recorded & dispatched to farmer email!`);
-  addLog(`Recorded entry for ${entry.farmerName} - ${qty}L`);
-  addAiLog('tag-audit', 'AI-COLLECTION', `Milk entry logged: ${entry.farmerName} - ${qty}L (FAT: ${fat}%)`);
+  showAlert(`Milk entry (${qty} L - ₹${total}) recorded & dispatched to farmer email!`);
+  addLog(`Recorded entry for ${entry.farmerName} - ${qty}L (₹${total})`);
+  addAiLog('tag-audit', 'AI-COLLECTION', `Milk entry logged: ${entry.farmerName} - ${qty}L (Total: ₹${total})`);
   
   renderCollections();
   updateDashboardMetrics();
@@ -707,7 +721,7 @@ document.getElementById('milk-form')?.addEventListener('submit', function(e) {
 document.getElementById('deduction-form')?.addEventListener('submit', function(e) {
   e.preventDefault();
   const farmerId = document.getElementById('deduction-farmer-id').value;
-  const amount = parseFloat(document.getElementById('deduction-amount').value);
+  const amount = parseFloat(document.getElementById('deduction-amount').value) || 0;
   const type = document.getElementById('deduction-type').value;
   const date = document.getElementById('deduction-date').value;
 
@@ -1332,6 +1346,7 @@ document.addEventListener('DOMContentLoaded', () => {
         initAppView('farmer');
       } else {
         showAlert('Incorrect farmer password.', 'danger');
+        addAiLog('tag-security', 'AI-SECURITY', `Failed password login attempt for farmer ${farmer.name}`);
       }
     } else {
       handleVerifyOTP('farmer-login-email', 'farmer-login-otp', () => {

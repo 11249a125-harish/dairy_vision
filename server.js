@@ -37,7 +37,7 @@ const farmerSchema = new mongoose.Schema({
   mobile: { type: String, required: true },
   email: { type: String, required: true },
   village: { type: String, default: 'Palamaner Village' },
-  aadhaar: { type: String, required: true },
+  aadhaar: { type: String, default: '' },
   bankName: { type: String, required: true },
   account: { type: String, required: true },
   ifsc: { type: String, required: true },
@@ -113,9 +113,18 @@ setInterval(() => {
   }
 }, 5 * 60 * 1000);
 
+// Helper function to cleanly extract numbers even from strings like "12.3 L" or "4%"
+function parseCleanNumber(val, defaultVal = 0) {
+  if (val === undefined || val === null || val === '') return defaultVal;
+  if (typeof val === 'number') return isNaN(val) ? defaultVal : val;
+  const cleaned = String(val).replace(/[^0-9.]/g, '');
+  const parsed = parseFloat(cleaned);
+  return isNaN(parsed) ? defaultVal : parsed;
+}
+
 async function sendEmailHelper({ toEmail, toName, subject, htmlContent }) {
   const senderEmail = process.env.SENDER_EMAIL || process.env.SMTP_USER || 'karanamharish93@gmail.com';
-  const senderName = process.env.SENDER_NAME || 'Smart Dairy Cloud System';
+  const senderName = process.env.SENDER_NAME || 'Dairy Vision Portal';
 
   if (process.env.SMTP_USER && (process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD)) {
     try {
@@ -173,7 +182,6 @@ async function sendEmailHelper({ toEmail, toName, subject, htmlContent }) {
   console.log(`📧 SIMULATED EMAIL DISPATCH (No active SMTP / Brevo key configured)`);
   console.log(`TO: ${toEmail} (${toName || 'User'})`);
   console.log(`SUBJECT: ${subject}`);
-  console.log(`CONTENT SUMMARY: ${htmlContent.replace(/<[^>]*>?/gm, '').slice(0, 300)}...`);
   console.log(`======================================================\n`);
 
   return { success: true, method: 'Simulated' };
@@ -183,7 +191,7 @@ app.get('/', (req, res) => {
   res.json({
     success: true,
     status: 'ONLINE',
-    system: 'Smart Dairy Global Cloud Server',
+    system: 'Dairy Vision Cloud Server',
     database: mongoose.connection.readyState === 1 ? 'Connected to MongoDB' : 'Disconnected / Standalone',
     timestamp: new Date().toISOString()
   });
@@ -207,10 +215,10 @@ app.post('/api/send-otp', async (req, res) => {
   try {
     await sendEmailHelper({
       toEmail: formattedEmail,
-      subject: `Smart Dairy Verification Code: ${generatedOtp}`,
+      subject: `Dairy Vision Verification Code: ${generatedOtp}`,
       htmlContent: `
         <div style="font-family: Arial, sans-serif; padding: 20px; color: #333; max-width: 500px; border: 2px solid #1b4332; border-radius: 8px;">
-          <h2 style="color: #1b4332; text-align: center;">Smart Dairy Cloud System</h2>
+          <h2 style="color: #1b4332; text-align: center;">Dairy Vision Cloud System</h2>
           <p>Dear User,</p>
           <p>Your security verification code for <strong>${purpose || 'Portal Access'}</strong> is:</p>
           <div style="text-align: center; margin: 20px 0;">
@@ -245,27 +253,27 @@ app.post('/api/verify-otp', (req, res) => {
 app.post('/api/send-milk-bill', async (req, res) => {
   const recipientEmail = req.body.farmerEmail || req.body.email || req.body.toEmail;
   const farmerName = req.body.farmerName || req.body.name || 'Farmer';
-  const { id, date, time, farmerId, type, shift, liters, qty, fat, snf, water, waterPct, rate, total, totalAmount } = req.body;
+  const { id, date, time, farmerId, type, shift } = req.body;
 
   if (!recipientEmail || typeof recipientEmail !== 'string' || !recipientEmail.includes('@')) {
     return res.status(400).json({ success: false, message: 'Valid farmer email address is required.' });
   }
 
-  const rawQtyVal = (qty !== undefined && qty !== null && qty !== '') ? qty : liters;
-  const parsedQty = parseFloat(rawQtyVal);
-  const finalQty = (!isNaN(parsedQty) && parsedQty > 0) ? parsedQty : 0;
+  const finalQty = parseCleanNumber(req.body.qty !== undefined ? req.body.qty : req.body.liters, 0);
+  const finalFat = parseCleanNumber(req.body.fat, 4.0);
+  const finalSnf = parseCleanNumber(req.body.snf, 8.5);
+  const finalWater = parseCleanNumber(req.body.waterPct !== undefined ? req.body.waterPct : req.body.water, 0);
 
-  const finalFat = parseFloat(fat) || 0;
-  const finalSnf = parseFloat(snf) || 0;
-
-  let finalRate = parseFloat(rate) || 0;
-  if (finalRate <= 0 && (finalFat > 0 || finalSnf > 0)) {
+  // Rate calculation formula with standard dairy pricing fallback
+  let finalRate = parseCleanNumber(req.body.rate, 0);
+  if (finalRate <= 0) {
     finalRate = parseFloat((finalFat * 7 + finalSnf * 4).toFixed(2));
+    if (finalRate <= 0) finalRate = 42.0; // standard default minimum rate
   }
 
-  const rawTotalVal = (total !== undefined && total !== null && total !== '') ? total : totalAmount;
-  let finalTotal = parseFloat(rawTotalVal) || 0;
-  if (finalTotal <= 0 && finalQty > 0 && finalRate > 0) {
+  // Total calculation fallback
+  let finalTotal = parseCleanNumber(req.body.total !== undefined ? req.body.total : req.body.totalAmount, 0);
+  if (finalTotal <= 0 && finalQty > 0) {
     finalTotal = parseFloat((finalQty * finalRate).toFixed(2));
   }
 
@@ -286,7 +294,7 @@ app.post('/api/send-milk-bill', async (req, res) => {
           qty: finalQty,
           fat: finalFat,
           snf: finalSnf,
-          waterPct: parseFloat(waterPct !== undefined ? waterPct : water) || 0,
+          waterPct: finalWater,
           rate: finalRate,
           total: finalTotal
         },
@@ -297,44 +305,52 @@ app.post('/api/send-milk-bill', async (req, res) => {
     await sendEmailHelper({
       toEmail: recipientEmail.trim(),
       toName: farmerName,
-      subject: `Milk Collection Receipt - ${farmerName} (₹${finalTotal.toFixed(2)})`,
+      subject: `Milk Collection Receipt - ${farmerName}`,
       htmlContent: `
-        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 8px;">
-          <h2 style="color: #1b4332; text-align: center;">Smart Dairy Collection Receipt</h2>
-          <p>Dear <strong>${farmerName}</strong>,</p>
-          <p>Your milk collection entry has been registered successfully. Details below:</p>
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto; padding: 25px; border: 1px solid #e0e0e0; border-radius: 8px; background-color: #ffffff;">
+          <h2 style="color: #1b4332; text-align: center; margin-bottom: 20px;">Dairy Vision Collection Receipt</h2>
+          <p style="font-size: 15px; color: #333;">Dear <strong>${farmerName}</strong>,</p>
+          <p style="font-size: 14px; color: #555;">Your milk collection entry has been successfully registered. Below are your collection details:</p>
           
-          <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
-            <tr style="background-color: #f2f2f2;">
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Milk Type:</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;">${type || 'Standard Milk'}</td>
+          <table style="width: 100%; border-collapse: collapse; margin-top: 15px; font-size: 14px;">
+            <tr style="background-color: #f9f9f9;">
+              <td style="padding: 12px; border: 1px solid #e0e0e0; width: 45%;"><strong>Milk Type:</strong></td>
+              <td style="padding: 12px; border: 1px solid #e0e0e0;">${type || 'Standard Milk'}</td>
             </tr>
             <tr>
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Shift:</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;">${shift || 'Morning'}</td>
+              <td style="padding: 12px; border: 1px solid #e0e0e0;"><strong>Shift:</strong></td>
+              <td style="padding: 12px; border: 1px solid #e0e0e0;">${shift || 'Morning'}</td>
             </tr>
-            <tr style="background-color: #f2f2f2;">
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Quantity (Liters):</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd; font-weight: bold; color: #1b4332;">${finalQty} L</td>
+            <tr style="background-color: #f9f9f9;">
+              <td style="padding: 12px; border: 1px solid #e0e0e0;"><strong>Quantity (Liters):</strong></td>
+              <td style="padding: 12px; border: 1px solid #e0e0e0;">${finalQty} L</td>
             </tr>
             <tr>
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>FAT / SNF:</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;">${finalFat}% / ${finalSnf}%</td>
+              <td style="padding: 12px; border: 1px solid #e0e0e0;"><strong>FAT / SNF:</strong></td>
+              <td style="padding: 12px; border: 1px solid #e0e0e0;">${finalFat}% / ${finalSnf}%</td>
             </tr>
-            <tr style="background-color: #f2f2f2;">
-              <td style="padding: 10px; border: 1px solid #ddd;"><strong>Rate per Liter:</strong></td>
-              <td style="padding: 10px; border: 1px solid #ddd;">₹${finalRate.toFixed(2)}</td>
+            <tr style="background-color: #f9f9f9;">
+              <td style="padding: 12px; border: 1px solid #e0e0e0;"><strong>Water %:</strong></td>
+              <td style="padding: 12px; border: 1px solid #e0e0e0;">${finalWater}%</td>
+            </tr>
+            <tr>
+              <td style="padding: 12px; border: 1px solid #e0e0e0;"><strong>Rate per Liter:</strong></td>
+              <td style="padding: 12px; border: 1px solid #e0e0e0;">₹${finalRate.toFixed(2)}</td>
             </tr>
             <tr style="background-color: #e8f5e9;">
-              <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px;"><strong>Total Amount:</strong></td>
-              <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px; color: #2e7d32;"><strong>₹${finalTotal.toFixed(2)}</strong></td>
+              <td style="padding: 14px; border: 1px solid #c8e6c9; font-size: 16px;"><strong>Total Amount:</strong></td>
+              <td style="padding: 14px; border: 1px solid #c8e6c9; font-size: 18px; color: #2e7d32; font-weight: bold;">₹${finalTotal.toFixed(2)}</td>
             </tr>
           </table>
+
+          <p style="text-align: center; color: #888; font-size: 12px; margin-top: 25px;">
+            This is an automated receipt from Dairy Vision Cloud System.
+          </p>
         </div>
       `
     });
 
-    return res.json({ success: true, message: 'Milk collection bill saved to MongoDB & emailed successfully.' });
+    return res.json({ success: true, message: 'Milk collection bill saved to MongoDB & emailed successfully.', total: finalTotal });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message });
   }
@@ -352,7 +368,7 @@ app.post('/api/send-requirement-slip', async (req, res) => {
   const safeStatus = (status || 'APPROVED').toString();
   const isApproved = safeStatus.toUpperCase().includes('APPROV');
   const statusBadgeColor = isApproved ? '#2e7d32' : '#c1121f';
-  const finalCost = parseFloat(cost || totalPrice) || 0;
+  const finalCost = parseCleanNumber(cost !== undefined ? cost : totalPrice, 0);
 
   try {
     if (mongoose.connection.readyState === 1 && id) {
@@ -370,12 +386,12 @@ app.post('/api/send-requirement-slip', async (req, res) => {
       htmlContent: `
         <div style="font-family: Arial, sans-serif; max-width: 550px; margin: auto; padding: 22px; border: 2px solid #1b4332; border-radius: 10px; background: #ffffff;">
           <div style="text-align: center; border-bottom: 2px dashed #1b4332; padding-bottom: 12px; margin-bottom: 15px;">
-            <h2 style="color: #1b4332; margin: 0;">SMART DAIRY REQUIREMENT SLIP</h2>
+            <h2 style="color: #1b4332; margin: 0;">DAIRY VISION REQUIREMENT SLIP</h2>
             <p style="font-size: 0.85em; color: #555; margin-top: 4px;">Official Farmer Confirmation Receipt</p>
           </div>
 
           <p>Dear <strong>${farmerName}</strong> (ID: ${farmerId || 'FARMER'}),</p>
-          <p>Your requested material requirement order has been processed by the Agent. Below is your requirement slip detail:</p>
+          <p>Your requested material requirement order has been processed. Below are your slip details:</p>
           
           <table style="width: 100%; border-collapse: collapse; margin-top: 15px;">
             <tr style="background-color: #f8fdf9;">
