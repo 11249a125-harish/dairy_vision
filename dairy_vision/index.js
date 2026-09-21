@@ -38,12 +38,12 @@ const agentSchema = new mongoose.Schema({
 });
 
 const rateConfigSchema = new mongoose.Schema({
-  cowFatRate: { type: Number, default: 7.0 },
-  cowSnfRate: { type: Number, default: 4.0 },
   cowBaseRate: { type: Number, default: 45.0 },
-  buffaloFatRate: { type: Number, default: 8.0 },
-  buffaloSnfRate: { type: Number, default: 5.0 },
+  cowStdFat: { type: Number, default: 4.5 },
+  cowStdSnf: { type: Number, default: 8.5 },
   buffaloBaseRate: { type: Number, default: 60.0 },
+  buffaloStdFat: { type: Number, default: 4.0 },
+  buffaloStdSnf: { type: Number, default: 9.0 },
   updatedAt: { type: Date, default: Date.now }
 });
 
@@ -151,6 +151,20 @@ function parseCleanNumber(val, defaultVal = 0) {
   const cleaned = String(val).replace(/[^0-9.]/g, '');
   const parsed = parseFloat(cleaned);
   return isNaN(parsed) ? defaultVal : parsed;
+}
+
+function calculateMilkRateHelper(type, fat, snf, customRates = {}) {
+  const isCow = (type || '').toLowerCase().includes('cow');
+  const baseRate = isCow ? parseCleanNumber(customRates.cowBaseRate, 45.0) : parseCleanNumber(customRates.buffaloBaseRate, 60.0);
+  const stdFat = isCow ? parseCleanNumber(customRates.cowStdFat, 4.5) : parseCleanNumber(customRates.buffaloStdFat, 4.0);
+  const stdSnf = isCow ? parseCleanNumber(customRates.cowStdSnf, 8.5) : parseCleanNumber(customRates.buffaloStdSnf, 9.0);
+
+  const stdTS = stdFat + stdSnf;
+  const actualTS = parseCleanNumber(fat, 0) + parseCleanNumber(snf, 0);
+
+  if (actualTS <= 0 || stdTS <= 0) return baseRate;
+  const rate = parseFloat((baseRate * (actualTS / stdTS)).toFixed(2));
+  return Math.max(10.0, rate);
 }
 
 async function sendEmailHelper({ toEmail, toName, subject, htmlContent }) {
@@ -346,14 +360,15 @@ app.post('/api/send-milk-bill', async (req, res) => {
   const finalFat = parseCleanNumber(req.body.fat, 4.0);
   const finalSnf = parseCleanNumber(req.body.snf, 8.1);
   const finalWater = parseCleanNumber(req.body.waterPct !== undefined ? req.body.waterPct : req.body.water, 0);
-  const isCow = (type || '').toLowerCase().includes('cow');
 
   let finalRate = parseCleanNumber(req.body.rate, 0);
   if (finalRate <= 0) {
-    const fatMultiplier = isCow ? 7.0 : 8.0;
-    const snfMultiplier = isCow ? 4.0 : 5.0;
-    finalRate = parseFloat((finalFat * fatMultiplier + finalSnf * snfMultiplier).toFixed(2));
-    if (finalRate <= 0) finalRate = isCow ? 45.0 : 60.0;
+    let customRates = {};
+    if (mongoose.connection.readyState === 1) {
+      const config = await RateConfig.findOne();
+      if (config) customRates = config.toObject();
+    }
+    finalRate = calculateMilkRateHelper(type, finalFat, finalSnf, customRates);
   }
 
   let finalTotal = parseCleanNumber(req.body.total !== undefined ? req.body.total : req.body.totalAmount, 0);

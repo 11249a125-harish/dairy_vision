@@ -21,21 +21,38 @@ let DB = JSON.parse(localStorage.getItem('SMART_DAIRY_GLOBAL_DB') || localStorag
     "11249a255@kanchiuniv.ac.in": { password: null }
   },
   rates: {
-    cowFatRate: 7.0,
-    cowSnfRate: 4.0,
     cowBaseRate: 45.0,
-    buffaloFatRate: 8.0,
-    buffaloSnfRate: 5.0,
-    buffaloBaseRate: 60.0
+    cowStdFat: 4.5,
+    cowStdSnf: 8.5,
+    buffaloBaseRate: 60.0,
+    buffaloStdFat: 4.0,
+    buffaloStdSnf: 9.0
   },
   farmers: [],
   collections: [],
   deductions: [],
-  bookings: []
+  bookings: [],
+  feedbacks: []
 }));
 
 function saveDB() {
   localStorage.setItem('SMART_DAIRY_GLOBAL_DB', JSON.stringify(DB));
+}
+
+function calculateMilkRate(type, fat, snf) {
+  const isCow = (type || '').toLowerCase().includes('cow');
+  const r = DB.rates || { cowBaseRate: 45.0, cowStdFat: 4.5, cowStdSnf: 8.5, buffaloBaseRate: 60.0, buffaloStdFat: 4.0, buffaloStdSnf: 9.0 };
+
+  const baseRate = isCow ? (parseFloat(r.cowBaseRate) || 45.0) : (parseFloat(r.buffaloBaseRate) || 60.0);
+  const stdFat = isCow ? (parseFloat(r.cowStdFat) || 4.5) : (parseFloat(r.buffaloStdFat) || 4.0);
+  const stdSnf = isCow ? (parseFloat(r.cowStdSnf) || 8.5) : (parseFloat(r.buffaloStdSnf) || 9.0);
+
+  const stdTS = stdFat + stdSnf;
+  const actualTS = (parseFloat(fat) || 0) + (parseFloat(snf) || 0);
+
+  if (actualTS <= 0 || stdTS <= 0) return baseRate;
+  const rate = parseFloat((baseRate * (actualTS / stdTS)).toFixed(2));
+  return Math.max(10.0, rate);
 }
 
 function getLocalDateString(d = new Date()) {
@@ -111,24 +128,24 @@ function toggleRateSettingsCard() {
 }
 
 function loadRateSettings() {
-  const r = DB.rates || { cowFatRate: 7.0, cowSnfRate: 4.0, cowBaseRate: 45.0, buffaloFatRate: 8.0, buffaloSnfRate: 5.0, buffaloBaseRate: 60.0 };
-  if (document.getElementById('rate-cow-fat')) document.getElementById('rate-cow-fat').value = r.cowFatRate;
-  if (document.getElementById('rate-cow-snf')) document.getElementById('rate-cow-snf').value = r.cowSnfRate;
-  if (document.getElementById('rate-cow-base')) document.getElementById('rate-cow-base').value = r.cowBaseRate;
-  if (document.getElementById('rate-buffalo-fat')) document.getElementById('rate-buffalo-fat').value = r.buffaloFatRate;
-  if (document.getElementById('rate-buffalo-snf')) document.getElementById('rate-buffalo-snf').value = r.buffaloSnfRate;
-  if (document.getElementById('rate-buffalo-base')) document.getElementById('rate-buffalo-base').value = r.buffaloBaseRate;
+  const r = DB.rates || { cowBaseRate: 45.0, cowStdFat: 4.5, cowStdSnf: 8.5, buffaloBaseRate: 60.0, buffaloStdFat: 4.0, buffaloStdSnf: 9.0 };
+  if (document.getElementById('rate-cow-base')) document.getElementById('rate-cow-base').value = r.cowBaseRate || 45.0;
+  if (document.getElementById('rate-cow-fat')) document.getElementById('rate-cow-fat').value = r.cowStdFat || 4.5;
+  if (document.getElementById('rate-cow-snf')) document.getElementById('rate-cow-snf').value = r.cowStdSnf || 8.5;
+  if (document.getElementById('rate-buffalo-base')) document.getElementById('rate-buffalo-base').value = r.buffaloBaseRate || 60.0;
+  if (document.getElementById('rate-buffalo-fat')) document.getElementById('rate-buffalo-fat').value = r.buffaloStdFat || 4.0;
+  if (document.getElementById('rate-buffalo-snf')) document.getElementById('rate-buffalo-snf').value = r.buffaloStdSnf || 9.0;
   updateNoticeBoardRates();
 }
 
 function updateNoticeBoardRates() {
-  const r = DB.rates || { cowFatRate: 7.0, cowSnfRate: 4.0, cowBaseRate: 45.0, buffaloFatRate: 8.0, buffaloSnfRate: 5.0, buffaloBaseRate: 60.0 };
+  const r = DB.rates || { cowBaseRate: 45.0, cowStdFat: 4.5, cowStdSnf: 8.5, buffaloBaseRate: 60.0, buffaloStdFat: 4.0, buffaloStdSnf: 9.0 };
   const noticeBox = document.getElementById('notice-current-rates');
   if (noticeBox) {
     noticeBox.innerHTML = `
-      <i class="fa-solid fa-sliders"></i> <strong>Active Station Payout Multipliers:</strong><br>
-      Cow Milk FAT: ₹${r.cowFatRate}/FAT, SNF: ₹${r.cowSnfRate}/SNF (Base: ₹${r.cowBaseRate}/L) | 
-      Buffalo Milk FAT: ₹${r.buffaloFatRate}/FAT, SNF: ₹${r.buffaloSnfRate}/SNF (Base: ₹${r.buffaloBaseRate}/L)
+      <i class="fa-solid fa-sliders"></i> <strong>Active Station TS Payout Formula:</strong><br>
+      Cow Milk: Base ₹${r.cowBaseRate}/L (Std FAT ${r.cowStdFat}% + SNF ${r.cowStdSnf}%) | 
+      Buffalo Milk: Base ₹${r.buffaloBaseRate}/L (Std FAT ${r.buffaloStdFat}% + SNF ${r.buffaloStdSnf}%)
     `;
   }
 }
@@ -879,16 +896,7 @@ document.getElementById('milk-form')?.addEventListener('submit', function(e) {
   const waterPct = parseFloat(String(waterRaw).replace(/[^0-9.]/g, '')) || 0;
   const type = document.getElementById('milk-type').value;
 
-  const isCow = type.toLowerCase().includes('cow');
-  const r = DB.rates || { cowFatRate: 7.0, cowSnfRate: 4.0, cowBaseRate: 45.0, buffaloFatRate: 8.0, buffaloSnfRate: 5.0, buffaloBaseRate: 60.0 };
-
-  const fatRate = isCow ? (parseFloat(r.cowFatRate) || 7.0) : (parseFloat(r.buffaloFatRate) || 8.0);
-  const snfRate = isCow ? (parseFloat(r.cowSnfRate) || 4.0) : (parseFloat(r.buffaloSnfRate) || 5.0);
-  const baseRate = isCow ? (parseFloat(r.cowBaseRate) || 45.0) : (parseFloat(r.buffaloBaseRate) || 60.0);
-
-  let rate = parseFloat((fat * fatRate + snf * snfRate).toFixed(2));
-  if (rate <= 0) rate = baseRate;
-
+  const rate = calculateMilkRate(type, fat, snf);
   const total = parseFloat((qty * rate).toFixed(2));
 
   const entry = {
@@ -1570,12 +1578,12 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('rate-settings-form')?.addEventListener('submit', function(e) {
     e.preventDefault();
     const rates = {
-      cowFatRate: parseFloat(document.getElementById('rate-cow-fat').value) || 7.0,
-      cowSnfRate: parseFloat(document.getElementById('rate-cow-snf').value) || 4.0,
       cowBaseRate: parseFloat(document.getElementById('rate-cow-base').value) || 45.0,
-      buffaloFatRate: parseFloat(document.getElementById('rate-buffalo-fat').value) || 8.0,
-      buffaloSnfRate: parseFloat(document.getElementById('rate-buffalo-snf').value) || 5.0,
-      buffaloBaseRate: parseFloat(document.getElementById('rate-buffalo-base').value) || 60.0
+      cowStdFat: parseFloat(document.getElementById('rate-cow-fat').value) || 4.5,
+      cowStdSnf: parseFloat(document.getElementById('rate-cow-snf').value) || 8.5,
+      buffaloBaseRate: parseFloat(document.getElementById('rate-buffalo-base').value) || 60.0,
+      buffaloStdFat: parseFloat(document.getElementById('rate-buffalo-fat').value) || 4.0,
+      buffaloStdSnf: parseFloat(document.getElementById('rate-buffalo-snf').value) || 9.0
     };
 
     DB.rates = rates;

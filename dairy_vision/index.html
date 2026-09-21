@@ -8,6 +8,51 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <link rel="stylesheet" href="styles.css">
   <link rel="stylesheet" href="style.css">
+  <style>
+    @keyframes gradientAnimation {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    @keyframes floatBubbles {
+      0% { transform: translateY(0px) rotate(0deg); opacity: 0.8; }
+      50% { transform: translateY(-25px) rotate(180deg); opacity: 1; }
+      100% { transform: translateY(0px) rotate(360deg); opacity: 0.8; }
+    }
+    .animated-login-bg {
+      background: linear-gradient(-45deg, #0d2818, #1b4332, #2d6a4f, #081c15, #40916c, #1b4332);
+      background-size: 400% 400%;
+      animation: gradientAnimation 12s ease infinite;
+      position: relative;
+      overflow: hidden;
+      border-radius: 12px;
+      padding: 30px 20px;
+    }
+    .animated-login-bg::before {
+      content: '';
+      position: absolute;
+      top: -120px;
+      right: -120px;
+      width: 380px;
+      height: 380px;
+      background: radial-gradient(circle, rgba(255, 183, 3, 0.3) 0%, rgba(255, 255, 255, 0) 70%);
+      border-radius: 50%;
+      animation: floatBubbles 8s ease-in-out infinite;
+      pointer-events: none;
+    }
+    .animated-login-bg::after {
+      content: '';
+      position: absolute;
+      bottom: -120px;
+      left: -120px;
+      width: 420px;
+      height: 420px;
+      background: radial-gradient(circle, rgba(64, 145, 108, 0.35) 0%, rgba(255, 255, 255, 0) 70%);
+      border-radius: 50%;
+      animation: floatBubbles 12s ease-in-out infinite reverse;
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body>
   <svg style="display:none;">
@@ -75,7 +120,7 @@
     <div class="content-area">
       <div id="notification" class="alert hidden"></div>
 
-      <div id="auth-section">
+      <div id="auth-section" class="animated-login-bg">
         <div class="hero-auth-bg">
           <div id="login-card" class="auth-card-hero">
             <div style="text-align: center; margin-bottom: 15px;">
@@ -439,28 +484,28 @@
               <form id="rate-settings-form">
                 <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
                   <div class="form-group">
-                    <label><i class="fa-solid fa-cow"></i> Cow FAT Multiplier (₹/FAT)</label>
-                    <input type="number" step="0.1" id="rate-cow-fat" value="7.0" required>
-                  </div>
-                  <div class="form-group">
-                    <label><i class="fa-solid fa-cow"></i> Cow SNF Multiplier (₹/SNF)</label>
-                    <input type="number" step="0.1" id="rate-cow-snf" value="4.0" required>
-                  </div>
-                  <div class="form-group">
-                    <label><i class="fa-solid fa-cow"></i> Cow Base Rate (₹/L Min)</label>
+                    <label><i class="fa-solid fa-cow"></i> Cow Base Rate (₹/L)</label>
                     <input type="number" step="0.1" id="rate-cow-base" value="45.0" required>
                   </div>
                   <div class="form-group">
-                    <label><i class="fa-solid fa-cloud-sun"></i> Buffalo FAT Multiplier (₹/FAT)</label>
-                    <input type="number" step="0.1" id="rate-buffalo-fat" value="8.0" required>
+                    <label><i class="fa-solid fa-cow"></i> Cow Std FAT %</label>
+                    <input type="number" step="0.1" id="rate-cow-fat" value="4.5" required>
                   </div>
                   <div class="form-group">
-                    <label><i class="fa-solid fa-cloud-sun"></i> Buffalo SNF Multiplier (₹/SNF)</label>
-                    <input type="number" step="0.1" id="rate-buffalo-snf" value="5.0" required>
+                    <label><i class="fa-solid fa-cow"></i> Cow Std SNF %</label>
+                    <input type="number" step="0.1" id="rate-cow-snf" value="8.5" required>
                   </div>
                   <div class="form-group">
-                    <label><i class="fa-solid fa-cloud-sun"></i> Buffalo Base Rate (₹/L Min)</label>
+                    <label><i class="fa-solid fa-cloud-sun"></i> Buffalo Base Rate (₹/L)</label>
                     <input type="number" step="0.1" id="rate-buffalo-base" value="60.0" required>
+                  </div>
+                  <div class="form-group">
+                    <label><i class="fa-solid fa-cloud-sun"></i> Buffalo Std FAT %</label>
+                    <input type="number" step="0.1" id="rate-buffalo-fat" value="4.0" required>
+                  </div>
+                  <div class="form-group">
+                    <label><i class="fa-solid fa-cloud-sun"></i> Buffalo Std SNF %</label>
+                    <input type="number" step="0.1" id="rate-buffalo-snf" value="9.0" required>
                   </div>
                 </div>
                 <button type="submit" class="btn btn-success btn-sm" style="margin-top: 10px;"><i class="fa-solid fa-save"></i> Save Agent Rate Settings</button>
