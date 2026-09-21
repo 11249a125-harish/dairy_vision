@@ -261,8 +261,15 @@ async function syncFromMongoDB() {
 
     if (ratesRes.status === 'fulfilled' && ratesRes.value.ok) {
       const data = await ratesRes.value.json();
-      if (data.rates && data.rates.cowFatRate !== undefined) {
-        DB.rates = { ...DB.rates, ...data.rates };
+      if (data.rates) {
+        DB.rates = {
+          cowBaseRate: parseFloat(data.rates.cowBaseRate) || 45.0,
+          cowStdFat: parseFloat(data.rates.cowStdFat) || 4.5,
+          cowStdSnf: parseFloat(data.rates.cowStdSnf) || 8.5,
+          buffaloBaseRate: parseFloat(data.rates.buffaloBaseRate) || 60.0,
+          buffaloStdFat: parseFloat(data.rates.buffaloStdFat) || 4.0,
+          buffaloStdSnf: parseFloat(data.rates.buffaloStdSnf) || 9.0
+        };
       }
     }
 
