@@ -20,6 +20,7 @@ let DB = JSON.parse(localStorage.getItem('SMART_DAIRY_GLOBAL_DB') || localStorag
     "11249a251@kanchiuniv.ac.in": { password: null },
     "11249a255@kanchiuniv.ac.in": { password: null }
   },
+  agentConfigs: {},
   rates: {
     cowBaseRate: 45.0,
     cowStdFat: 4.5,
@@ -35,6 +36,64 @@ let DB = JSON.parse(localStorage.getItem('SMART_DAIRY_GLOBAL_DB') || localStorag
   feedbacks: []
 }));
 
+let currentAgentEmail = null;
+let currentFarmer = null;
+let agentAuthMode = 'password';
+let farmerAuthMode = 'password';
+const otpStore = {};
+
+function getAgentConfig(email) {
+  if (!DB.agentConfigs) DB.agentConfigs = {};
+  const key = (email || currentAgentEmail || 'default').toLowerCase().trim();
+  if (!DB.agentConfigs[key]) {
+    DB.agentConfigs[key] = {
+      can: DB.agentCAN || 'CAN-PLM-2026-01',
+      village: (DB.billingCycle && DB.billingCycle.villageName) ? DB.billingCycle.villageName : 'Palamaner Village',
+      cycle: (DB.billingCycle && DB.billingCycle.cycleType) ? DB.billingCycle.cycleType : '10-DAY',
+      rates: { ...(DB.rates || { cowBaseRate: 45.0, cowStdFat: 4.5, cowStdSnf: 8.5, buffaloBaseRate: 60.0, buffaloStdFat: 4.0, buffaloStdSnf: 9.0 }) }
+    };
+  }
+  return DB.agentConfigs[key];
+}
+
+function getScopedFarmers() {
+  if (!currentAgentEmail) return DB.farmers || [];
+  const email = currentAgentEmail.toLowerCase().trim();
+  return (DB.farmers || []).filter(f => {
+    if (!f.agentEmail && !f.registeredBy) return true;
+    const fAgent = (f.agentEmail || '').toLowerCase().trim();
+    const fReg = (f.registeredBy || '').toLowerCase().trim();
+    return fAgent === email || fReg === email;
+  });
+}
+
+function getScopedCollections() {
+  if (!currentAgentEmail) return DB.collections || [];
+  const email = currentAgentEmail.toLowerCase().trim();
+  return (DB.collections || []).filter(c => {
+    if (!c.agentEmail) return true;
+    return c.agentEmail.toLowerCase().trim() === email;
+  });
+}
+
+function getScopedBookings() {
+  if (!currentAgentEmail) return DB.bookings || [];
+  const email = currentAgentEmail.toLowerCase().trim();
+  return (DB.bookings || []).filter(b => {
+    if (!b.agentEmail) return true;
+    return b.agentEmail.toLowerCase().trim() === email;
+  });
+}
+
+function getScopedDeductions() {
+  if (!currentAgentEmail) return DB.deductions || [];
+  const email = currentAgentEmail.toLowerCase().trim();
+  return (DB.deductions || []).filter(d => {
+    if (!d.agentEmail) return true;
+    return d.agentEmail.toLowerCase().trim() === email;
+  });
+}
+
 let autoBackupDebounceTimer = null;
 
 function saveDB() {
@@ -47,7 +106,8 @@ function saveDB() {
 
 function calculateMilkRate(type, fat, snf) {
   const isCow = (type || '').toLowerCase().includes('cow');
-  const r = DB.rates || { cowBaseRate: 45.0, cowStdFat: 4.5, cowStdSnf: 8.5, buffaloBaseRate: 60.0, buffaloStdFat: 4.0, buffaloStdSnf: 9.0 };
+  const cfg = getAgentConfig(currentAgentEmail);
+  const r = cfg.rates || DB.rates || { cowBaseRate: 45.0, cowStdFat: 4.5, cowStdSnf: 8.5, buffaloBaseRate: 60.0, buffaloStdFat: 4.0, buffaloStdSnf: 9.0 };
 
   const baseRate = isCow ? (parseFloat(r.cowBaseRate) || 45.0) : (parseFloat(r.buffaloBaseRate) || 60.0);
   const stdFat = isCow ? (parseFloat(r.cowStdFat) || 4.5) : (parseFloat(r.buffaloStdFat) || 4.0);
@@ -73,12 +133,6 @@ function getTomorrowDateString(d = new Date()) {
   tomorrow.setDate(tomorrow.getDate() + 1);
   return getLocalDateString(tomorrow);
 }
-
-let currentAgentEmail = null;
-let currentFarmer = null;
-let agentAuthMode = 'password';
-let farmerAuthMode = 'password';
-const otpStore = {};
 
 function showAlert(msg, type = 'success') {
   const el = document.getElementById('notification');
@@ -134,7 +188,8 @@ function toggleRateSettingsCard() {
 }
 
 function loadRateSettings() {
-  const r = DB.rates || { cowBaseRate: 45.0, cowStdFat: 4.5, cowStdSnf: 8.5, buffaloBaseRate: 60.0, buffaloStdFat: 4.0, buffaloStdSnf: 9.0 };
+  const cfg = getAgentConfig(currentAgentEmail);
+  const r = cfg.rates || DB.rates || { cowBaseRate: 45.0, cowStdFat: 4.5, cowStdSnf: 8.5, buffaloBaseRate: 60.0, buffaloStdFat: 4.0, buffaloStdSnf: 9.0 };
   if (document.getElementById('rate-cow-base')) document.getElementById('rate-cow-base').value = r.cowBaseRate || 45.0;
   if (document.getElementById('rate-cow-fat')) document.getElementById('rate-cow-fat').value = r.cowStdFat || 4.5;
   if (document.getElementById('rate-cow-snf')) document.getElementById('rate-cow-snf').value = r.cowStdSnf || 8.5;
@@ -145,7 +200,8 @@ function loadRateSettings() {
 }
 
 function updateNoticeBoardRates() {
-  const r = DB.rates || { cowBaseRate: 45.0, cowStdFat: 4.5, cowStdSnf: 8.5, buffaloBaseRate: 60.0, buffaloStdFat: 4.0, buffaloStdSnf: 9.0 };
+  const cfg = getAgentConfig(currentAgentEmail);
+  const r = cfg.rates || DB.rates || { cowBaseRate: 45.0, cowStdFat: 4.5, cowStdSnf: 8.5, buffaloBaseRate: 60.0, buffaloStdFat: 4.0, buffaloStdSnf: 9.0 };
   const noticeBox = document.getElementById('notice-current-rates');
   if (noticeBox) {
     noticeBox.innerHTML = `
@@ -160,14 +216,15 @@ function renderDeductions() {
   const tbody = document.getElementById('deductions-table-body');
   if (!tbody) return;
 
-  const allDeductions = DB.deductions || [];
-  if (allDeductions.length === 0) {
+  const scopedDeds = getScopedDeductions();
+  if (scopedDeds.length === 0) {
     tbody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:#888;">No bill deductions recorded yet.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = allDeductions.map(d => {
-    const farmer = DB.farmers.find(f => f.id === d.farmerId);
+  const scopedFarmers = getScopedFarmers();
+  tbody.innerHTML = scopedDeds.map(d => {
+    const farmer = scopedFarmers.find(f => f.id === d.farmerId);
     const farmerDisplayName = farmer ? `${farmer.name} (${d.farmerId})` : (d.farmerName || d.farmerId);
     return `
       <tr>
@@ -220,39 +277,66 @@ async function syncFromMongoDB() {
     addLog('Connecting to MongoDB Database Service...');
     addAiLog('tag-db', 'AI-DB-SYNC', 'Querying MongoDB database collections...');
     
+    const qEmail = currentAgentEmail ? `?agentEmail=${encodeURIComponent(currentAgentEmail)}` : '';
     const [farmersRes, collectionsRes, bookingsRes, deductionsRes, agentsRes, ratesRes, feedbacksRes] = await Promise.allSettled([
-      fetch(`${API_BASE_URL}/api/farmers`),
-      fetch(`${API_BASE_URL}/api/collections`),
-      fetch(`${API_BASE_URL}/api/bookings`),
-      fetch(`${API_BASE_URL}/api/deductions`),
+      fetch(`${API_BASE_URL}/api/farmers${qEmail}`),
+      fetch(`${API_BASE_URL}/api/collections${qEmail}`),
+      fetch(`${API_BASE_URL}/api/bookings${qEmail}`),
+      fetch(`${API_BASE_URL}/api/deductions${qEmail}`),
       fetch(`${API_BASE_URL}/api/agents`),
-      fetch(`${API_BASE_URL}/api/rates`),
+      fetch(`${API_BASE_URL}/api/rates${qEmail}`),
       fetch(`${API_BASE_URL}/api/feedbacks`)
     ]);
 
     if (farmersRes.status === 'fulfilled' && farmersRes.value.ok) {
       const data = await farmersRes.value.json();
-      if (data.farmers && data.farmers.length > 0) DB.farmers = data.farmers;
+      if (data.farmers && Array.isArray(data.farmers)) {
+        data.farmers.forEach(f => {
+          const idx = DB.farmers.findIndex(x => x.id === f.id);
+          if (idx >= 0) DB.farmers[idx] = f;
+          else DB.farmers.push(f);
+        });
+      }
     }
 
     if (collectionsRes.status === 'fulfilled' && collectionsRes.value.ok) {
       const data = await collectionsRes.value.json();
-      if (data.collections && data.collections.length > 0) DB.collections = data.collections;
+      if (data.collections && Array.isArray(data.collections)) {
+        data.collections.forEach(c => {
+          const idx = DB.collections.findIndex(x => x.id === c.id);
+          if (idx >= 0) DB.collections[idx] = c;
+          else DB.collections.push(c);
+        });
+      }
     }
 
     if (bookingsRes.status === 'fulfilled' && bookingsRes.value.ok) {
       const data = await bookingsRes.value.json();
-      if (data.bookings && data.bookings.length > 0) DB.bookings = data.bookings;
+      if (data.bookings && Array.isArray(data.bookings)) {
+        data.bookings.forEach(b => {
+          const idx = DB.bookings.findIndex(x => x.id === b.id);
+          if (idx >= 0) DB.bookings[idx] = b;
+          else DB.bookings.push(b);
+        });
+      }
     }
 
     if (deductionsRes.status === 'fulfilled' && deductionsRes.value.ok) {
       const data = await deductionsRes.value.json();
-      if (data.deductions && data.deductions.length > 0) DB.deductions = data.deductions;
+      if (data.deductions && Array.isArray(data.deductions)) {
+        data.deductions.forEach(d => {
+          const idx = DB.deductions.findIndex(x => x.id === d.id);
+          if (idx >= 0) DB.deductions[idx] = d;
+          else DB.deductions.push(d);
+        });
+      }
     }
 
     if (feedbacksRes.status === 'fulfilled' && feedbacksRes.value.ok) {
       const data = await feedbacksRes.value.json();
-      if (data.feedbacks && data.feedbacks.length > 0) DB.feedbacks = data.feedbacks;
+      if (data.feedbacks && Array.isArray(data.feedbacks)) {
+        DB.feedbacks = data.feedbacks;
+      }
     }
 
     if (agentsRes.status === 'fulfilled' && agentsRes.value.ok) {
@@ -267,8 +351,8 @@ async function syncFromMongoDB() {
 
     if (ratesRes.status === 'fulfilled' && ratesRes.value.ok) {
       const data = await ratesRes.value.json();
-      if (data.rates) {
-        DB.rates = {
+      if (data.rates && data.rates.cowBaseRate) {
+        const fetchedRates = {
           cowBaseRate: parseFloat(data.rates.cowBaseRate) || 45.0,
           cowStdFat: parseFloat(data.rates.cowStdFat) || 4.5,
           cowStdSnf: parseFloat(data.rates.cowStdSnf) || 8.5,
@@ -276,8 +360,25 @@ async function syncFromMongoDB() {
           buffaloStdFat: parseFloat(data.rates.buffaloStdFat) || 4.0,
           buffaloStdSnf: parseFloat(data.rates.buffaloStdSnf) || 9.0
         };
+        if (currentAgentEmail) {
+          getAgentConfig(currentAgentEmail).rates = fetchedRates;
+        } else {
+          DB.rates = fetchedRates;
+        }
       }
     }
+
+    saveDB();
+    loadRateSettings();
+    updateNoticeBoardRates();
+    renderDeductions();
+    renderAgentFeedbacks();
+    addLog('MongoDB Database sync complete!');
+    addAiLog('tag-db', 'AI-DB-SYNC', 'MongoDB cloud database synchronized cleanly.');
+  } catch (err) {
+    console.warn('MongoDB Sync Warning:', err.message);
+  }
+}
 
     saveDB();
     loadRateSettings();
@@ -597,9 +698,10 @@ function startOtpCountdown(timerSpanId, infoBoxId, resendFnName = '') {
 }
 
 function updateCanDisplays() {
-  const can = DB.agentCAN || 'CAN-PLM-2026-01';
-  const village = (DB.billingCycle && DB.billingCycle.villageName) ? DB.billingCycle.villageName : 'Palamaner Village';
-  const cycle = (DB.billingCycle && DB.billingCycle.cycleType) ? DB.billingCycle.cycleType.toUpperCase() : '10-DAY';
+  const cfg = getAgentConfig(currentAgentEmail);
+  const can = cfg.can || DB.agentCAN || 'CAN-PLM-2026-01';
+  const village = cfg.village || ((DB.billingCycle && DB.billingCycle.villageName) ? DB.billingCycle.villageName : 'Palamaner Village');
+  const cycle = (cfg.cycle || ((DB.billingCycle && DB.billingCycle.cycleType) ? DB.billingCycle.cycleType : '10-DAY')).toUpperCase();
 
   const canInput = document.getElementById('agent-can-input');
   if (canInput) canInput.value = can;
@@ -611,9 +713,7 @@ function updateCanDisplays() {
   if (stVillageInput) stVillageInput.value = village;
 
   const stCycleSelect = document.getElementById('station-cycle-select');
-  if (stCycleSelect && DB.billingCycle && DB.billingCycle.cycleType) {
-    stCycleSelect.value = DB.billingCycle.cycleType;
-  }
+  if (stCycleSelect) stCycleSelect.value = cfg.cycle || '10-DAY';
 
   const curCan = document.getElementById('current-can-display');
   if (curCan) curCan.textContent = can;
@@ -700,7 +800,8 @@ function verifyGmailOtp() { handleSendOTP('farmer-email', 'Farmer Registration V
 
 function getBillingPeriod(dateStr, mode = '10-DAY') {
   if (!dateStr) return '--';
-  const effectiveMode = (DB.billingCycle && DB.billingCycle.cycleType) ? DB.billingCycle.cycleType.toUpperCase() : mode;
+  const cfg = getAgentConfig(currentAgentEmail);
+  const effectiveMode = cfg.cycle ? cfg.cycle.toUpperCase() : ((DB.billingCycle && DB.billingCycle.cycleType) ? DB.billingCycle.cycleType.toUpperCase() : mode);
   const d = new Date(dateStr);
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -732,19 +833,21 @@ function initAppView(role) {
     document.getElementById('sidebar')?.classList.remove('hidden');
     document.getElementById('farmer-portal-section')?.classList.add('hidden');
     document.getElementById('active-user-label').innerText = `Agent: ${currentAgentEmail}`;
+    syncFromMongoDB();
     updateCanDisplays();
     loadRateSettings();
     updateDashboardMetrics();
     renderFarmers();
     renderAgentBookings();
-    renderFarmers();
-    renderAgentBookings();
+    renderDeductions();
   } else {
     document.getElementById('app-section')?.classList.add('hidden');
     document.getElementById('sidebar')?.classList.add('hidden');
     document.getElementById('farmer-portal-section')?.classList.remove('hidden');
     if (!currentFarmer) {
-      if (DB.farmers && DB.farmers.length > 0) currentFarmer = DB.farmers[0];
+      const scoped = getScopedFarmers();
+      if (scoped && scoped.length > 0) currentFarmer = scoped[0];
+      else if (DB.farmers && DB.farmers.length > 0) currentFarmer = DB.farmers[0];
       else currentFarmer = { id: 'FARM-101', name: 'K Harish', email: '11249a251@kanchiuniv.ac.in', mobile: '9100447663' };
     }
     const activeLabel = document.getElementById('active-user-label');
@@ -808,7 +911,8 @@ document.getElementById('farmer-booking-form')?.addEventListener('submit', async
     totalPrice: unitPrice * qty,
     bookingDate,
     deliveryDate,
-    status: 'Pending'
+    status: 'Pending',
+    agentEmail: currentFarmer.agentEmail || currentFarmer.registeredBy || currentAgentEmail || ''
   };
 
   if (!DB.bookings) DB.bookings = [];
@@ -872,7 +976,7 @@ function renderAgentBookings() {
   const tbody = document.getElementById('agent-bookings-tbody');
   if (!tbody) return;
 
-  const bookings = DB.bookings || [];
+  const bookings = getScopedBookings();
   if (bookings.length === 0) {
     tbody.innerHTML = `<tr><td colspan="8" style="text-align:center; color:#888;">No requirements submitted yet.</td></tr>`;
     return;
@@ -916,7 +1020,8 @@ async function processRequirementOrder(bookingId, statusState) {
       farmerName: b.farmerName,
       type: `Requirement: ${b.item} (x${b.qty})`,
       amount: b.totalPrice,
-      date: b.bookingDate
+      date: b.bookingDate,
+      agentEmail: currentAgentEmail || b.agentEmail || ''
     };
     if (!DB.deductions) DB.deductions = [];
     const existingIdx = DB.deductions.findIndex(d => d.id === dedEntry.id);
@@ -1030,7 +1135,7 @@ document.getElementById('milk-form')?.addEventListener('submit', function(e) {
     return;
   }
 
-  const farmer = DB.farmers.find(f => f.id === farmerId);
+  const farmer = getScopedFarmers().find(f => f.id === farmerId);
   const qtyInputVal = document.getElementById('milk-qty').value.trim();
   const qty = parseFloat(qtyInputVal);
 
@@ -1065,13 +1170,20 @@ document.getElementById('milk-form')?.addEventListener('submit', function(e) {
     waterPct,
     rate,
     total,
-    totalAmount: total
+    totalAmount: total,
+    agentEmail: currentAgentEmail || ''
   };
 
   DB.collections.push(entry);
   saveDB();
 
   sendMilkBillReceipt(entry);
+
+  fetch(`${API_BASE_URL}/api/collections`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(entry)
+  }).catch(err => console.warn('Collection cloud sync offline:', err));
 
   showAlert(`Milk entry (${qty} L - ₹${total}) recorded & dispatched to farmer email!`);
   addLog(`Recorded entry for ${entry.farmerName} - ${qty}L (₹${total})`);
@@ -1090,7 +1202,7 @@ document.getElementById('deduction-form')?.addEventListener('submit', function(e
   const type = document.getElementById('deduction-type').value;
   const date = document.getElementById('deduction-date').value;
 
-  const ded = { id: `DED-${Date.now()}`, farmerId, type, amount, date };
+  const ded = { id: `DED-${Date.now()}`, farmerId, type, amount, date, agentEmail: currentAgentEmail || '' };
   DB.deductions.push(ded);
   saveDB();
 
@@ -1103,6 +1215,7 @@ document.getElementById('deduction-form')?.addEventListener('submit', function(e
   showAlert('Bill deduction logged successfully!');
   addAiLog('tag-audit', 'AI-DEDUCTION', `Bill deduction logged: ₹${amount} for Farmer ${farmerId}`);
   this.reset();
+  renderDeductions();
 });
 
 document.getElementById('farmer-verification-form')?.addEventListener('submit', function(e) {
@@ -1136,7 +1249,8 @@ document.getElementById('farmer-verification-form')?.addEventListener('submit', 
       account: document.getElementById('farmer-account').value.trim(),
       ifsc: document.getElementById('farmer-ifsc').value.trim(),
       password: 'farmer123',
-      registeredBy: currentAgentEmail
+      registeredBy: currentAgentEmail || 'Agent',
+      agentEmail: currentAgentEmail || ''
     };
 
     DB.farmers.push(newFarmer);
@@ -1162,12 +1276,13 @@ function renderFarmers() {
   const tbody = document.getElementById('farmer-table-body');
   if (!tbody) return;
 
-  if (DB.farmers.length === 0) {
+  const scopedFarmers = getScopedFarmers();
+  if (scopedFarmers.length === 0) {
     tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;">No farmers registered yet.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = DB.farmers.map(f => `
+  tbody.innerHTML = scopedFarmers.map(f => `
     <tr>
       <td><strong>${f.id}</strong></td>
       <td>${f.name}</td>
@@ -1184,9 +1299,10 @@ function renderFarmers() {
 }
 
 function exportFarmersToCsv() {
-  if (!DB.farmers.length) return showAlert('No farmer records to export.', 'danger');
+  const scopedFarmers = getScopedFarmers();
+  if (!scopedFarmers.length) return showAlert('No farmer records to export.', 'danger');
   let csv = 'ID,Name,Village,Mobile,Email,Bank,Account,IFSC\n';
-  DB.farmers.forEach(f => {
+  scopedFarmers.forEach(f => {
     csv += `"${f.id}","${f.name}","${f.village}","${f.mobile}","${f.email}","${f.bankName}","${f.account}","${f.ifsc}"\n`;
   });
   const blob = new Blob([csv], { type: 'text/csv' });
@@ -1211,12 +1327,13 @@ function renderCollections() {
   const tbody = document.getElementById('collection-table-body');
   if (!tbody) return;
 
-  if (DB.collections.length === 0) {
+  const scopedCollections = getScopedCollections();
+  if (scopedCollections.length === 0) {
     tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;">No milk collection entries found.</td></tr>`;
     return;
   }
 
-  tbody.innerHTML = DB.collections.map(c => `
+  tbody.innerHTML = scopedCollections.map(c => `
     <tr>
       <td>${c.date} ${c.time || ''}</td>
       <td>${c.farmerName} (${c.farmerId})</td>
@@ -1244,7 +1361,8 @@ function deleteEntry(id) {
 }
 
 function populateDropdowns() {
-  const options = DB.farmers.map(f => `<option value="${f.id}">${f.name} (${f.id})</option>`).join('');
+  const scopedFarmers = getScopedFarmers();
+  const options = scopedFarmers.map(f => `<option value="${f.id}">${f.name} (${f.id})</option>`).join('');
   ['milk-farmer-id', 'deduction-farmer-id', 'report-farmer-code'].forEach(id => {
     const select = document.getElementById(id);
     if (select) {
@@ -1258,12 +1376,15 @@ function updateDashboardMetrics() {
   const milkDate = document.getElementById('milk-date');
   if (milkDate) milkDate.value = today;
 
-  const farmerCountElem = document.getElementById('dash-farmer-count');
-  if (farmerCountElem) farmerCountElem.innerText = DB.farmers.length;
+  const scopedFarmers = getScopedFarmers();
+  const scopedCollections = getScopedCollections();
 
-  const todayCollections = DB.collections.filter(c => c.date === today);
+  const farmerCountElem = document.getElementById('dash-farmer-count');
+  if (farmerCountElem) farmerCountElem.innerText = scopedFarmers.length;
+
+  const todayCollections = scopedCollections.filter(c => c.date === today);
   const totalQty = todayCollections.reduce((sum, c) => sum + (parseFloat(c.qty) || 0), 0);
-  const waterAlerts = DB.collections.filter(c => c.waterPct > 0).length;
+  const waterAlerts = scopedCollections.filter(c => c.waterPct > 0).length;
 
   const totalQtyElem = document.getElementById('dash-milk-total');
   const alertsElem = document.getElementById('dash-water-alerts');
@@ -1279,7 +1400,7 @@ function updateDashboardMetrics() {
   const emptyBanner = document.getElementById('empty-dash-banner');
   const activeCharts = document.getElementById('active-dash-charts');
 
-  if (DB.collections.length === 0 && DB.farmers.length === 0) {
+  if (scopedCollections.length === 0 && scopedFarmers.length === 0) {
     emptyBanner?.classList.remove('hidden');
     activeCharts?.classList.add('hidden');
   } else {
@@ -1298,9 +1419,10 @@ function renderDashboardCharts() {
   if (window.trendChartInst) window.trendChartInst.destroy();
   if (window.qualityChartInst) window.qualityChartInst.destroy();
 
-  const dates = [...new Set(DB.collections.map(c => c.date))].sort().slice(-7);
+  const scopedCollections = getScopedCollections();
+  const dates = [...new Set(scopedCollections.map(c => c.date))].sort().slice(-7);
   const dailyTotals = dates.map(d => {
-    return DB.collections.filter(c => c.date === d).reduce((acc, curr) => acc + (parseFloat(curr.qty) || 0), 0);
+    return scopedCollections.filter(c => c.date === d).reduce((acc, curr) => acc + (parseFloat(curr.qty) || 0), 0);
   });
 
   window.trendChartInst = new Chart(trendCtx, {
@@ -1319,8 +1441,8 @@ function renderDashboardCharts() {
     options: { responsive: true, maintainAspectRatio: false }
   });
 
-  const cowMilkCount = DB.collections.filter(c => c.type === 'Cow Milk').length;
-  const buffaloMilkCount = DB.collections.filter(c => c.type === 'Buffalo Milk').length;
+  const cowMilkCount = scopedCollections.filter(c => c.type === 'Cow Milk').length;
+  const buffaloMilkCount = scopedCollections.filter(c => c.type === 'Buffalo Milk').length;
 
   window.qualityChartInst = new Chart(qualityCtx, {
     type: 'doughnut',
@@ -1593,7 +1715,7 @@ function generateSelectedReport() {
       </tr>
     `;
 
-    const filtered = DB.collections.filter(c => {
+    const filtered = getScopedCollections().filter(c => {
       const matchesDate = c.date >= startDate && c.date <= endDate;
       const matchesShift = shift === 'ALL' || c.shift === shift;
       return matchesDate && matchesShift;
@@ -1628,7 +1750,7 @@ function generateSelectedReport() {
       </tr>
     `;
   } else if (reportType === 'MILK_BILL') {
-    const farmer = DB.farmers.find(f => f.id === farmerId);
+    const farmer = getScopedFarmers().find(f => f.id === farmerId);
     titleElem.innerText = `INDIVIDUAL MILK BILL - ${farmer ? farmer.name : farmerId}`;
     rangeElem.innerText = `${startDate} to ${endDate}`;
 
@@ -1645,7 +1767,7 @@ function generateSelectedReport() {
       </tr>
     `;
 
-    const filtered = DB.collections.filter(c => {
+    const filtered = getScopedCollections().filter(c => {
       const matchesFarmer = c.farmerId === farmerId;
       const matchesFrom = c.date >= startDate;
       const matchesTo = c.date <= endDate;
@@ -1695,9 +1817,13 @@ function generateSelectedReport() {
     `;
 
     let gQty = 0, gGross = 0, gDed = 0, gNet = 0;
-    bodyElem.innerHTML = DB.farmers.map(f => {
-      const fColls = DB.collections.filter(c => (c.farmerId === f.id || c.farmerEmail === f.email) && c.date >= startDate && c.date <= endDate);
-      const fDeds = (DB.bookings || []).filter(b => (b.farmerId === f.id || b.farmerEmail === f.email) && (b.status === 'Approved & Cost Deducted' || b.status === 'APPROVED') && b.bookingDate >= startDate && b.bookingDate <= endDate);
+    const scopedFarmers = getScopedFarmers();
+    const scopedCollections = getScopedCollections();
+    const scopedBookings = getScopedBookings();
+
+    bodyElem.innerHTML = scopedFarmers.map(f => {
+      const fColls = scopedCollections.filter(c => (c.farmerId === f.id || c.farmerEmail === f.email) && c.date >= startDate && c.date <= endDate);
+      const fDeds = scopedBookings.filter(b => (b.farmerId === f.id || b.farmerEmail === f.email) && (b.status === 'Approved & Cost Deducted' || b.status === 'APPROVED') && b.bookingDate >= startDate && b.bookingDate <= endDate);
 
       const fQty = fColls.reduce((sum, c) => sum + (parseFloat(c.qty) || 0), 0);
       const fGross = fColls.reduce((sum, c) => sum + (parseFloat(c.total) || 0), 0);
@@ -1821,18 +1947,20 @@ document.addEventListener('DOMContentLoaded', () => {
       buffaloStdSnf: parseFloat(document.getElementById('rate-buffalo-snf').value) || 9.0
     };
 
+    const cfg = getAgentConfig(currentAgentEmail);
+    cfg.rates = rates;
     DB.rates = rates;
     saveDB();
 
     fetch(`${API_BASE_URL}/api/rates`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(rates)
+      body: JSON.stringify({ agentEmail: currentAgentEmail || '', ...rates })
     }).catch(err => console.warn('Rate config sync offline:', err));
 
     updateNoticeBoardRates();
     showAlert('Milk Rate Settings updated successfully!');
-    addAiLog('tag-audit', 'AI-RATES', 'Agent updated Cow & Buffalo milk rate settings.');
+    addAiLog('tag-audit', 'AI-RATES', `Agent ${currentAgentEmail || ''} updated Cow & Buffalo milk rate settings.`);
   });
 
   document.getElementById('farmer-feedback-form')?.addEventListener('submit', function(e) {
@@ -1926,6 +2054,11 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
+    const cfg = getAgentConfig(currentAgentEmail);
+    cfg.can = newCAN;
+    cfg.village = newVillage;
+    cfg.cycle = newCycle;
+
     DB.agentCAN = newCAN;
     if (!DB.billingCycle) DB.billingCycle = {};
     DB.billingCycle.cycleType = newCycle;
@@ -1935,7 +2068,7 @@ document.addEventListener('DOMContentLoaded', () => {
     saveDB();
     updateCanDisplays();
     showAlert(`Village Station Setup Saved! CAN: ${newCAN} | Village: ${newVillage} | Cycle: ${newCycle}`);
-    addAiLog('tag-audit', 'AI-STATION-CONFIG', `Agent updated station setup: CAN=${newCAN}, Village=${newVillage}, Cycle=${newCycle}`);
+    addAiLog('tag-audit', 'AI-STATION-CONFIG', `Agent ${currentAgentEmail || ''} updated station setup: CAN=${newCAN}, Village=${newVillage}, Cycle=${newCycle}`);
   });
 
   generateCaptcha('agent');

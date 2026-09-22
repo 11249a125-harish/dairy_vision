@@ -38,6 +38,7 @@ const agentSchema = new mongoose.Schema({
 });
 
 const rateConfigSchema = new mongoose.Schema({
+  agentEmail: { type: String, default: '', index: true },
   cowBaseRate: { type: Number, default: 45.0 },
   cowStdFat: { type: Number, default: 4.5 },
   cowStdSnf: { type: Number, default: 8.5 },
@@ -60,6 +61,7 @@ const farmerSchema = new mongoose.Schema({
   ifsc: { type: String, required: true },
   password: { type: String, default: 'farmer123' },
   registeredBy: { type: String, default: 'Agent' },
+  agentEmail: { type: String, default: '', index: true },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -78,6 +80,7 @@ const collectionSchema = new mongoose.Schema({
   waterPct: { type: Number, default: 0 },
   rate: { type: Number, required: true },
   total: { type: Number, required: true },
+  agentEmail: { type: String, default: '', index: true },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -93,6 +96,7 @@ const bookingSchema = new mongoose.Schema({
   bookingDate: { type: String, required: true },
   deliveryDate: { type: String, required: true },
   status: { type: String, default: 'Pending' },
+  agentEmail: { type: String, default: '', index: true },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -103,6 +107,7 @@ const deductionSchema = new mongoose.Schema({
   type: { type: String, required: true },
   amount: { type: Number, required: true },
   date: { type: String, required: true },
+  agentEmail: { type: String, default: '', index: true },
   createdAt: { type: Date, default: Date.now }
 });
 
@@ -276,8 +281,15 @@ app.post('/api/agents', async (req, res) => {
 
 app.get('/api/rates', async (req, res) => {
   try {
+    const agentEmail = (req.query.agentEmail || '').toLowerCase().trim();
     if (mongoose.connection.readyState === 1) {
-      const rates = await RateConfig.findOne();
+      let rates = null;
+      if (agentEmail) {
+        rates = await RateConfig.findOne({ agentEmail });
+      }
+      if (!rates) {
+        rates = await RateConfig.findOne({ $or: [{ agentEmail: '' }, { agentEmail: { $exists: false } }] });
+      }
       return res.json({ success: true, rates: rates || {} });
     }
     res.json({ success: true, rates: {} });
@@ -288,8 +300,10 @@ app.get('/api/rates', async (req, res) => {
 
 app.post('/api/rates', async (req, res) => {
   try {
+    const agentEmail = (req.body.agentEmail || '').toLowerCase().trim();
     if (mongoose.connection.readyState === 1) {
-      const rates = await RateConfig.findOneAndUpdate({}, req.body, { upsert: true, new: true });
+      const filter = agentEmail ? { agentEmail } : {};
+      const rates = await RateConfig.findOneAndUpdate(filter, req.body, { upsert: true, new: true });
       return res.json({ success: true, rates });
     }
     res.json({ success: true, rates: req.body });
@@ -532,8 +546,10 @@ app.post('/api/send-requirement-slip', async (req, res) => {
 
 app.get('/api/farmers', async (req, res) => {
   try {
+    const agentEmail = (req.query.agentEmail || '').toLowerCase().trim();
     if (mongoose.connection.readyState === 1) {
-      const farmers = await Farmer.find().sort({ createdAt: -1 });
+      const query = agentEmail ? { $or: [{ agentEmail }, { registeredBy: agentEmail }, { agentEmail: '' }, { agentEmail: { $exists: false } }] } : {};
+      const farmers = await Farmer.find(query).sort({ createdAt: -1 });
       return res.json({ success: true, farmers });
     }
     res.json({ success: true, farmers: [] });
@@ -579,8 +595,10 @@ app.delete('/api/farmers/:id', async (req, res) => {
 
 app.get('/api/collections', async (req, res) => {
   try {
+    const agentEmail = (req.query.agentEmail || '').toLowerCase().trim();
     if (mongoose.connection.readyState === 1) {
-      const collections = await Collection.find().sort({ createdAt: -1 });
+      const query = agentEmail ? { $or: [{ agentEmail }, { agentEmail: '' }, { agentEmail: { $exists: false } }] } : {};
+      const collections = await Collection.find(query).sort({ createdAt: -1 });
       return res.json({ success: true, collections });
     }
     res.json({ success: true, collections: [] });
@@ -612,8 +630,10 @@ app.delete('/api/collections/:id', async (req, res) => {
 
 app.get('/api/bookings', async (req, res) => {
   try {
+    const agentEmail = (req.query.agentEmail || '').toLowerCase().trim();
     if (mongoose.connection.readyState === 1) {
-      const bookings = await Booking.find().sort({ createdAt: -1 });
+      const query = agentEmail ? { $or: [{ agentEmail }, { agentEmail: '' }, { agentEmail: { $exists: false } }] } : {};
+      const bookings = await Booking.find(query).sort({ createdAt: -1 });
       return res.json({ success: true, bookings });
     }
     res.json({ success: true, bookings: [] });
@@ -658,8 +678,10 @@ app.delete('/api/bookings/:id', async (req, res) => {
 
 app.get('/api/deductions', async (req, res) => {
   try {
+    const agentEmail = (req.query.agentEmail || '').toLowerCase().trim();
     if (mongoose.connection.readyState === 1) {
-      const deductions = await Deduction.find().sort({ createdAt: -1 });
+      const query = agentEmail ? { $or: [{ agentEmail }, { agentEmail: '' }, { agentEmail: { $exists: false } }] } : {};
+      const deductions = await Deduction.find(query).sort({ createdAt: -1 });
       return res.json({ success: true, deductions });
     }
     res.json({ success: true, deductions: [] });
