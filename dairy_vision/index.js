@@ -704,6 +704,37 @@ app.post('/api/feedbacks', async (req, res) => {
   }
 });
 
+async function performAutoBackup() {
+  if (mongoose.connection.readyState !== 1) return null;
+  try {
+    const farmers = await Farmer.find();
+    const collections = await Collection.find();
+    const bookings = await Booking.find();
+    const deductions = await Deduction.find();
+    const feedbacks = await Feedback.find();
+
+    const backupData = { version: '1.0', exportedAt: new Date().toISOString(), farmers, collections, bookings, deductions, feedbacks };
+
+    const snapshot = new SystemBackup({
+      farmersCount: farmers.length,
+      collectionsCount: collections.length,
+      bookingsCount: bookings.length,
+      deductionsCount: deductions.length,
+      feedbacksCount: feedbacks.length,
+      backupData
+    });
+    await snapshot.save();
+    console.log(`[Auto-Backup] Saved MongoDB snapshot (Farmers: ${farmers.length}, Collections: ${collections.length}, Bookings: ${bookings.length}) at ${new Date().toLocaleTimeString()}`);
+    return snapshot;
+  } catch (err) {
+    console.error('[Auto-Backup Error]:', err.message);
+    return null;
+  }
+}
+
+// Background automated snapshot timer every 5 minutes
+setInterval(performAutoBackup, 5 * 60 * 1000);
+
 app.get('/api/backup/export', async (req, res) => {
   try {
     let farmers = [], collections = [], bookings = [], deductions = [], feedbacks = [];
@@ -718,15 +749,7 @@ app.get('/api/backup/export', async (req, res) => {
     const backupData = { version: '1.0', exportedAt: new Date().toISOString(), farmers, collections, bookings, deductions, feedbacks };
 
     if (mongoose.connection.readyState === 1) {
-      const snapshot = new SystemBackup({
-        farmersCount: farmers.length,
-        collectionsCount: collections.length,
-        bookingsCount: bookings.length,
-        deductionsCount: deductions.length,
-        feedbacksCount: feedbacks.length,
-        backupData
-      });
-      await snapshot.save();
+      await performAutoBackup();
     }
 
     res.json({ success: true, backup: backupData });
@@ -754,6 +777,7 @@ app.post('/api/backup/restore', async (req, res) => {
       if (Array.isArray(feedbacks)) {
         for (const fb of feedbacks) await Feedback.findOneAndUpdate({ id: fb.id }, fb, { upsert: true });
       }
+      await performAutoBackup();
     }
     res.json({ success: true, message: 'Data backup successfully restored into MongoDB Database!' });
   } catch (err) {

@@ -35,8 +35,14 @@ let DB = JSON.parse(localStorage.getItem('SMART_DAIRY_GLOBAL_DB') || localStorag
   feedbacks: []
 }));
 
+let autoBackupDebounceTimer = null;
+
 function saveDB() {
   localStorage.setItem('SMART_DAIRY_GLOBAL_DB', JSON.stringify(DB));
+  if (autoBackupDebounceTimer) clearTimeout(autoBackupDebounceTimer);
+  autoBackupDebounceTimer = setTimeout(() => {
+    backupToMongoDB(true);
+  }, 1500);
 }
 
 function calculateMilkRate(type, fat, snf) {
@@ -285,9 +291,9 @@ async function syncFromMongoDB() {
   }
 }
 
-async function backupToMongoDB() {
+async function backupToMongoDB(isSilent = false) {
   try {
-    showAlert('Backing up files and database records to MongoDB...', 'info');
+    if (!isSilent) showAlert('Backing up files and database records to MongoDB...', 'info');
     addAiLog('tag-db', 'AI-BACKUP', 'Initiating automated full backup into MongoDB...');
     const response = await fetch(`${API_BASE_URL}/api/backup/restore`, {
       method: 'POST',
@@ -296,21 +302,22 @@ async function backupToMongoDB() {
         farmers: DB.farmers,
         collections: DB.collections,
         bookings: DB.bookings,
-        deductions: DB.deductions
+        deductions: DB.deductions,
+        feedbacks: DB.feedbacks
       })
     });
 
     const data = await response.json();
     if (response.ok && data.success) {
-      showAlert('MongoDB Database & File Backup successfully completed!');
+      if (!isSilent) showAlert('MongoDB Database & File Backup successfully completed!');
       addLog('Full backup created in MongoDB database.');
       addAiLog('tag-db', 'AI-BACKUP', 'Backup snapshot saved to MongoDB atlas.');
     } else {
-      showAlert(data.message || 'MongoDB backup encountered an error.', 'danger');
+      if (!isSilent) showAlert(data.message || 'MongoDB backup encountered an error.', 'danger');
     }
   } catch (err) {
     console.error('Backup Error:', err);
-    showAlert('Backup server connection error. Saved to local browser backup.', 'info');
+    if (!isSilent) showAlert('Backup server connection error. Saved to local browser backup.', 'info');
   }
 }
 
@@ -1685,4 +1692,9 @@ document.addEventListener('DOMContentLoaded', () => {
       toggleFarmerResetPass(false);
     });
   });
+
+  // Start automated periodic background backup to MongoDB (every 2 minutes)
+  setInterval(() => {
+    backupToMongoDB(true);
+  }, 2 * 60 * 1000);
 });
