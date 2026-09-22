@@ -131,6 +131,7 @@
             <div class="role-toggle">
               <button class="role-btn active" id="btn-role-agent" onclick="switchLoginRole('agent')"><i class="fa-solid fa-user-gear"></i> Agent Login</button>
               <button class="role-btn" id="btn-role-farmer" onclick="switchLoginRole('farmer')"><i class="fa-solid fa-tractor"></i> Farmer Portal</button>
+              <button class="role-btn" id="btn-role-admin" onclick="switchLoginRole('admin')" style="background: linear-gradient(135deg, #7b2d8b, #4a0072);"><i class="fa-solid fa-shield-halved"></i> Admin</button>
             </div>
 
             <div id="agent-auth-wrapper">
@@ -302,6 +303,40 @@
                 <a href="#" onclick="toggleFarmerResetPass(false)" style="color:#666; font-size:0.85em;">Back to Farmer Login</a>
               </p>
             </form>
+
+            <!-- ADMIN LOGIN FORM -->
+            <div id="admin-auth-wrapper" class="hidden">
+              <div style="text-align:center; margin-bottom:15px;">
+                <div style="display:inline-flex; align-items:center; gap:10px; background:linear-gradient(135deg,#4a0072,#7b2d8b); padding:10px 22px; border-radius:30px; color:#fff; font-weight:bold; font-size:1em;">
+                  <i class="fa-solid fa-shield-halved"></i> Secure Admin Access
+                </div>
+                <p style="font-size:0.82em; color:#888; margin-top:6px;">Restricted to authorized system administrators only.</p>
+              </div>
+              <form id="admin-login-form">
+                <div class="form-group">
+                  <label><i class="fa-solid fa-envelope"></i> Admin Email *</label>
+                  <input type="email" id="admin-email-input" placeholder="admin@smartdairy.com" required style="background:#fdf6ff; border:1px solid #9c27b0;">
+                </div>
+                <div class="form-group">
+                  <label><i class="fa-solid fa-lock"></i> Admin Password *</label>
+                  <div style="position:relative; display:flex; align-items:center;">
+                    <input type="password" id="admin-password-input" placeholder="Enter admin password" style="padding-right:40px; width:100%; background:#fdf6ff; border:1px solid #9c27b0;">
+                    <button type="button" onclick="togglePasswordVisibility('admin-password-input','toggle-admin-pass-icon')" style="position:absolute;right:10px;background:none;border:none;cursor:pointer;color:#7b2d8b;font-size:1.1em;">
+                      <i id="toggle-admin-pass-icon" class="fa-solid fa-eye"></i>
+                    </button>
+                  </div>
+                </div>
+                <div class="form-group" style="margin-top:12px; background:rgba(255,255,255,0.85); padding:10px 12px; border-radius:8px; border:1px solid #9c27b0;">
+                  <label style="color:#4a0072; font-weight:bold;"><i class="fa-solid fa-shield-halved"></i> Verify Security CAPTCHA *</label>
+                  <div style="display:flex; gap:8px; align-items:center; margin-top:6px;">
+                    <div id="admin-captcha-box" onclick="generateCaptcha('admin')" style="user-select:none; font-family:'Courier New',monospace; font-weight:900; font-size:1.3em; letter-spacing:5px; color:#4a0072; background:#f3e5f5; padding:6px 14px; border:2px dashed #9c27b0; border-radius:6px; cursor:pointer; text-decoration:line-through;">A1B2C3</div>
+                    <button type="button" onclick="generateCaptcha('admin')" class="btn btn-sm" style="padding:6px 10px; background:#9c27b0; color:#fff; border:none; border-radius:6px;"><i class="fa-solid fa-arrows-rotate"></i></button>
+                    <input type="text" id="admin-captcha-input" placeholder="Enter CAPTCHA" required style="flex:1; margin-bottom:0; text-transform:uppercase; border:1px solid #9c27b0;">
+                  </div>
+                </div>
+                <button type="submit" class="btn" style="width:100%; padding:12px; margin-top:15px; background:linear-gradient(135deg,#4a0072,#7b2d8b); color:#fff; font-weight:bold; border:none; border-radius:8px; cursor:pointer;"><i class="fa-solid fa-right-to-bracket"></i> Login to Admin Portal</button>
+              </form>
+            </div>
 
           </div>
         </div>
@@ -904,6 +939,221 @@
           </div>
         </footer>
       </div>
+
+      <!-- ======= ADMIN PORTAL SECTION ======= -->
+      <div id="admin-section" class="hidden">
+        <!-- Admin Header Banner -->
+        <div style="background:linear-gradient(135deg,#4a0072,#7b2d8b); color:#fff; padding:18px 22px; border-radius:10px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h2 style="margin:0;"><i class="fa-solid fa-shield-halved"></i> Smart Dairy — Admin Control Panel</h2>
+            <p style="margin:4px 0 0; font-size:0.88em; color:#e1bee7;">Logged in as: <strong id="admin-logged-email">admin@smartdairy.com</strong> | Full system access</p>
+          </div>
+          <div style="display:flex; gap:10px; flex-wrap:wrap;">
+            <button class="btn btn-sm" style="background:#ffb703; color:#1b1b1b; font-weight:bold;" onclick="loadAdminOverview()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+            <button class="btn btn-sm" style="background:#c62828; color:#fff;" onclick="adminLogout()"><i class="fa-solid fa-right-from-bracket"></i> Logout</button>
+          </div>
+        </div>
+
+        <!-- Admin Sub-Tabs -->
+        <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px;">
+          <button class="btn" id="admin-tab-btn-overview" onclick="switchAdminTab('overview')" style="background:#7b2d8b;color:#fff;font-weight:bold;"><i class="fa-solid fa-chart-pie"></i> Overview Dashboard</button>
+          <button class="btn btn-outline" id="admin-tab-btn-agents" onclick="switchAdminTab('agents')"><i class="fa-solid fa-users-gear"></i> Agent Management</button>
+          <button class="btn btn-outline" id="admin-tab-btn-farmers" onclick="switchAdminTab('farmers')"><i class="fa-solid fa-tractor"></i> All Farmers</button>
+          <button class="btn btn-outline" id="admin-tab-btn-collections" onclick="switchAdminTab('collections')"><i class="fa-solid fa-flask"></i> Collection Records</button>
+        </div>
+
+        <!-- Tab: Overview Dashboard -->
+        <div id="admin-tab-overview">
+          <div class="grid" style="margin-bottom:20px;">
+            <div class="card" style="border-left:5px solid #9c27b0; text-align:center;">
+              <h4><i class="fa-solid fa-users-gear"></i> Total Agents</h4>
+              <h2 id="admin-stat-agents" style="color:#7b2d8b; margin-top:8px;">0</h2>
+            </div>
+            <div class="card" style="border-left:5px solid var(--primary); text-align:center;">
+              <h4><i class="fa-solid fa-tractor"></i> Total Farmers</h4>
+              <h2 id="admin-stat-farmers" style="color:var(--primary); margin-top:8px;">0</h2>
+            </div>
+            <div class="card" style="border-left:5px solid var(--gold); text-align:center;">
+              <h4><i class="fa-solid fa-droplet"></i> Today's Milk (All)</h4>
+              <h2 id="admin-stat-today-milk" style="color:#b58302; margin-top:8px;">0.0 L</h2>
+            </div>
+            <div class="card" style="border-left:5px solid #40916c; text-align:center;">
+              <h4><i class="fa-solid fa-indian-rupee-sign"></i> Today's Value (All)</h4>
+              <h2 id="admin-stat-today-value" style="color:#40916c; margin-top:8px;">₹0</h2>
+            </div>
+          </div>
+
+          <div class="grid" style="margin-bottom:20px;">
+            <div class="card">
+              <h3><i class="fa-solid fa-chart-bar"></i> Agent-wise Milk Collection (Liters)</h3>
+              <canvas id="admin-agent-milk-chart" style="max-height:280px; margin-top:12px;"></canvas>
+            </div>
+            <div class="card">
+              <h3><i class="fa-solid fa-chart-pie"></i> Village-wise Distribution</h3>
+              <canvas id="admin-village-pie-chart" style="max-height:280px; margin-top:12px;"></canvas>
+            </div>
+          </div>
+
+          <div class="card">
+            <h3><i class="fa-solid fa-table"></i> Agent Performance Summary</h3>
+            <div style="overflow-x:auto; margin-top:12px;">
+              <table class="excel-sheet-table">
+                <thead>
+                  <tr>
+                    <th>Agent Email</th>
+                    <th>CAN No.</th>
+                    <th>Village</th>
+                    <th>Cycle</th>
+                    <th>Farmers</th>
+                    <th>Collections</th>
+                    <th>Total Milk (L)</th>
+                    <th>Total Value (₹)</th>
+                    <th>Today Milk (L)</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-overview-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Agent Management -->
+        <div id="admin-tab-agents" class="hidden">
+          <div class="card" style="margin-bottom:18px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+              <h3 style="color:#4a0072;"><i class="fa-solid fa-users-gear"></i> Registered Agents</h3>
+              <button class="btn btn-sm" style="background:#7b2d8b;color:#fff;" onclick="loadAdminAgents()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+            </div>
+            <div style="overflow-x:auto; margin-top:12px;">
+              <table class="excel-sheet-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Agent Email</th>
+                    <th>CAN No.</th>
+                    <th>Village</th>
+                    <th>Cycle</th>
+                    <th>Farmers</th>
+                    <th>Collections</th>
+                    <th>Registered On</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-agents-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Reset Password Modal Area -->
+          <div id="admin-reset-pass-card" class="card hidden" style="border:2px solid #9c27b0; max-width:480px; margin:0 auto;">
+            <h3 style="color:#4a0072;"><i class="fa-solid fa-key"></i> Reset Agent Password</h3>
+            <p id="admin-reset-target-email" style="color:#666; font-size:0.9em; margin:6px 0 12px;"></p>
+            <div class="form-group">
+              <label>New Password *</label>
+              <input type="text" id="admin-new-password-input" placeholder="Enter new password (min 4 chars)">
+            </div>
+            <div style="display:flex; gap:10px;">
+              <button class="btn btn-success btn-sm" onclick="confirmAdminResetPassword()"><i class="fa-solid fa-save"></i> Confirm Reset</button>
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('admin-reset-pass-card').classList.add('hidden')">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: All Farmers -->
+        <div id="admin-tab-farmers" class="hidden">
+          <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+              <h3 style="color:#4a0072;"><i class="fa-solid fa-tractor"></i> All Farmers — System Wide</h3>
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <input type="text" id="admin-farmer-filter" placeholder="Filter by name, email or village..." oninput="filterAdminFarmers()" style="width:220px; margin-bottom:0;">
+                <button class="btn btn-sm" style="background:#7b2d8b;color:#fff;" onclick="loadAdminFarmers()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+              </div>
+            </div>
+            <div style="overflow-x:auto;">
+              <table class="excel-sheet-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Farmer ID</th>
+                    <th>Name</th>
+                    <th>Village</th>
+                    <th>Mobile</th>
+                    <th>Gmail</th>
+                    <th>Bank Name</th>
+                    <th>Registered By (Agent)</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-farmers-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Collection Records -->
+        <div id="admin-tab-collections" class="hidden">
+          <div class="card" style="margin-bottom:18px;">
+            <h3 style="color:#4a0072;"><i class="fa-solid fa-flask"></i> All Collection Records (Admin View)</h3>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; margin-top:12px;">
+              <div class="form-group" style="margin-bottom:0;">
+                <label>From Date</label>
+                <input type="date" id="admin-col-start" style="margin-bottom:0;">
+              </div>
+              <div class="form-group" style="margin-bottom:0;">
+                <label>To Date</label>
+                <input type="date" id="admin-col-end" style="margin-bottom:0;">
+              </div>
+              <button class="btn" style="background:#7b2d8b;color:#fff;" onclick="loadAdminCollections()"><i class="fa-solid fa-search"></i> Fetch Records</button>
+            </div>
+          </div>
+          <div class="card">
+            <div style="overflow-x:auto;">
+              <table class="excel-sheet-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Farmer</th>
+                    <th>Agent</th>
+                    <th>Type</th>
+                    <th>Shift</th>
+                    <th>Qty (L)</th>
+                    <th>FAT%</th>
+                    <th>SNF%</th>
+                    <th>Water%</th>
+                    <th>Rate (₹)</th>
+                    <th>Total (₹)</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="admin-collections-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Edit Collection Modal -->
+          <div id="admin-edit-col-card" class="card hidden" style="border:2px solid #9c27b0; margin-top:18px;">
+            <h3 style="color:#4a0072;"><i class="fa-solid fa-pen-to-square"></i> Edit Collection Entry</h3>
+            <input type="hidden" id="admin-edit-col-id">
+            <div class="grid">
+              <div class="form-group"><label>Qty (Liters)</label><input type="number" step="0.1" id="admin-edit-qty" placeholder="e.g. 5.5"></div>
+              <div class="form-group"><label>FAT %</label><input type="number" step="0.1" id="admin-edit-fat" placeholder="e.g. 4.2"></div>
+              <div class="form-group"><label>SNF %</label><input type="number" step="0.1" id="admin-edit-snf" placeholder="e.g. 8.5"></div>
+              <div class="form-group"><label>Water %</label><input type="number" step="0.1" id="admin-edit-water" placeholder="e.g. 0"></div>
+              <div class="form-group"><label>Rate (₹/L)</label><input type="number" step="0.01" id="admin-edit-rate" placeholder="e.g. 45.00"></div>
+              <div class="form-group"><label>Total (₹)</label><input type="number" step="0.01" id="admin-edit-total" placeholder="e.g. 225.00"></div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:10px;">
+              <button class="btn btn-success btn-sm" onclick="confirmAdminEditCollection()"><i class="fa-solid fa-save"></i> Save Changes</button>
+              <button class="btn btn-outline btn-sm" onclick="document.getElementById('admin-edit-col-card').classList.add('hidden')">Cancel</button>
+            </div>
+          </div>
+        </div>
+
+        <footer class="portal-footer-bar no-print" style="margin-top:25px; padding:12px 20px; background:linear-gradient(135deg,#4a0072,#7b2d8b); color:#fff; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:0.9em;">
+          <div><i class="fa-solid fa-shield-halved"></i> <strong>Admin Portal Active</strong> | Smart Dairy Control Center</div>
+          <div><i class="fa-solid fa-database"></i> MongoDB Connected | Full System Access</div>
+        </footer>
+      </div>
+      <!-- ======= END ADMIN PORTAL SECTION ======= -->
 
       <div id="farmer-portal-section" class="hidden">
         <div class="card no-print" style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white;">

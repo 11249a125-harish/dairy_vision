@@ -843,6 +843,225 @@ app.post('/api/backup/restore', async (req, res) => {
   }
 });
 
+// ============================================================
+// ADMIN MODULE — All /api/admin/* routes
+// ============================================================
+
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@smartdairy.com').toLowerCase().trim();
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@2026';
+
+function verifyAdminToken(req, res) {
+  const token = req.headers['x-admin-token'] || '';
+  if (token !== ADMIN_PASSWORD) {
+    res.status(401).json({ success: false, message: 'Unauthorized: Invalid admin token.' });
+    return false;
+  }
+  return true;
+}
+
+// POST /api/admin/login — Verify admin credentials
+app.post('/api/admin/login', (req, res) => {
+  const email = (req.body.email || '').toLowerCase().trim();
+  const password = (req.body.password || '').trim();
+  if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
+    return res.json({ success: true, token: ADMIN_PASSWORD, adminEmail: ADMIN_EMAIL });
+  }
+  return res.status(401).json({ success: false, message: 'Invalid admin credentials.' });
+});
+
+// GET /api/admin/overview — Aggregate stats across all agents
+app.get('/api/admin/overview', async (req, res) => {
+  if (!verifyAdminToken(req, res)) return;
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.json({ success: true, overview: { farmersCount: 0, collectionsCount: 0, agentsCount: 0, todayMilk: 0, todayValue: 0, agentBreakdown: [] } });
+    }
+    const farmers = await Farmer.find();
+    const collections = await Collection.find();
+    const agents = await Agent.find();
+    const stationConfigs = await StationConfig.find();
+
+    const today = new Date().toISOString().slice(0, 10);
+    const todayCollections = collections.filter(c => c.date === today);
+    const todayMilk = todayCollections.reduce((s, c) => s + (c.qty || 0), 0);
+    const todayValue = todayCollections.reduce((s, c) => s + (c.total || 0), 0);
+
+    const agentEmails = [...new Set(agents.map(a => a.email))];
+    const agentBreakdown = agentEmails.map((email, idx) => {
+      const cfg = stationConfigs.find(s => s.agentEmail === email) || {};
+      const agentFarmers = farmers.filter(f =>
+        (f.agentEmail || '').toLowerCase() === email ||
+        (f.registeredBy || '').toLowerCase() === email
+      );
+      const agentCols = collections.filter(c => (c.agentEmail || '').toLowerCase() === email);
+      const totalMilk = agentCols.reduce((s, c) => s + (c.qty || 0), 0);
+      const totalValue = agentCols.reduce((s, c) => s + (c.total || 0), 0);
+      const todayMilkAgent = todayCollections
+        .filter(c => (c.agentEmail || '').toLowerCase() === email)
+        .reduce((s, c) => s + (c.qty || 0), 0);
+      return {
+        email,
+        can: cfg.can || String(10100 + idx),
+        village: cfg.village || '--',
+        cycle: cfg.cycle || '--',
+        farmersCount: agentFarmers.length,
+        collectionsCount: agentCols.length,
+        totalMilk: parseFloat(totalMilk.toFixed(2)),
+        totalValue: parseFloat(totalValue.toFixed(2)),
+        todayMilk: parseFloat(todayMilkAgent.toFixed(2))
+      };
+    });
+
+    return res.json({
+      success: true,
+      overview: {
+        farmersCount: farmers.length,
+        collectionsCount: collections.length,
+        agentsCount: agents.length,
+        todayMilk: parseFloat(todayMilk.toFixed(2)),
+        todayValue: parseFloat(todayValue.toFixed(2)),
+        agentBreakdown
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/admin/agents — All agents with station configs & farmer counts
+app.get('/api/admin/agents', async (req, res) => {
+  if (!verifyAdminToken(req, res)) return;
+  try {
+    if (mongoose.connection.readyState !== 1) return res.json({ success: true, agents: [] });
+    const agents = await Agent.find().sort({ createdAt: 1 });
+    const stationConfigs = await StationConfig.find();
+    const farmers = await Farmer.find();
+    const collections = await Collection.find();
+
+    const enriched = agents.map((a, idx) => {
+      const cfg = stationConfigs.find(s => s.agentEmail === a.email) || {};
+      const farmerCount = farmers.filter(f =>
+        (f.agentEmail || '').toLowerCase() === a.email ||
+        (f.registeredBy || '').toLowerCase() === a.email
+      ).length;
+      const collectionCount = collections.filter(c => (c.agentEmail || '').toLowerCase() === a.email).length;
+      return {
+        email: a.email,
+        can: cfg.can || String(10100 + idx),
+        village: cfg.village || '--',
+        cycle: cfg.cycle || '--',
+        farmerCount,
+        collectionCount,
+        createdAt: a.createdAt
+      };
+    });
+
+    return res.json({ success: true, agents: enriched });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// POST /api/admin/agents/:email/reset-password — Reset agent password
+app.post('/api/admin/agents/:email/reset-password', async (req, res) => {
+  if (!verifyAdminToken(req, res)) return;
+  const email = (req.params.email || '').toLowerCase().trim();
+  const newPassword = (req.body.newPassword || '').trim();
+  if (!newPassword || newPassword.length < 4) {
+    return res.status(400).json({ success: false, message: 'New password must be at least 4 characters.' });
+  }
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const agent = await Agent.findOneAndUpdate({ email }, { password: newPassword }, { new: true });
+      if (!agent) return res.status(404).json({ success: false, message: 'Agent not found in database.' });
+      return res.json({ success: true, message: `Password reset successfully for ${email}.` });
+    }
+    res.json({ success: true, message: 'Password reset (offline mode).' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// DELETE /api/admin/agents/:email — Remove/delete an agent account
+app.delete('/api/admin/agents/:email', async (req, res) => {
+  if (!verifyAdminToken(req, res)) return;
+  const email = (req.params.email || '').toLowerCase().trim();
+  try {
+    if (mongoose.connection.readyState === 1) {
+      await Agent.deleteOne({ email });
+      await StationConfig.deleteOne({ agentEmail: email });
+      await RateConfig.deleteOne({ agentEmail: email });
+      return res.json({ success: true, message: `Agent ${email} removed successfully.` });
+    }
+    res.json({ success: true, message: 'Agent removed (offline mode).' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/admin/farmers — All farmers across all agents
+app.get('/api/admin/farmers', async (req, res) => {
+  if (!verifyAdminToken(req, res)) return;
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const farmers = await Farmer.find().sort({ createdAt: -1 });
+      return res.json({ success: true, farmers });
+    }
+    res.json({ success: true, farmers: [] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// GET /api/admin/collections — All collections with optional date filter
+app.get('/api/admin/collections', async (req, res) => {
+  if (!verifyAdminToken(req, res)) return;
+  try {
+    if (mongoose.connection.readyState === 1) {
+      let query = {};
+      if (req.query.startDate && req.query.endDate) {
+        query.date = { $gte: req.query.startDate, $lte: req.query.endDate };
+      } else if (req.query.startDate) {
+        query.date = { $gte: req.query.startDate };
+      }
+      const collections = await Collection.find(query).sort({ date: -1, createdAt: -1 });
+      return res.json({ success: true, collections });
+    }
+    res.json({ success: true, collections: [] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// PUT /api/admin/collections/:id — Edit any collection entry (admin override)
+app.put('/api/admin/collections/:id', async (req, res) => {
+  if (!verifyAdminToken(req, res)) return;
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const updated = await Collection.findOneAndUpdate({ id: req.params.id }, req.body, { new: true });
+      if (!updated) return res.status(404).json({ success: false, message: 'Collection not found.' });
+      return res.json({ success: true, collection: updated });
+    }
+    res.json({ success: true, collection: req.body });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// DELETE /api/admin/collections/:id — Delete any collection entry (admin override)
+app.delete('/api/admin/collections/:id', async (req, res) => {
+  if (!verifyAdminToken(req, res)) return;
+  try {
+    if (mongoose.connection.readyState === 1) {
+      await Collection.deleteOne({ id: req.params.id });
+      return res.json({ success: true, message: 'Collection entry deleted by admin.' });
+    }
+    res.json({ success: true, message: 'Deleted (offline mode).' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Smart Dairy Cloud Server running on port ${PORT}`);

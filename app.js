@@ -663,7 +663,7 @@ function handleBookingDateChange() {
   }
 }
 
-let currentCaptchas = { agent: '', farmer: '' };
+let currentCaptchas = { agent: '', farmer: '', admin: '' };
 let otpTimerInterval = null;
 let otpSecondsRemaining = 60;
 
@@ -781,10 +781,12 @@ function switchTab(tabId) {
 function switchLoginRole(role) {
   document.getElementById('btn-role-agent')?.classList.toggle('active', role === 'agent');
   document.getElementById('btn-role-farmer')?.classList.toggle('active', role === 'farmer');
+  document.getElementById('btn-role-admin')?.classList.toggle('active', role === 'admin');
   document.getElementById('agent-auth-wrapper')?.classList.toggle('hidden', role !== 'agent');
   document.getElementById('farmer-auth-wrapper')?.classList.toggle('hidden', role !== 'farmer');
-  generateCaptcha('agent');
-  generateCaptcha('farmer');
+  document.getElementById('admin-auth-wrapper')?.classList.toggle('hidden', role !== 'admin');
+  if (role === 'admin') generateCaptcha('admin');
+  else { generateCaptcha('agent'); generateCaptcha('farmer'); }
 }
 
 function toggleAgentAuthMode(mode) {
@@ -895,8 +897,349 @@ function logout() {
   document.getElementById('auth-section')?.classList.remove('hidden');
   document.getElementById('app-section')?.classList.add('hidden');
   document.getElementById('farmer-portal-section')?.classList.add('hidden');
+  document.getElementById('admin-section')?.classList.add('hidden');
   document.getElementById('user-status')?.classList.add('hidden');
   document.getElementById('sidebar')?.classList.add('hidden');
+}
+
+// =====================================================
+// ADMIN MODULE — Frontend Logic
+// =====================================================
+
+let currentAdminToken = null;
+let adminAllFarmersCache = [];
+let adminAllCollectionsCache = [];
+let adminMilkChartInstance = null;
+let adminVillagePieInstance = null;
+
+function adminLogout() {
+  currentAdminToken = null;
+  document.getElementById('auth-section')?.classList.remove('hidden');
+  document.getElementById('admin-section')?.classList.add('hidden');
+  document.getElementById('user-status')?.classList.add('hidden');
+  document.getElementById('sidebar')?.classList.add('hidden');
+  switchLoginRole('agent');
+}
+
+function switchAdminTab(tab) {
+  ['overview','agents','farmers','collections'].forEach(t => {
+    document.getElementById(`admin-tab-${t}`)?.classList.toggle('hidden', t !== tab);
+    const btn = document.getElementById(`admin-tab-btn-${t}`);
+    if (btn) {
+      if (t === tab) { btn.style.background = '#7b2d8b'; btn.style.color = '#fff'; btn.style.fontWeight = 'bold'; }
+      else { btn.style.background = ''; btn.style.color = ''; btn.style.fontWeight = ''; }
+    }
+  });
+  if (tab === 'agents') loadAdminAgents();
+  else if (tab === 'farmers') loadAdminFarmers();
+  else if (tab === 'collections') loadAdminCollections();
+  else loadAdminOverview();
+}
+
+async function loadAdminOverview() {
+  if (!currentAdminToken) return;
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/overview`, {
+      headers: { 'x-admin-token': currentAdminToken }
+    });
+    const data = await res.json();
+    if (!data.success) { showAlert('Admin: Could not load overview.', 'danger'); return; }
+    const ov = data.overview;
+    document.getElementById('admin-stat-agents').textContent = ov.agentsCount || 0;
+    document.getElementById('admin-stat-farmers').textContent = ov.farmersCount || 0;
+    document.getElementById('admin-stat-today-milk').textContent = `${(ov.todayMilk || 0).toFixed(1)} L`;
+    document.getElementById('admin-stat-today-value').textContent = `₹${(ov.todayValue || 0).toFixed(0)}`;
+
+    const breakdown = ov.agentBreakdown || [];
+    const tbody = document.getElementById('admin-overview-tbody');
+    if (tbody) {
+      tbody.innerHTML = breakdown.length ? breakdown.map(a => `
+        <tr>
+          <td style="font-size:0.82em;">${a.email}</td>
+          <td><strong>${a.can}</strong></td>
+          <td>${a.village}</td>
+          <td>${a.cycle}</td>
+          <td>${a.farmersCount}</td>
+          <td>${a.collectionsCount}</td>
+          <td style="color:var(--primary); font-weight:bold;">${a.totalMilk} L</td>
+          <td style="color:#40916c; font-weight:bold;">₹${a.totalValue}</td>
+          <td style="color:var(--gold); font-weight:bold;">${a.todayMilk} L</td>
+        </tr>`).join('') : '<tr><td colspan="9" style="text-align:center;color:#888;">No agent data found.</td></tr>';
+    }
+    renderAdminCharts(breakdown);
+  } catch (err) {
+    showAlert('Admin overview fetch failed. Check connection.', 'danger');
+  }
+}
+
+function renderAdminCharts(breakdown) {
+  // Destroy old charts
+  if (adminMilkChartInstance) { adminMilkChartInstance.destroy(); adminMilkChartInstance = null; }
+  if (adminVillagePieInstance) { adminVillagePieInstance.destroy(); adminVillagePieInstance = null; }
+
+  const milkCtx = document.getElementById('admin-agent-milk-chart');
+  if (milkCtx && breakdown.length) {
+    adminMilkChartInstance = new Chart(milkCtx, {
+      type: 'bar',
+      data: {
+        labels: breakdown.map(a => a.email.split('@')[0]),
+        datasets: [{
+          label: 'Total Milk (L)',
+          data: breakdown.map(a => a.totalMilk),
+          backgroundColor: breakdown.map((_, i) => ['#7b2d8b','#1b4332','#b58302','#40916c','#206a78'][i % 5]),
+          borderRadius: 6
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+  }
+
+  const pieCtx = document.getElementById('admin-village-pie-chart');
+  if (pieCtx && breakdown.length) {
+    const villageMap = {};
+    breakdown.forEach(a => {
+      const v = a.village || 'Unknown';
+      villageMap[v] = (villageMap[v] || 0) + a.totalMilk;
+    });
+    adminVillagePieInstance = new Chart(pieCtx, {
+      type: 'doughnut',
+      data: {
+        labels: Object.keys(villageMap),
+        datasets: [{
+          data: Object.values(villageMap),
+          backgroundColor: ['#7b2d8b','#1b4332','#b58302','#40916c','#206a78','#c62828','#1565c0']
+        }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom', labels: { font: { size: 11 } } } } }
+    });
+  }
+}
+
+async function loadAdminAgents() {
+  if (!currentAdminToken) return;
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/agents`, {
+      headers: { 'x-admin-token': currentAdminToken }
+    });
+    const data = await res.json();
+    const tbody = document.getElementById('admin-agents-tbody');
+    if (!tbody) return;
+    if (!data.success || !data.agents.length) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#888;">No agents registered yet.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.agents.map((a, idx) => `
+      <tr>
+        <td>${idx + 1}</td>
+        <td style="font-size:0.82em; font-weight:bold;">${a.email}</td>
+        <td><span style="background:#e1bee7; color:#4a0072; padding:2px 8px; border-radius:12px; font-weight:bold;">${a.can}</span></td>
+        <td>${a.village}</td>
+        <td>${a.cycle}</td>
+        <td>${a.farmerCount}</td>
+        <td>${a.collectionCount}</td>
+        <td style="font-size:0.8em;">${a.createdAt ? new Date(a.createdAt).toLocaleDateString() : '--'}</td>
+        <td>
+          <button class="btn btn-sm btn-gold" onclick="adminResetPassword('${a.email}')" style="margin-right:4px;"><i class="fa-solid fa-key"></i> Reset Pass</button>
+          <button class="btn btn-sm btn-danger" onclick="adminDeleteAgent('${a.email}')"><i class="fa-solid fa-trash"></i> Remove</button>
+        </td>
+      </tr>`).join('');
+  } catch (err) {
+    showAlert('Failed to load agents list.', 'danger');
+  }
+}
+
+function adminResetPassword(email) {
+  const card = document.getElementById('admin-reset-pass-card');
+  const label = document.getElementById('admin-reset-target-email');
+  const input = document.getElementById('admin-new-password-input');
+  if (card) { card.classList.remove('hidden'); card.dataset.targetEmail = email; }
+  if (label) label.textContent = `Resetting password for: ${email}`;
+  if (input) input.value = '';
+  card?.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function confirmAdminResetPassword() {
+  const card = document.getElementById('admin-reset-pass-card');
+  const email = card?.dataset.targetEmail;
+  const newPass = document.getElementById('admin-new-password-input')?.value.trim();
+  if (!email || !newPass || newPass.length < 4) {
+    showAlert('Password must be at least 4 characters.', 'danger'); return;
+  }
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/agents/${encodeURIComponent(email)}/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': currentAdminToken },
+      body: JSON.stringify({ newPassword: newPass })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showAlert(`✅ ${data.message}`, 'success');
+      card.classList.add('hidden');
+    } else {
+      showAlert(`Error: ${data.message}`, 'danger');
+    }
+  } catch (err) {
+    showAlert('Reset password request failed.', 'danger');
+  }
+}
+
+async function adminDeleteAgent(email) {
+  if (!confirm(`⚠️ Are you sure you want to REMOVE agent:\n${email}\n\nThis will delete their account, station config, and rate config from MongoDB. Farmer records are kept.`)) return;
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/agents/${encodeURIComponent(email)}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-token': currentAdminToken }
+    });
+    const data = await res.json();
+    if (data.success) { showAlert(`✅ ${data.message}`, 'success'); loadAdminAgents(); }
+    else showAlert(`Error: ${data.message}`, 'danger');
+  } catch (err) {
+    showAlert('Delete agent request failed.', 'danger');
+  }
+}
+
+async function loadAdminFarmers() {
+  if (!currentAdminToken) return;
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/farmers`, {
+      headers: { 'x-admin-token': currentAdminToken }
+    });
+    const data = await res.json();
+    adminAllFarmersCache = data.farmers || [];
+    renderAdminFarmersTable(adminAllFarmersCache);
+  } catch (err) {
+    showAlert('Failed to load farmers list.', 'danger');
+  }
+}
+
+function renderAdminFarmersTable(farmers) {
+  const tbody = document.getElementById('admin-farmers-tbody');
+  if (!tbody) return;
+  if (!farmers.length) {
+    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#888;">No farmers found.</td></tr>'; return;
+  }
+  tbody.innerHTML = farmers.map((f, idx) => `
+    <tr>
+      <td>${idx + 1}</td>
+      <td style="font-size:0.82em;">${f.id}</td>
+      <td><strong>${f.name}</strong></td>
+      <td>${f.village || '--'}</td>
+      <td>${f.mobile}</td>
+      <td style="font-size:0.82em;">${f.email}</td>
+      <td>${f.bankName || '--'}</td>
+      <td style="font-size:0.82em; color:#7b2d8b;">${f.agentEmail || f.registeredBy || '--'}</td>
+    </tr>`).join('');
+}
+
+function filterAdminFarmers() {
+  const q = (document.getElementById('admin-farmer-filter')?.value || '').toLowerCase().trim();
+  if (!q) { renderAdminFarmersTable(adminAllFarmersCache); return; }
+  const filtered = adminAllFarmersCache.filter(f =>
+    (f.name || '').toLowerCase().includes(q) ||
+    (f.email || '').toLowerCase().includes(q) ||
+    (f.village || '').toLowerCase().includes(q) ||
+    (f.mobile || '').includes(q)
+  );
+  renderAdminFarmersTable(filtered);
+}
+
+async function loadAdminCollections() {
+  if (!currentAdminToken) return;
+  const start = document.getElementById('admin-col-start')?.value;
+  const end = document.getElementById('admin-col-end')?.value;
+  let url = `${API_BASE_URL}/api/admin/collections`;
+  const params = new URLSearchParams();
+  if (start) params.append('startDate', start);
+  if (end) params.append('endDate', end);
+  if (params.toString()) url += '?' + params.toString();
+
+  try {
+    const res = await fetch(url, { headers: { 'x-admin-token': currentAdminToken } });
+    const data = await res.json();
+    adminAllCollectionsCache = data.collections || [];
+    renderAdminCollectionsTable(adminAllCollectionsCache);
+  } catch (err) {
+    showAlert('Failed to load collections.', 'danger');
+  }
+}
+
+function renderAdminCollectionsTable(collections) {
+  const tbody = document.getElementById('admin-collections-tbody');
+  if (!tbody) return;
+  if (!collections.length) {
+    tbody.innerHTML = '<tr><td colspan="12" style="text-align:center;color:#888;">No collection records found.</td></tr>'; return;
+  }
+  tbody.innerHTML = collections.map(c => `
+    <tr>
+      <td>${c.date}</td>
+      <td><strong>${c.farmerName}</strong></td>
+      <td style="font-size:0.78em; color:#7b2d8b;">${c.agentEmail || '--'}</td>
+      <td>${c.type || '--'}</td>
+      <td>${c.shift}</td>
+      <td style="color:var(--primary); font-weight:bold;">${c.qty} L</td>
+      <td>${c.fat}%</td>
+      <td>${c.snf}%</td>
+      <td style="color:${(c.waterPct||0) > 15 ? 'var(--danger)' : 'inherit'};">${c.waterPct || 0}%</td>
+      <td>₹${(c.rate||0).toFixed(2)}</td>
+      <td style="color:#40916c; font-weight:bold;">₹${(c.total||0).toFixed(2)}</td>
+      <td>
+        <button class="btn btn-sm btn-gold" onclick="adminEditCollection('${c.id}',${c.qty},${c.fat},${c.snf},${c.waterPct||0},${c.rate},${c.total})" style="margin-right:3px;"><i class="fa-solid fa-pen"></i></button>
+        <button class="btn btn-sm btn-danger" onclick="adminDeleteCollection('${c.id}')"><i class="fa-solid fa-trash"></i></button>
+      </td>
+    </tr>`).join('');
+}
+
+function adminEditCollection(id, qty, fat, snf, water, rate, total) {
+  document.getElementById('admin-edit-col-id').value = id;
+  document.getElementById('admin-edit-qty').value = qty;
+  document.getElementById('admin-edit-fat').value = fat;
+  document.getElementById('admin-edit-snf').value = snf;
+  document.getElementById('admin-edit-water').value = water;
+  document.getElementById('admin-edit-rate').value = rate;
+  document.getElementById('admin-edit-total').value = total;
+  document.getElementById('admin-edit-col-card')?.classList.remove('hidden');
+  document.getElementById('admin-edit-col-card')?.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function confirmAdminEditCollection() {
+  const id = document.getElementById('admin-edit-col-id').value;
+  const qty = parseFloat(document.getElementById('admin-edit-qty').value) || 0;
+  const fat = parseFloat(document.getElementById('admin-edit-fat').value) || 0;
+  const snf = parseFloat(document.getElementById('admin-edit-snf').value) || 0;
+  const waterPct = parseFloat(document.getElementById('admin-edit-water').value) || 0;
+  const rate = parseFloat(document.getElementById('admin-edit-rate').value) || 0;
+  const total = parseFloat(document.getElementById('admin-edit-total').value) || 0;
+  if (!id) { showAlert('No collection selected.', 'danger'); return; }
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/collections/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': currentAdminToken },
+      body: JSON.stringify({ qty, fat, snf, waterPct, rate, total })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showAlert('✅ Collection entry updated by admin.', 'success');
+      document.getElementById('admin-edit-col-card')?.classList.add('hidden');
+      loadAdminCollections();
+    } else showAlert(`Error: ${data.message}`, 'danger');
+  } catch (err) {
+    showAlert('Failed to update collection.', 'danger');
+  }
+}
+
+async function adminDeleteCollection(id) {
+  if (!confirm('⚠️ Delete this collection entry permanently from MongoDB?')) return;
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/collections/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: { 'x-admin-token': currentAdminToken }
+    });
+    const data = await res.json();
+    if (data.success) { showAlert('✅ Collection entry deleted.', 'success'); loadAdminCollections(); }
+    else showAlert(`Error: ${data.message}`, 'danger');
+  } catch (err) {
+    showAlert('Failed to delete collection.', 'danger');
+  }
 }
 
 document.getElementById('farmer-booking-form')?.addEventListener('submit', async function(e) {
@@ -2130,6 +2473,48 @@ document.addEventListener('DOMContentLoaded', () => {
 
   generateCaptcha('agent');
   generateCaptcha('farmer');
+  generateCaptcha('admin');
+
+  // Admin Login Form Submit
+  document.getElementById('admin-login-form')?.addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const email = (document.getElementById('admin-email-input')?.value || '').trim().toLowerCase();
+    const password = (document.getElementById('admin-password-input')?.value || '').trim();
+    const captchaInput = (document.getElementById('admin-captcha-input')?.value || '').trim().toUpperCase();
+    const captchaBox = (document.getElementById('admin-captcha-box')?.textContent || '').trim().toUpperCase();
+
+    if (!captchaInput || captchaInput !== captchaBox) {
+      showAlert('❌ CAPTCHA verification failed. Please try again.', 'danger');
+      generateCaptcha('admin');
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/admin/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        showAlert(`❌ ${data.message}`, 'danger');
+        generateCaptcha('admin');
+        return;
+      }
+
+      currentAdminToken = data.token;
+      document.getElementById('auth-section')?.classList.add('hidden');
+      document.getElementById('admin-section')?.classList.remove('hidden');
+      document.getElementById('user-status')?.classList.remove('hidden');
+      const activeLabel = document.getElementById('active-user-label');
+      if (activeLabel) activeLabel.innerText = `👑 Admin: ${email}`;
+      const adminEmailLabel = document.getElementById('admin-logged-email');
+      if (adminEmailLabel) adminEmailLabel.textContent = email;
+      switchAdminTab('overview');
+    } catch (err) {
+      showAlert('Admin login failed — server unreachable.', 'danger');
+    }
+  });
 
   // Multi-PC Real-Time Syncing: Auto-poll MongoDB every 5 seconds for live multi-PC updates across agents and farmers
   setInterval(() => {
