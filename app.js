@@ -377,19 +377,19 @@ async function handleSendOTP(emailInputId, contextPurpose) {
       
       if (emailInputId === 'agent-email-input') {
         document.getElementById('agent-login-otp-block')?.classList.remove('hidden');
-        startOtpCountdown('agent-otp-seconds', 'agent-otp-countdown-info');
+        startOtpCountdown('agent-otp-seconds', 'agent-otp-countdown-info', 'sendAgentLoginOtp');
       } else if (emailInputId === 'reset-agent-email') {
         document.getElementById('reset-otp-block')?.classList.remove('hidden');
-        startOtpCountdown('reset-otp-seconds', 'reset-otp-countdown-info');
+        startOtpCountdown('reset-otp-seconds', 'reset-otp-countdown-info', 'sendResetOtp');
       } else if (emailInputId === 'farmer-email') {
         document.getElementById('aadhaar-otp-block')?.classList.remove('hidden');
         document.getElementById('complete-reg-btn')?.classList.remove('hidden');
       } else if (emailInputId === 'farmer-login-email') {
         document.getElementById('farmer-login-otp-block')?.classList.remove('hidden');
-        startOtpCountdown('farmer-otp-seconds', 'farmer-otp-countdown-info');
+        startOtpCountdown('farmer-otp-seconds', 'farmer-otp-countdown-info', 'sendFarmerLoginOtp');
       } else if (emailInputId === 'reset-farmer-email') {
         document.getElementById('farmer-reset-otp-block')?.classList.remove('hidden');
-        startOtpCountdown('farmer-reset-otp-seconds', 'farmer-reset-otp-countdown-info');
+        startOtpCountdown('farmer-reset-otp-seconds', 'farmer-reset-otp-countdown-info', 'sendFarmerResetOtp');
       }
     } else {
       showAlert(data.message || 'Error sending OTP email.', 'danger');
@@ -399,10 +399,10 @@ async function handleSendOTP(emailInputId, contextPurpose) {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     otpStore[email] = otp;
     showAlert(`[Dev Mode OTP] Verification code: ${otp} (Valid for 1 min)`, 'info');
-    if (emailInputId === 'agent-email-input') startOtpCountdown('agent-otp-seconds', 'agent-otp-countdown-info');
-    else if (emailInputId === 'reset-agent-email') startOtpCountdown('reset-otp-seconds', 'reset-otp-countdown-info');
-    else if (emailInputId === 'farmer-login-email') startOtpCountdown('farmer-otp-seconds', 'farmer-otp-countdown-info');
-    else if (emailInputId === 'reset-farmer-email') startOtpCountdown('farmer-reset-otp-seconds', 'farmer-reset-otp-countdown-info');
+    if (emailInputId === 'agent-email-input') startOtpCountdown('agent-otp-seconds', 'agent-otp-countdown-info', 'sendAgentLoginOtp');
+    else if (emailInputId === 'reset-agent-email') startOtpCountdown('reset-otp-seconds', 'reset-otp-countdown-info', 'sendResetOtp');
+    else if (emailInputId === 'farmer-login-email') startOtpCountdown('farmer-otp-seconds', 'farmer-otp-countdown-info', 'sendFarmerLoginOtp');
+    else if (emailInputId === 'reset-farmer-email') startOtpCountdown('farmer-reset-otp-seconds', 'farmer-reset-otp-countdown-info', 'sendFarmerResetOtp');
   }
 }
 
@@ -559,20 +559,22 @@ function verifyCaptcha(role = 'agent') {
   return true;
 }
 
-function startOtpCountdown(timerSpanId, infoBoxId) {
+function startOtpCountdown(timerSpanId, infoBoxId, resendFnName = '') {
   if (otpTimerInterval) clearInterval(otpTimerInterval);
   otpSecondsRemaining = 60;
 
-  const span = document.getElementById(timerSpanId);
   const info = document.getElementById(infoBoxId);
-  if (info) info.classList.remove('hidden');
-  if (span) span.textContent = '60';
+  if (info) {
+    info.classList.remove('hidden');
+    info.innerHTML = `⏱️ OTP Valid for: <span id="${timerSpanId}">60</span>s`;
+  }
 
   const footerTimer = document.getElementById('footer-otp-status');
   const farmerFooterTimer = document.getElementById('farmer-footer-otp-status');
 
   otpTimerInterval = setInterval(() => {
     otpSecondsRemaining--;
+    const span = document.getElementById(timerSpanId);
     if (span) span.textContent = String(otpSecondsRemaining);
 
     const timerHtml = `<i class="fa-solid fa-stopwatch" style="color:#ffb703;"></i> OTP Valid: <span style="color:#ffb703; font-weight:bold;">${otpSecondsRemaining}s</span>`;
@@ -581,8 +583,13 @@ function startOtpCountdown(timerSpanId, infoBoxId) {
 
     if (otpSecondsRemaining <= 0) {
       clearInterval(otpTimerInterval);
-      if (span) span.textContent = '0 (Expired)';
-      const expiredHtml = `<i class="fa-solid fa-triangle-exclamation" style="color:#ff4d4f;"></i> OTP Expired (Resend Code)`;
+      if (info) {
+        info.innerHTML = `
+          <div style="color:#c1121f; font-weight:bold; margin-bottom:4px;">⏱️ OTP Expired (60s limit reached)</div>
+          ${resendFnName ? `<button type="button" class="btn btn-gold btn-sm" style="width:100%; margin-top:4px;" onclick="${resendFnName}()"><i class="fa-solid fa-rotate-right"></i> Resend Gmail OTP</button>` : ''}
+        `;
+      }
+      const expiredHtml = `<i class="fa-solid fa-triangle-exclamation" style="color:#ff4d4f;"></i> OTP Expired`;
       if (footerTimer) footerTimer.innerHTML = expiredHtml;
       if (farmerFooterTimer) farmerFooterTimer.innerHTML = expiredHtml;
     }
@@ -736,7 +743,12 @@ function initAppView(role) {
     document.getElementById('app-section')?.classList.add('hidden');
     document.getElementById('sidebar')?.classList.add('hidden');
     document.getElementById('farmer-portal-section')?.classList.remove('hidden');
-    document.getElementById('active-user-label').innerText = `Farmer: ${currentFarmer.name}`;
+    if (!currentFarmer) {
+      if (DB.farmers && DB.farmers.length > 0) currentFarmer = DB.farmers[0];
+      else currentFarmer = { id: 'FARM-101', name: 'K Harish', email: '11249a251@kanchiuniv.ac.in', mobile: '9100447663' };
+    }
+    const activeLabel = document.getElementById('active-user-label');
+    if (activeLabel) activeLabel.innerText = `Farmer: ${currentFarmer.name}`;
     renderFarmerPortal();
   }
 }
@@ -1323,16 +1335,98 @@ function renderDashboardCharts() {
   });
 }
 
+let farmerVolChartInst = null;
+let farmerShiftChartInst = null;
+
+function renderFarmerCharts(collections = []) {
+  const volCtx = document.getElementById('farmer-volume-chart')?.getContext('2d');
+  const shiftCtx = document.getElementById('farmer-shift-chart')?.getContext('2d');
+
+  if (!volCtx || !shiftCtx) return;
+
+  const dateMap = {};
+  let morningQty = 0;
+  let eveningQty = 0;
+
+  collections.forEach(c => {
+    const qty = parseFloat(c.qty) || 0;
+    dateMap[c.date] = (dateMap[c.date] || 0) + qty;
+    if ((c.shift || '').toLowerCase().includes('morn')) morningQty += qty;
+    else eveningQty += qty;
+  });
+
+  const sortedDates = Object.keys(dateMap).sort();
+  const volumes = sortedDates.map(d => dateMap[d]);
+
+  if (farmerVolChartInst) farmerVolChartInst.destroy();
+  if (farmerShiftChartInst) farmerShiftChartInst.destroy();
+
+  farmerVolChartInst = new Chart(volCtx, {
+    type: 'bar',
+    data: {
+      labels: sortedDates.length > 0 ? sortedDates : ['No Data'],
+      datasets: [{
+        label: 'Daily Milk Volume (L)',
+        data: volumes.length > 0 ? volumes : [0],
+        backgroundColor: '#2d6a4f',
+        borderColor: '#1b4332',
+        borderWidth: 1,
+        borderRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: { beginAtZero: true, title: { display: true, text: 'Liters (L)' } }
+      }
+    }
+  });
+
+  farmerShiftChartInst = new Chart(shiftCtx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Morning Shift', 'Evening Shift'],
+      datasets: [{
+        data: [morningQty, eveningQty],
+        backgroundColor: ['#ffb703', '#206a78']
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { position: 'bottom' }
+      }
+    }
+  });
+}
+
 function renderFarmerPortal() {
-  if (!currentFarmer) return;
+  if (!currentFarmer) {
+    if (DB.farmers && DB.farmers.length > 0) currentFarmer = DB.farmers[0];
+    else currentFarmer = { id: 'FARM-101', name: 'K Harish', email: '11249a251@kanchiuniv.ac.in', mobile: '9100447663' };
+  }
 
   const nameElem = document.getElementById('farmer-portal-name');
   const phoneElem = document.getElementById('farmer-portal-phone');
   if (nameElem) nameElem.innerText = currentFarmer.name;
   if (phoneElem) phoneElem.innerText = currentFarmer.email || currentFarmer.mobile;
 
-  const fromDate = document.getElementById('farmer-range-from')?.value;
-  const toDate = document.getElementById('farmer-range-to')?.value;
+  let fromInput = document.getElementById('farmer-range-from');
+  let toInput = document.getElementById('farmer-range-to');
+
+  if (fromInput && !fromInput.value) {
+    const d = new Date();
+    d.setDate(d.getDate() - 14);
+    fromInput.value = getLocalDateString(d);
+  }
+  if (toInput && !toInput.value) {
+    toInput.value = getLocalDateString();
+  }
+
+  const fromDate = fromInput?.value;
+  const toDate = toInput?.value;
   const cycleMode = document.getElementById('farmer-billing-cycle-mode')?.value || '10-DAY';
 
   const datePromptCard = document.getElementById('farmer-date-prompt');
@@ -1350,7 +1444,7 @@ function renderFarmerPortal() {
 
   addAiLog('tag-audit', 'AI-REPORT', `Farmer ${currentFarmer.name} requested report range: ${fromDate} to ${toDate}`);
 
-  const farmerCollections = DB.collections.filter(c => {
+  const farmerCollections = (DB.collections || []).filter(c => {
     const matchesFarmer = (c.farmerId === currentFarmer.id || c.farmerEmail === currentFarmer.email);
     const matchesFrom = c.date >= fromDate;
     const matchesTo = c.date <= toDate;
@@ -1385,6 +1479,8 @@ function renderFarmerPortal() {
       }).join('');
     }
   }
+
+  renderFarmerCharts(farmerCollections);
 
   const farmerDeductions = (DB.bookings || []).filter(b => {
     const matchesFarmer = (b.farmerId === currentFarmer.id || b.farmerEmail === currentFarmer.email);

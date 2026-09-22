@@ -1056,6 +1056,25 @@
             </div>
           </div>
 
+          <div class="card no-print" style="margin-top: 20px; border-left: 5px solid var(--teal-brand);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+              <h3 style="margin: 0;"><i class="fa-solid fa-chart-pie"></i> Milk Yield & Earnings Visual Analytics</h3>
+              <span class="badge" style="background: var(--teal-brand); color: white; padding: 4px 12px; border-radius: 12px; font-size: 0.85em; font-weight: bold;">
+                <i class="fa-solid fa-chart-simple"></i> Interactive Charts
+              </span>
+            </div>
+            <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px;">
+              <div style="background: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #e0e0e0; height: 280px; position: relative;">
+                <h5 style="color: var(--primary); margin-bottom: 10px; text-align: center;"><i class="fa-solid fa-chart-column"></i> Daily Milk Pouring Volume (Liters) Trend</h5>
+                <canvas id="farmer-volume-chart"></canvas>
+              </div>
+              <div style="background: #ffffff; padding: 15px; border-radius: 10px; border: 1px solid #e0e0e0; height: 280px; position: relative;">
+                <h5 style="color: var(--primary); margin-bottom: 10px; text-align: center;"><i class="fa-solid fa-chart-pie"></i> Milk Shift Pouring Breakdown</h5>
+                <canvas id="farmer-shift-chart"></canvas>
+              </div>
+            </div>
+          </div>
+
           <div class="card">
             <h3><i class="fa-solid fa-list-check"></i> Shift-wise Milk Details</h3>
             <table>
