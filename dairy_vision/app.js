@@ -42,16 +42,34 @@ let agentAuthMode = 'password';
 let farmerAuthMode = 'password';
 const otpStore = {};
 
+function getSerialCanForAgent(email) {
+  const emailLower = (email || '').toLowerCase().trim();
+  if (!emailLower) return '10100';
+
+  const allowedList = ALLOWED_AGENTS.map(e => e.toLowerCase().trim());
+  let index = allowedList.indexOf(emailLower);
+  if (index < 0) {
+    const registeredAgents = Object.keys(DB.agentAccounts || {}).map(e => e.toLowerCase().trim());
+    const combined = Array.from(new Set([...allowedList, ...registeredAgents]));
+    index = combined.indexOf(emailLower);
+    if (index < 0) index = combined.length;
+  }
+  return String(10100 + Math.max(0, index));
+}
+
 function getAgentConfig(email) {
   if (!DB.agentConfigs) DB.agentConfigs = {};
   const key = (email || currentAgentEmail || 'default').toLowerCase().trim();
+  const serialCan = getSerialCanForAgent(key);
   if (!DB.agentConfigs[key]) {
     DB.agentConfigs[key] = {
-      can: DB.agentCAN || 'CAN-PLM-2026-01',
+      can: serialCan,
       village: (DB.billingCycle && DB.billingCycle.villageName) ? DB.billingCycle.villageName : 'Palamaner Village',
       cycle: (DB.billingCycle && DB.billingCycle.cycleType) ? DB.billingCycle.cycleType : '10-DAY',
       rates: { ...(DB.rates || { cowBaseRate: 45.0, cowStdFat: 4.5, cowStdSnf: 8.5, buffaloBaseRate: 60.0, buffaloStdFat: 4.0, buffaloStdSnf: 9.0 }) }
     };
+  } else if (!DB.agentConfigs[key].can || DB.agentConfigs[key].can === 'CAN-PLM-2026-01') {
+    DB.agentConfigs[key].can = serialCan;
   }
   return DB.agentConfigs[key];
 }
@@ -713,7 +731,8 @@ function startOtpCountdown(timerSpanId, infoBoxId, resendFnName = '') {
 
 function updateCanDisplays() {
   const cfg = getAgentConfig(currentAgentEmail);
-  const can = cfg.can || DB.agentCAN || 'CAN-PLM-2026-01';
+  const serialFallback = getSerialCanForAgent(currentAgentEmail);
+  const can = (cfg.can && cfg.can !== 'CAN-PLM-2026-01') ? cfg.can : serialFallback;
   const village = cfg.village || ((DB.billingCycle && DB.billingCycle.villageName) ? DB.billingCycle.villageName : 'Palamaner Village');
   const cycle = (cfg.cycle || ((DB.billingCycle && DB.billingCycle.cycleType) ? DB.billingCycle.cycleType : '10-DAY')).toUpperCase();
 
@@ -2090,6 +2109,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     showAlert(`Village Station Setup Saved! CAN: ${newCAN} | Village: ${newVillage} | Cycle: ${newCycle}`);
     addAiLog('tag-audit', 'AI-STATION-CONFIG', `Agent ${currentAgentEmail || ''} updated station setup: CAN=${newCAN}, Village=${newVillage}, Cycle=${newCycle}`);
+  });
+
+  document.getElementById('agent-can-input')?.addEventListener('change', function() {
+    const newCAN = this.value.trim();
+    if (newCAN && currentAgentEmail) {
+      const cfg = getAgentConfig(currentAgentEmail);
+      cfg.can = newCAN;
+      DB.agentCAN = newCAN;
+      saveDB();
+      updateCanDisplays();
+      fetch(`${API_BASE_URL}/api/station-config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agentEmail: currentAgentEmail, can: newCAN, village: cfg.village, cycle: cfg.cycle })
+      }).catch(err => console.warn('Header CAN sync offline:', err));
+      showAlert(`Agent CAN number updated to ${newCAN}`);
+    }
   });
 
   generateCaptcha('agent');
