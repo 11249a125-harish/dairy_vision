@@ -111,7 +111,6 @@
       <button class="nav-btn" onclick="switchTab('farmers')"><i class="fa-solid fa-file-excel"></i> Farmers Directory Sheet</button>
       <button class="nav-btn" onclick="switchTab('collection')"><i class="fa-solid fa-fill-drip"></i> Milk Entry & Manage</button>
       <button class="nav-btn" onclick="switchTab('hardware')"><i class="fa-solid fa-microchip"></i> Hardware Ports & Devices</button>
-      <button class="nav-btn" onclick="switchTab('deduction')"><i class="fa-solid fa-minus-circle"></i> Date Range Deductions</button>
       <button class="nav-btn" onclick="switchTab('bookings')"><i class="fa-solid fa-box-open"></i> Farmer Requirements & Orders</button>
       <button class="nav-btn" onclick="switchTab('developers')"><i class="fa-solid fa-laptop-code"></i> Developer Profiles</button>
       <button class="nav-btn" onclick="switchTab('reports')"><i class="fa-solid fa-chart-line"></i> Clean Sheets & Print</button>
@@ -160,6 +159,20 @@
                   <label style="color: var(--primary);"><i class="fa-solid fa-key"></i> Enter Gmail OTP *</label>
                   <input type="text" id="agent-login-otp" placeholder="Enter 6-digit OTP" pattern="[0-9]{6}">
                   <button type="button" class="btn btn-gold btn-sm" style="margin-top:8px; width:100%;" onclick="sendAgentLoginOtp()"><i class="fa-solid fa-paper-plane"></i> Send Gmail OTP</button>
+                  <div id="agent-otp-countdown-info" class="otp-timer-badge hidden" style="margin-top: 8px; font-size: 0.85em; color: #c1121f; font-weight: bold; text-align: center;">
+                    ⏱️ OTP Valid for: <span id="agent-otp-seconds">60</span>s
+                  </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 12px; background: rgba(255,255,255,0.85); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--primary);">
+                  <label style="color: var(--primary); font-weight: bold;"><i class="fa-solid fa-shield-halved"></i> Verify Security CAPTCHA *</label>
+                  <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+                    <div id="agent-captcha-box" onclick="generateCaptcha('agent')" style="user-select: none; font-family: 'Courier New', monospace; font-weight: 900; font-size: 1.3em; letter-spacing: 5px; color: #1b4332; background: #d8f3dc; padding: 6px 14px; border: 2px dashed #1b4332; border-radius: 6px; cursor: pointer; text-decoration: line-through;" title="Click to refresh CAPTCHA">
+                      8A3K9X
+                    </div>
+                    <button type="button" onclick="generateCaptcha('agent')" class="btn btn-gold btn-sm" style="padding: 6px 10px;" title="Refresh CAPTCHA"><i class="fa-solid fa-arrows-rotate"></i></button>
+                    <input type="text" id="agent-captcha-input" placeholder="Enter CAPTCHA" required style="flex: 1; margin-bottom: 0; text-transform: uppercase;">
+                  </div>
                 </div>
 
                 <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:15px;">
@@ -180,6 +193,9 @@
               <div id="reset-otp-block" class="form-group hidden">
                 <label>Enter 6-Digit Gmail OTP</label>
                 <input type="text" id="reset-agent-otp" placeholder="Enter OTP received in Gmail">
+                <div id="reset-otp-countdown-info" class="otp-timer-badge hidden" style="margin-top: 8px; font-size: 0.85em; color: #c1121f; font-weight: bold; text-align: center;">
+                  ⏱️ OTP Valid for: <span id="reset-otp-seconds">60</span>s
+                </div>
               </div>
 
               <div id="reset-new-pass-block" class="form-group hidden">
@@ -228,6 +244,20 @@
                   <label style="color:var(--primary);"><i class="fa-solid fa-key"></i> Gmail OTP *</label>
                   <input type="text" id="farmer-login-otp" placeholder="Enter 6-digit OTP">
                   <button type="button" id="btn-send-farmer-otp" class="btn btn-gold btn-sm" style="width: 100%; margin-top: 8px;" onclick="sendFarmerLoginOtp()"><i class="fa-solid fa-paper-plane"></i> Send OTP to Gmail</button>
+                  <div id="farmer-otp-countdown-info" class="otp-timer-badge hidden" style="margin-top: 8px; font-size: 0.85em; color: #c1121f; font-weight: bold; text-align: center;">
+                    ⏱️ OTP Valid for: <span id="farmer-otp-seconds">60</span>s
+                  </div>
+                </div>
+
+                <div class="form-group" style="margin-top: 12px; background: rgba(255,255,255,0.85); padding: 10px 12px; border-radius: 8px; border: 1px solid var(--primary);">
+                  <label style="color: var(--primary); font-weight: bold;"><i class="fa-solid fa-shield-halved"></i> Verify Security CAPTCHA *</label>
+                  <div style="display: flex; gap: 8px; align-items: center; margin-top: 6px;">
+                    <div id="farmer-captcha-box" onclick="generateCaptcha('farmer')" style="user-select: none; font-family: 'Courier New', monospace; font-weight: 900; font-size: 1.3em; letter-spacing: 5px; color: #1b4332; background: #d8f3dc; padding: 6px 14px; border: 2px dashed #1b4332; border-radius: 6px; cursor: pointer; text-decoration: line-through;" title="Click to refresh CAPTCHA">
+                      4P7M9L
+                    </div>
+                    <button type="button" onclick="generateCaptcha('farmer')" class="btn btn-gold btn-sm" style="padding: 6px 10px;" title="Refresh CAPTCHA"><i class="fa-solid fa-arrows-rotate"></i></button>
+                    <input type="text" id="farmer-captcha-input" placeholder="Enter CAPTCHA" required style="flex: 1; margin-bottom: 0; text-transform: uppercase;">
+                  </div>
                 </div>
 
                 <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:15px;">
@@ -248,6 +278,9 @@
               <div id="farmer-reset-otp-block" class="form-group hidden">
                 <label>Enter 6-Digit Gmail OTP</label>
                 <input type="text" id="reset-farmer-otp" placeholder="Enter OTP received in Gmail">
+                <div id="farmer-reset-otp-countdown-info" class="otp-timer-badge hidden" style="margin-top: 8px; font-size: 0.85em; color: #c1121f; font-weight: bold; text-align: center;">
+                  ⏱️ OTP Valid for: <span id="farmer-reset-otp-seconds">60</span>s
+                </div>
               </div>
 
               <div id="farmer-reset-new-pass-block" class="form-group hidden">
@@ -277,6 +310,41 @@
       <div id="app-section" class="hidden">
         
         <div id="tab-dashboard" class="tab-content">
+          <div class="card" style="margin-bottom: 18px; border-left: 5px solid var(--gold); background: #fdfbf7;">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+              <div>
+                <h3 style="color: var(--primary); margin: 0;"><i class="fa-solid fa-house-chimney-user"></i> Village Station & Billing Cycle Configuration</h3>
+                <p style="color: #666; font-size: 0.9em; margin-top: 4px; margin-bottom: 0;">Set your village CAN number and milk billing cycle period (saved for all future logins).</p>
+              </div>
+              <span class="badge" style="background: var(--primary); color: white; padding: 6px 14px; border-radius: 20px; font-weight: bold; font-size: 0.9em;">
+                Active CAN: <span id="current-can-display">CAN-PLM-2026-01</span>
+              </span>
+            </div>
+            
+            <form id="station-config-form" style="margin-top: 15px; display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; align-items: end;">
+              <div class="form-group" style="margin-bottom: 0;">
+                <label><strong>Agent CAN Number *</strong></label>
+                <input type="text" id="station-can-input" value="CAN-PLM-2026-01" required placeholder="e.g. CAN-PLM-2026-01">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label><strong>Village Name *</strong></label>
+                <input type="text" id="station-village-input" value="Palamaner Village" required placeholder="e.g. Palamaner Village">
+              </div>
+              <div class="form-group" style="margin-bottom: 0;">
+                <label><strong>Village Milk Bill Cycle *</strong></label>
+                <select id="station-cycle-select" required>
+                  <option value="10-day">10-Day Cycle (1st-10th, 11th-20th, 21st-End)</option>
+                  <option value="15-day">15-Day Cycle (1st-15th, 16th-End)</option>
+                  <option value="monthly">Monthly Cycle (1st to End of Month)</option>
+                  <option value="weekly">Weekly Cycle (7 Days)</option>
+                </select>
+              </div>
+              <div>
+                <button type="submit" class="btn btn-success" style="width: 100%;"><i class="fa-solid fa-save"></i> Save Village Setup</button>
+              </div>
+            </form>
+          </div>
+
           <div class="ai-dashboard-card">
             <div class="ai-header-bar">
               <div>
@@ -824,9 +892,14 @@
               <button class="btn btn-success" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Clean Sheet</button>
               <p style="font-size: 0.85em; color: #777;">Developed by: K Harish, N Adithya and A Naveen</p>
             </div>
+        <footer class="portal-footer-bar no-print" style="margin-top: 25px; padding: 12px 20px; background: #1b4332; color: #fff; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9em; border-left: 4px solid var(--gold);">
+          <div>
+            <i class="fa-solid fa-house-laptop"></i> <strong>Agent Portal Active</strong> | Village: <span id="footer-village-display">Palamaner Village</span> | CAN: <span id="footer-can-display">CAN-PLM-2026-01</span> | Cycle: <span id="footer-cycle-display">10-Day</span>
           </div>
-        </div>
-
+          <div>
+            <span id="footer-otp-status"><i class="fa-solid fa-shield"></i> Security Verified</span>
+          </div>
+        </footer>
       </div>
 
       <div id="farmer-portal-section" class="hidden">
@@ -1040,9 +1113,14 @@
               </div>
               <button type="submit" class="btn btn-gold"><i class="fa-solid fa-paper-plane"></i> Submit Feedback to Agent</button>
             </form>
+        <footer class="portal-footer-bar no-print" style="margin-top: 25px; padding: 12px 20px; background: #1b4332; color: #fff; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; font-size: 0.9em; border-left: 4px solid var(--gold);">
+          <div>
+            <i class="fa-solid fa-tractor"></i> <strong>Farmer Portal Active</strong> | Station: Palamaner Center | Auto-Deduction Engine Active
           </div>
-        </div>
-
+          <div>
+            <span id="farmer-footer-otp-status"><i class="fa-solid fa-shield-check"></i> Security Verified</span>
+          </div>
+        </footer>
       </div>
 
     </div>

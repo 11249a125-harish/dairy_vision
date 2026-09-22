@@ -306,7 +306,7 @@ app.post('/api/send-otp', async (req, res) => {
 
   const formattedEmail = email.toLowerCase().trim();
   const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = Date.now() + 5 * 60 * 1000;
+  const expiresAt = Date.now() + 1 * 60 * 1000;
   otpStore[formattedEmail] = { otp: generatedOtp, expiresAt };
 
   try {
@@ -321,12 +321,12 @@ app.post('/api/send-otp', async (req, res) => {
           <div style="text-align: center; margin: 20px 0;">
             <h1 style="color: #ffb703; background: #1b4332; display: inline-block; padding: 12px 28px; border-radius: 6px; letter-spacing: 4px;">${generatedOtp}</h1>
           </div>
-          <p style="color: #666; font-size: 0.9em;">This OTP code will expire in 5 minutes.</p>
+          <p style="color: #c1121f; font-size: 0.9em; font-weight: bold;">⚡ This OTP code will expire in 1 minute (60 seconds).</p>
         </div>
       `
     });
 
-    return res.json({ success: true, message: `Verification code dispatched to ${formattedEmail}`, otp: generatedOtp });
+    return res.json({ success: true, message: `Verification code dispatched to ${formattedEmail} (Valid for 1 min)`, otp: generatedOtp });
   } catch (err) {
     return res.status(500).json({ success: false, message: err.message || 'Failed to send OTP email.' });
   }

@@ -377,11 +377,19 @@ async function handleSendOTP(emailInputId, contextPurpose) {
       
       if (emailInputId === 'agent-email-input') {
         document.getElementById('agent-login-otp-block')?.classList.remove('hidden');
+        startOtpCountdown('agent-otp-seconds', 'agent-otp-countdown-info');
+      } else if (emailInputId === 'reset-agent-email') {
+        document.getElementById('reset-otp-block')?.classList.remove('hidden');
+        startOtpCountdown('reset-otp-seconds', 'reset-otp-countdown-info');
       } else if (emailInputId === 'farmer-email') {
         document.getElementById('aadhaar-otp-block')?.classList.remove('hidden');
         document.getElementById('complete-reg-btn')?.classList.remove('hidden');
       } else if (emailInputId === 'farmer-login-email') {
         document.getElementById('farmer-login-otp-block')?.classList.remove('hidden');
+        startOtpCountdown('farmer-otp-seconds', 'farmer-otp-countdown-info');
+      } else if (emailInputId === 'reset-farmer-email') {
+        document.getElementById('farmer-reset-otp-block')?.classList.remove('hidden');
+        startOtpCountdown('farmer-reset-otp-seconds', 'farmer-reset-otp-countdown-info');
       }
     } else {
       showAlert(data.message || 'Error sending OTP email.', 'danger');
@@ -390,7 +398,11 @@ async function handleSendOTP(emailInputId, contextPurpose) {
     console.error('Send OTP Error:', err);
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     otpStore[email] = otp;
-    showAlert(`[Dev Mode OTP] Verification code: ${otp}`, 'info');
+    showAlert(`[Dev Mode OTP] Verification code: ${otp} (Valid for 1 min)`, 'info');
+    if (emailInputId === 'agent-email-input') startOtpCountdown('agent-otp-seconds', 'agent-otp-countdown-info');
+    else if (emailInputId === 'reset-agent-email') startOtpCountdown('reset-otp-seconds', 'reset-otp-countdown-info');
+    else if (emailInputId === 'farmer-login-email') startOtpCountdown('farmer-otp-seconds', 'farmer-otp-countdown-info');
+    else if (emailInputId === 'reset-farmer-email') startOtpCountdown('farmer-reset-otp-seconds', 'farmer-reset-otp-countdown-info');
   }
 }
 
@@ -518,14 +530,110 @@ function handleBookingDateChange() {
   }
 }
 
+let currentCaptchas = { agent: '', farmer: '' };
+let otpTimerInterval = null;
+let otpSecondsRemaining = 60;
+
+function generateCaptcha(role = 'agent') {
+  const chars = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  currentCaptchas[role] = code;
+  const box = document.getElementById(`${role}-captcha-box`);
+  if (box) box.textContent = code;
+}
+
+function verifyCaptcha(role = 'agent') {
+  const input = document.getElementById(`${role}-captcha-input`);
+  if (!input) return true;
+  const val = input.value.trim().toUpperCase();
+  if (!val || val !== currentCaptchas[role]) {
+    showAlert('Invalid Security CAPTCHA code! Please re-enter the 6-character code.', 'danger');
+    generateCaptcha(role);
+    input.value = '';
+    input.focus();
+    return false;
+  }
+  return true;
+}
+
+function startOtpCountdown(timerSpanId, infoBoxId) {
+  if (otpTimerInterval) clearInterval(otpTimerInterval);
+  otpSecondsRemaining = 60;
+
+  const span = document.getElementById(timerSpanId);
+  const info = document.getElementById(infoBoxId);
+  if (info) info.classList.remove('hidden');
+  if (span) span.textContent = '60';
+
+  const footerTimer = document.getElementById('footer-otp-status');
+  const farmerFooterTimer = document.getElementById('farmer-footer-otp-status');
+
+  otpTimerInterval = setInterval(() => {
+    otpSecondsRemaining--;
+    if (span) span.textContent = String(otpSecondsRemaining);
+
+    const timerHtml = `<i class="fa-solid fa-stopwatch" style="color:#ffb703;"></i> OTP Valid: <span style="color:#ffb703; font-weight:bold;">${otpSecondsRemaining}s</span>`;
+    if (footerTimer) footerTimer.innerHTML = timerHtml;
+    if (farmerFooterTimer) farmerFooterTimer.innerHTML = timerHtml;
+
+    if (otpSecondsRemaining <= 0) {
+      clearInterval(otpTimerInterval);
+      if (span) span.textContent = '0 (Expired)';
+      const expiredHtml = `<i class="fa-solid fa-triangle-exclamation" style="color:#ff4d4f;"></i> OTP Expired (Resend Code)`;
+      if (footerTimer) footerTimer.innerHTML = expiredHtml;
+      if (farmerFooterTimer) farmerFooterTimer.innerHTML = expiredHtml;
+    }
+  }, 1000);
+}
+
+function updateCanDisplays() {
+  const can = DB.agentCAN || 'CAN-PLM-2026-01';
+  const village = (DB.billingCycle && DB.billingCycle.villageName) ? DB.billingCycle.villageName : 'Palamaner Village';
+  const cycle = (DB.billingCycle && DB.billingCycle.cycleType) ? DB.billingCycle.cycleType.toUpperCase() : '10-DAY';
+
+  const canInput = document.getElementById('agent-can-input');
+  if (canInput) canInput.value = can;
+
+  const stCanInput = document.getElementById('station-can-input');
+  if (stCanInput) stCanInput.value = can;
+
+  const stVillageInput = document.getElementById('station-village-input');
+  if (stVillageInput) stVillageInput.value = village;
+
+  const stCycleSelect = document.getElementById('station-cycle-select');
+  if (stCycleSelect && DB.billingCycle && DB.billingCycle.cycleType) {
+    stCycleSelect.value = DB.billingCycle.cycleType;
+  }
+
+  const curCan = document.getElementById('current-can-display');
+  if (curCan) curCan.textContent = can;
+
+  const footCan = document.getElementById('footer-can-display');
+  if (footCan) footCan.textContent = can;
+
+  const footVillage = document.getElementById('footer-village-display');
+  if (footVillage) footVillage.textContent = village;
+
+  const footCycle = document.getElementById('footer-cycle-display');
+  if (footCycle) footCycle.textContent = cycle;
+
+  document.querySelectorAll('.sync-can-display').forEach(el => el.textContent = can);
+}
+
 function switchTab(tabId) {
+  if (tabId === 'deduction') {
+    showAlert('Deductions management is handled automatically via Farmer Requirement Approvals.', 'info');
+    tabId = 'dashboard';
+  }
   document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
   document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
   document.getElementById(`tab-${tabId}`)?.classList.remove('hidden');
   
   if (tabId === 'farmers') renderFarmers();
   else if (tabId === 'collection') { renderCollections(); populateDropdowns(); loadRateSettings(); }
-  else if (tabId === 'deduction') populateDropdowns();
   else if (tabId === 'bookings') renderAgentBookings();
   else if (tabId === 'reports') populateDropdowns();
 }
@@ -535,6 +643,8 @@ function switchLoginRole(role) {
   document.getElementById('btn-role-farmer')?.classList.toggle('active', role === 'farmer');
   document.getElementById('agent-auth-wrapper')?.classList.toggle('hidden', role !== 'agent');
   document.getElementById('farmer-auth-wrapper')?.classList.toggle('hidden', role !== 'farmer');
+  generateCaptcha('agent');
+  generateCaptcha('farmer');
 }
 
 function toggleAgentAuthMode(mode) {
@@ -554,11 +664,13 @@ function toggleFarmerAuthMode(mode) {
 function toggleAgentResetPass(show) {
   document.getElementById('agent-login-form')?.classList.toggle('hidden', show);
   document.getElementById('agent-reset-form')?.classList.toggle('hidden', !show);
+  generateCaptcha('agent');
 }
 
 function toggleFarmerResetPass(show) {
   document.getElementById('farmer-login-form')?.classList.toggle('hidden', show);
   document.getElementById('farmer-reset-form')?.classList.toggle('hidden', !show);
+  generateCaptcha('farmer');
 }
 
 function sendAgentLoginOtp() { handleSendOTP('agent-email-input', 'Agent Portal Login'); }
@@ -581,14 +693,23 @@ function verifyGmailOtp() { handleSendOTP('farmer-email', 'Farmer Registration V
 
 function getBillingPeriod(dateStr, mode = '10-DAY') {
   if (!dateStr) return '--';
+  const effectiveMode = (DB.billingCycle && DB.billingCycle.cycleType) ? DB.billingCycle.cycleType.toUpperCase() : mode;
   const d = new Date(dateStr);
   const year = d.getFullYear();
   const month = String(d.getMonth() + 1).padStart(2, '0');
   const day = d.getDate();
 
-  if (mode === '15-DAY') {
+  if (effectiveMode.includes('15')) {
     if (day <= 15) return `${year}-${month}-01 to ${year}-${month}-15`;
     return `${year}-${month}-16 to ${year}-${month}-31`;
+  }
+  if (effectiveMode.includes('MONTH') || effectiveMode.includes('30')) {
+    return `${year}-${month}-01 to ${year}-${month}-31`;
+  }
+  if (effectiveMode.includes('WEEK') || effectiveMode.includes('7')) {
+    const startDay = Math.floor((day - 1) / 7) * 7 + 1;
+    const endDay = Math.min(31, startDay + 6);
+    return `${year}-${month}-${String(startDay).padStart(2,'0')} to ${year}-${month}-${String(endDay).padStart(2,'0')}`;
   }
   if (day <= 10) return `${year}-${month}-01 to ${year}-${month}-10`;
   if (day <= 20) return `${year}-${month}-11 to ${year}-${month}-20`;
@@ -604,8 +725,11 @@ function initAppView(role) {
     document.getElementById('sidebar')?.classList.remove('hidden');
     document.getElementById('farmer-portal-section')?.classList.add('hidden');
     document.getElementById('active-user-label').innerText = `Agent: ${currentAgentEmail}`;
+    updateCanDisplays();
     loadRateSettings();
     updateDashboardMetrics();
+    renderFarmers();
+    renderAgentBookings();
     renderFarmers();
     renderAgentBookings();
   } else {
@@ -1540,6 +1664,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('agent-login-form')?.addEventListener('submit', function(e) {
     e.preventDefault();
+    if (!verifyCaptcha('agent')) return;
     const email = document.getElementById('agent-email-input').value.trim().toLowerCase();
     const isRegistered = ALLOWED_AGENTS.includes(email) || Boolean(DB.agentAccounts[email]);
     if (!isRegistered) {
@@ -1654,6 +1779,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('farmer-login-form')?.addEventListener('submit', function(e) {
     e.preventDefault();
+    if (!verifyCaptcha('farmer')) return;
     const email = document.getElementById('farmer-login-email').value.trim().toLowerCase();
     const farmer = DB.farmers.find(f => f.email === email);
     if (!farmer) {
@@ -1692,6 +1818,32 @@ document.addEventListener('DOMContentLoaded', () => {
       toggleFarmerResetPass(false);
     });
   });
+
+  document.getElementById('station-config-form')?.addEventListener('submit', function(e) {
+    e.preventDefault();
+    const newCAN = document.getElementById('station-can-input').value.trim();
+    const newVillage = document.getElementById('station-village-input').value.trim();
+    const newCycle = document.getElementById('station-cycle-select').value;
+
+    if (!newCAN) {
+      showAlert('Please enter a valid CAN number.', 'danger');
+      return;
+    }
+
+    DB.agentCAN = newCAN;
+    if (!DB.billingCycle) DB.billingCycle = {};
+    DB.billingCycle.cycleType = newCycle;
+    DB.billingCycle.villageName = newVillage;
+    DB.billingCycle.updatedAt = new Date().toISOString();
+
+    saveDB();
+    updateCanDisplays();
+    showAlert(`Village Station Setup Saved! CAN: ${newCAN} | Village: ${newVillage} | Cycle: ${newCycle}`);
+    addAiLog('tag-audit', 'AI-STATION-CONFIG', `Agent updated station setup: CAN=${newCAN}, Village=${newVillage}, Cycle=${newCycle}`);
+  });
+
+  generateCaptcha('agent');
+  generateCaptcha('farmer');
 
   // Start automated periodic background backup to MongoDB (every 2 minutes)
   setInterval(() => {
