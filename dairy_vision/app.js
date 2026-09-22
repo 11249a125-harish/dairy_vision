@@ -96,12 +96,14 @@ function getScopedDeductions() {
 
 let autoBackupDebounceTimer = null;
 
-function saveDB() {
+function saveDB(triggerCloudBackup = false) {
   localStorage.setItem('SMART_DAIRY_GLOBAL_DB', JSON.stringify(DB));
-  if (autoBackupDebounceTimer) clearTimeout(autoBackupDebounceTimer);
-  autoBackupDebounceTimer = setTimeout(() => {
-    backupToMongoDB(true);
-  }, 1500);
+  if (triggerCloudBackup) {
+    if (autoBackupDebounceTimer) clearTimeout(autoBackupDebounceTimer);
+    autoBackupDebounceTimer = setTimeout(() => {
+      backupToMongoDB(true);
+    }, 5000);
+  }
 }
 
 function calculateMilkRate(type, fat, snf) {
@@ -272,20 +274,23 @@ function renderAgentFeedbacks() {
   }).join('');
 }
 
-async function syncFromMongoDB() {
+async function syncFromMongoDB(isSilent = false) {
   try {
-    addLog('Connecting to MongoDB Database Service...');
-    addAiLog('tag-db', 'AI-DB-SYNC', 'Querying MongoDB database collections...');
+    if (!isSilent) {
+      addLog('Connecting to MongoDB Database Service...');
+      addAiLog('tag-db', 'AI-DB-SYNC', 'Querying MongoDB database collections...');
+    }
     
     const qEmail = currentAgentEmail ? `?agentEmail=${encodeURIComponent(currentAgentEmail)}` : '';
-    const [farmersRes, collectionsRes, bookingsRes, deductionsRes, agentsRes, ratesRes, feedbacksRes] = await Promise.allSettled([
+    const [farmersRes, collectionsRes, bookingsRes, deductionsRes, agentsRes, ratesRes, feedbacksRes, stationConfigRes] = await Promise.allSettled([
       fetch(`${API_BASE_URL}/api/farmers${qEmail}`),
       fetch(`${API_BASE_URL}/api/collections${qEmail}`),
       fetch(`${API_BASE_URL}/api/bookings${qEmail}`),
       fetch(`${API_BASE_URL}/api/deductions${qEmail}`),
       fetch(`${API_BASE_URL}/api/agents`),
       fetch(`${API_BASE_URL}/api/rates${qEmail}`),
-      fetch(`${API_BASE_URL}/api/feedbacks`)
+      fetch(`${API_BASE_URL}/api/feedbacks`),
+      fetch(`${API_BASE_URL}/api/station-config${qEmail}`)
     ]);
 
     if (farmersRes.status === 'fulfilled' && farmersRes.value.ok) {
@@ -368,27 +373,36 @@ async function syncFromMongoDB() {
       }
     }
 
-    saveDB();
-    loadRateSettings();
-    updateNoticeBoardRates();
-    renderDeductions();
-    renderAgentFeedbacks();
-    addLog('MongoDB Database sync complete!');
-    addAiLog('tag-db', 'AI-DB-SYNC', 'MongoDB cloud database synchronized cleanly.');
-  } catch (err) {
-    console.warn('MongoDB Sync Warning:', err.message);
-  }
-}
+    if (stationConfigRes.status === 'fulfilled' && stationConfigRes.value.ok) {
+      const data = await stationConfigRes.value.json();
+      if (data.config && data.config.can) {
+        const cfg = getAgentConfig(currentAgentEmail);
+        cfg.can = data.config.can;
+        cfg.village = data.config.village || cfg.village;
+        cfg.cycle = data.config.cycle || cfg.cycle;
+        DB.agentCAN = data.config.can;
+      }
+    }
 
-    saveDB();
+    saveDB(false);
     loadRateSettings();
     updateNoticeBoardRates();
+    updateCanDisplays();
+    renderFarmers();
+    renderCollections();
+    renderAgentBookings();
     renderDeductions();
+    updateDashboardMetrics();
     renderAgentFeedbacks();
-    addLog('MongoDB Database sync complete!');
-    addAiLog('tag-db', 'AI-DB-SYNC', 'MongoDB cloud database synchronized cleanly.');
+    populateDropdowns();
+    if (currentFarmer) renderFarmerPortal();
+
+    if (!isSilent) {
+      addLog('MongoDB Database sync complete!');
+      addAiLog('tag-db', 'AI-DB-SYNC', 'MongoDB cloud database synchronized cleanly.');
+    }
   } catch (err) {
-    console.warn('MongoDB Sync Warning:', err.message);
+    if (!isSilent) console.warn('MongoDB Sync Warning:', err.message);
   }
 }
 
@@ -2067,6 +2081,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     saveDB();
     updateCanDisplays();
+
+    fetch(`${API_BASE_URL}/api/station-config`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agentEmail: currentAgentEmail || '', can: newCAN, village: newVillage, cycle: newCycle })
+    }).catch(err => console.warn('Station config sync offline:', err));
+
     showAlert(`Village Station Setup Saved! CAN: ${newCAN} | Village: ${newVillage} | Cycle: ${newCycle}`);
     addAiLog('tag-audit', 'AI-STATION-CONFIG', `Agent ${currentAgentEmail || ''} updated station setup: CAN=${newCAN}, Village=${newVillage}, Cycle=${newCycle}`);
   });
@@ -2074,8 +2095,10 @@ document.addEventListener('DOMContentLoaded', () => {
   generateCaptcha('agent');
   generateCaptcha('farmer');
 
-  // Start automated periodic background backup to MongoDB (every 2 minutes)
+  // Multi-PC Real-Time Syncing: Auto-poll MongoDB every 5 seconds for live multi-PC updates across agents and farmers
   setInterval(() => {
-    backupToMongoDB(true);
-  }, 2 * 60 * 1000);
+    if (currentAgentEmail || currentFarmer) {
+      syncFromMongoDB(true);
+    }
+  }, 5000);
 });

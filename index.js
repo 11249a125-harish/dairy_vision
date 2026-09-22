@@ -48,6 +48,14 @@ const rateConfigSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
+const stationConfigSchema = new mongoose.Schema({
+  agentEmail: { type: String, required: true, unique: true, index: true },
+  can: { type: String, default: 'CAN-PLM-2026-01' },
+  village: { type: String, default: 'Palamaner Village' },
+  cycle: { type: String, default: '10-DAY' },
+  updatedAt: { type: Date, default: Date.now }
+});
+
 const farmerSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true, index: true }, // Primary Key
   name: { type: String, required: true },
@@ -134,6 +142,7 @@ const backupSchema = new mongoose.Schema({
 
 const Agent = mongoose.model('Agent', agentSchema);
 const RateConfig = mongoose.model('RateConfig', rateConfigSchema);
+const StationConfig = mongoose.model('StationConfig', stationConfigSchema);
 const Farmer = mongoose.model('Farmer', farmerSchema);
 const Collection = mongoose.model('Collection', collectionSchema);
 const Booking = mongoose.model('Booking', bookingSchema);
@@ -307,6 +316,33 @@ app.post('/api/rates', async (req, res) => {
       return res.json({ success: true, rates });
     }
     res.json({ success: true, rates: req.body });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.get('/api/station-config', async (req, res) => {
+  try {
+    const agentEmail = (req.query.agentEmail || '').toLowerCase().trim();
+    if (mongoose.connection.readyState === 1 && agentEmail) {
+      const config = await StationConfig.findOne({ agentEmail });
+      return res.json({ success: true, config: config || {} });
+    }
+    res.json({ success: true, config: {} });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/station-config', async (req, res) => {
+  try {
+    const agentEmail = (req.body.agentEmail || '').toLowerCase().trim();
+    if (!agentEmail) return res.status(400).json({ success: false, message: 'agentEmail is required.' });
+    if (mongoose.connection.readyState === 1) {
+      const config = await StationConfig.findOneAndUpdate({ agentEmail }, req.body, { upsert: true, new: true });
+      return res.json({ success: true, config });
+    }
+    res.json({ success: true, config: req.body });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
