@@ -847,7 +847,7 @@ app.post('/api/backup/restore', async (req, res) => {
 // ADMIN MODULE — All /api/admin/* routes
 // ============================================================
 
-const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@smartdairy.com').toLowerCase().trim();
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '11249a125@kanchiuniv.ac.in').toLowerCase().trim();
 const ADMIN_PASSWORD_ENV = process.env.ADMIN_PASSWORD || 'Admin@2026';
 
 // AdminConfig — stores password override if admin resets via OTP
