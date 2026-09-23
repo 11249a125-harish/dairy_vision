@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
@@ -24,11 +24,11 @@ app.use((req, res, next) => {
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-  console.warn('⚠️ WARNING: MONGODB_URI environment variable is missing. Running with in-memory fallback.');
+  console.warn('âš ï¸ WARNING: MONGODB_URI environment variable is missing. Running with in-memory fallback.');
 } else {
   mongoose.connect(MONGODB_URI)
-    .then(() => console.log('🍃 Connected to MongoDB Atlas Database'))
-    .catch(err => console.error('❌ MongoDB Connection Error:', err.message));
+    .then(() => console.log('ðŸƒ Connected to MongoDB Atlas Database'))
+    .catch(err => console.error('âŒ MongoDB Connection Error:', err.message));
 }
 
 const agentSchema = new mongoose.Schema({
@@ -204,7 +204,7 @@ async function sendEmailHelper({ toEmail, toName, subject, htmlContent }) {
         html: htmlContent
       });
 
-      console.log(`✉️ Email dispatched via SMTP to ${toEmail}. Message ID: ${info.messageId}`);
+      console.log(`âœ‰ï¸ Email dispatched via SMTP to ${toEmail}. Message ID: ${info.messageId}`);
       return { success: true, method: 'SMTP', messageId: info.messageId };
     } catch (err) {
       console.error('SMTP Email Error:', err.message);
@@ -229,7 +229,7 @@ async function sendEmailHelper({ toEmail, toName, subject, htmlContent }) {
       });
 
       if (response.ok) {
-        console.log(`✉️ Email dispatched via Brevo API to ${toEmail}`);
+        console.log(`âœ‰ï¸ Email dispatched via Brevo API to ${toEmail}`);
         return { success: true, method: 'Brevo' };
       }
     } catch (err) {
@@ -238,7 +238,7 @@ async function sendEmailHelper({ toEmail, toName, subject, htmlContent }) {
   }
 
   console.log(`\n======================================================`);
-  console.log(`📧 SIMULATED EMAIL DISPATCH (No active SMTP / Brevo key configured)`);
+  console.log(`ðŸ“§ SIMULATED EMAIL DISPATCH (No active SMTP / Brevo key configured)`);
   console.log(`TO: ${toEmail} (${toName || 'User'})`);
   console.log(`SUBJECT: ${subject}`);
   console.log(`======================================================\n`);
@@ -371,7 +371,7 @@ app.post('/api/send-otp', async (req, res) => {
           <div style="text-align: center; margin: 20px 0;">
             <h1 style="color: #ffb703; background: #1b4332; display: inline-block; padding: 12px 28px; border-radius: 6px; letter-spacing: 4px;">${generatedOtp}</h1>
           </div>
-          <p style="color: #c1121f; font-size: 0.9em; font-weight: bold;">⚡ This OTP code will expire in 1 minute (60 seconds).</p>
+          <p style="color: #c1121f; font-size: 0.9em; font-weight: bold;">âš¡ This OTP code will expire in 1 minute (60 seconds).</p>
         </div>
       `
     });
@@ -484,11 +484,11 @@ app.post('/api/send-milk-bill', async (req, res) => {
             </tr>
             <tr>
               <td style="padding: 12px; border: 1px solid #e5e7eb;"><strong>Rate per Liter:</strong></td>
-              <td style="padding: 12px; border: 1px solid #e5e7eb;">₹${finalRate.toFixed(2)}</td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;">â‚¹${finalRate.toFixed(2)}</td>
             </tr>
             <tr style="background-color: #eaf5ec;">
               <td style="padding: 14px; border: 1px solid #c8e6c9; font-size: 16px;"><strong>Total Amount:</strong></td>
-              <td style="padding: 14px; border: 1px solid #c8e6c9; font-size: 18px; color: #2e7d32; font-weight: bold;">₹${finalTotal.toFixed(2)}</td>
+              <td style="padding: 14px; border: 1px solid #c8e6c9; font-size: 18px; color: #2e7d32; font-weight: bold;">â‚¹${finalTotal.toFixed(2)}</td>
             </tr>
           </table>
 
@@ -561,7 +561,7 @@ app.post('/api/send-requirement-slip', async (req, res) => {
             </tr>
             <tr style="background-color: #e8f5e9;">
               <td style="padding: 12px; border: 1px solid #ddd; font-size: 15px;"><strong>Cost Amount:</strong></td>
-              <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px; color: #1b4332;"><strong>₹${finalCost}</strong></td>
+              <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px; color: #1b4332;"><strong>â‚¹${finalCost}</strong></td>
             </tr>
           </table>
 
@@ -844,13 +844,47 @@ app.post('/api/backup/restore', async (req, res) => {
 });
 
 // ============================================================
-// ADMIN MODULE — All /api/admin/* routes
+// AGENT VERIFY â€” Dynamic login check (replaces hardcoded list)
+// ============================================================
+
+// POST /api/agent/verify â€” Verify agent login credentials from MongoDB
+app.post('/api/agent/verify', async (req, res) => {
+  const email = (req.body.email || '').toLowerCase().trim();
+  const password = (req.body.password || '').trim();
+  if (!email) return res.status(400).json({ success: false, message: 'Email is required.' });
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      // Offline mode: allow login (DB unreachable)
+      return res.json({ success: true, offlineMode: true, agentEmail: email });
+    }
+    const agent = await Agent.findOne({ email });
+    if (!agent) {
+      return res.status(404).json({ success: false, message: 'Agent not registered. Please contact admin to create your account.' });
+    }
+    if (agent.password && password && agent.password !== password) {
+      return res.status(401).json({ success: false, message: 'Incorrect password.' });
+    }
+    const stationConfig = await StationConfig.findOne({ agentEmail: email });
+    return res.json({
+      success: true,
+      agentEmail: agent.email,
+      can: stationConfig?.can || '10100',
+      village: stationConfig?.village || '',
+      cycle: stationConfig?.cycle || '10-DAY'
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// ============================================================
+// ADMIN MODULE â€” All /api/admin/* routes
 // ============================================================
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '11249a125@kanchiuniv.ac.in').toLowerCase().trim();
 const ADMIN_PASSWORD_ENV = process.env.ADMIN_PASSWORD || 'Admin@2026';
 
-// AdminConfig — stores password override if admin resets via OTP
+// AdminConfig â€” stores password override if admin resets via OTP
 const adminConfigSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true },
   value: { type: String, required: true },
@@ -878,7 +912,7 @@ async function verifyAdminToken(req, res) {
   return true;
 }
 
-// POST /api/admin/login — Verify admin credentials (checks DB override first, then env)
+// POST /api/admin/login â€” Verify admin credentials (checks DB override first, then env)
 app.post('/api/admin/login', async (req, res) => {
   const email = (req.body.email || '').toLowerCase().trim();
   const password = (req.body.password || '').trim();
@@ -889,7 +923,7 @@ app.post('/api/admin/login', async (req, res) => {
   return res.status(401).json({ success: false, message: 'Invalid admin credentials. Check email and password.' });
 });
 
-// POST /api/admin/forgot-password — Send OTP to admin email for password reset
+// POST /api/admin/forgot-password â€” Send OTP to admin email for password reset
 app.post('/api/admin/forgot-password', async (req, res) => {
   const email = (req.body.email || '').toLowerCase().trim();
   if (email !== ADMIN_EMAIL) {
@@ -905,12 +939,12 @@ app.post('/api/admin/forgot-password', async (req, res) => {
       subject: `Admin Password Reset OTP: ${otp}`,
       htmlContent: `
         <div style="font-family:Arial,sans-serif; max-width:500px; padding:24px; border:2px solid #4a0072; border-radius:10px;">
-          <h2 style="color:#4a0072; text-align:center;">Smart Dairy — Admin Password Reset</h2>
+          <h2 style="color:#4a0072; text-align:center;">Smart Dairy â€” Admin Password Reset</h2>
           <p>A password reset was requested for the admin account.</p>
           <div style="text-align:center; margin:20px 0;">
             <h1 style="color:#fff; background:#4a0072; display:inline-block; padding:12px 28px; border-radius:6px; letter-spacing:4px;">${otp}</h1>
           </div>
-          <p style="color:#c1121f; font-weight:bold;">⚡ This OTP is valid for 5 minutes only.</p>
+          <p style="color:#c1121f; font-weight:bold;">âš¡ This OTP is valid for 5 minutes only.</p>
           <p style="color:#555; font-size:0.9em;">If you did not request this, ignore this email.</p>
         </div>`
     });
@@ -920,7 +954,7 @@ app.post('/api/admin/forgot-password', async (req, res) => {
   }
 });
 
-// POST /api/admin/reset-password — Verify OTP and set new admin password in DB
+// POST /api/admin/reset-password â€” Verify OTP and set new admin password in DB
 app.post('/api/admin/reset-password', async (req, res) => {
   const email = (req.body.email || '').toLowerCase().trim();
   const otp = (req.body.otp || '').trim();
@@ -947,7 +981,7 @@ app.post('/api/admin/reset-password', async (req, res) => {
 });
 
 
-// GET /api/admin/overview — Aggregate stats across all agents
+// GET /api/admin/overview â€” Aggregate stats across all agents
 app.get('/api/admin/overview', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1006,7 +1040,7 @@ app.get('/api/admin/overview', async (req, res) => {
   }
 });
 
-// GET /api/admin/agents — All agents with station configs & farmer counts
+// GET /api/admin/agents â€” All agents with station configs & farmer counts
 app.get('/api/admin/agents', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1040,7 +1074,7 @@ app.get('/api/admin/agents', async (req, res) => {
   }
 });
 
-// POST /api/admin/agents/:email/reset-password — Reset agent password
+// POST /api/admin/agents/:email/reset-password â€” Reset agent password
 app.post('/api/admin/agents/:email/reset-password', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   const email = (req.params.email || '').toLowerCase().trim();
@@ -1060,7 +1094,7 @@ app.post('/api/admin/agents/:email/reset-password', async (req, res) => {
   }
 });
 
-// DELETE /api/admin/agents/:email — Remove/delete an agent account
+// DELETE /api/admin/agents/:email â€” Remove/delete an agent account
 app.delete('/api/admin/agents/:email', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   const email = (req.params.email || '').toLowerCase().trim();
@@ -1077,7 +1111,7 @@ app.delete('/api/admin/agents/:email', async (req, res) => {
   }
 });
 
-// GET /api/admin/farmers — All farmers across all agents
+// GET /api/admin/farmers â€” All farmers across all agents
 app.get('/api/admin/farmers', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1091,7 +1125,7 @@ app.get('/api/admin/farmers', async (req, res) => {
   }
 });
 
-// GET /api/admin/collections — All collections with optional date filter
+// GET /api/admin/collections â€” All collections with optional date filter
 app.get('/api/admin/collections', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1111,7 +1145,7 @@ app.get('/api/admin/collections', async (req, res) => {
   }
 });
 
-// PUT /api/admin/collections/:id — Edit any collection entry (admin override)
+// PUT /api/admin/collections/:id â€” Edit any collection entry (admin override)
 app.put('/api/admin/collections/:id', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1126,7 +1160,7 @@ app.put('/api/admin/collections/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/admin/collections/:id — Delete any collection entry (admin override)
+// DELETE /api/admin/collections/:id â€” Delete any collection entry (admin override)
 app.delete('/api/admin/collections/:id', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1140,7 +1174,103 @@ app.delete('/api/admin/collections/:id', async (req, res) => {
   }
 });
 
+
+// POST /api/admin/register-agent — Admin creates a new agent account
+app.post('/api/admin/register-agent', async (req, res) => {
+  if (!await verifyAdminToken(req, res)) return;
+  const email = (req.body.email || '').toLowerCase().trim();
+  const password = (req.body.password || 'agent123').trim();
+  const village = (req.body.village || '').trim();
+  const cycle = (req.body.cycle || '10-DAY').trim();
+  if (!email) return res.status(400).json({ success: false, message: 'Agent email is required.' });
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const existing = await Agent.findOne({ email });
+      if (existing) return res.status(409).json({ success: false, message: `Agent ${email} is already registered.` });
+      const agentCount = await Agent.countDocuments();
+      const can = (req.body.can && req.body.can.trim()) ? req.body.can.trim() : String(10100 + agentCount);
+      await Agent.create({ email, password });
+      await StationConfig.findOneAndUpdate({ agentEmail: email }, { agentEmail: email, can, village, cycle }, { upsert: true, new: true });
+      try {
+        await sendEmailHelper({
+          toEmail: email, toName: 'Agent',
+          subject: 'Welcome to Smart Dairy - Your Agent Account is Ready',
+          htmlContent: `<div style="font-family:Arial,sans-serif;max-width:520px;padding:24px;border:2px solid #1b4332;border-radius:10px;"><h2 style="color:#1b4332;text-align:center;">Smart Dairy - Agent Account Created</h2><p>Your agent account has been created by the admin. Use the details below to login:</p><table style="width:100%;margin:16px 0;border-collapse:collapse;"><tr><td style="padding:8px;background:#f0fdf4;font-weight:bold;">Email</td><td style="padding:8px;">${email}</td></tr><tr><td style="padding:8px;background:#f0fdf4;font-weight:bold;">Temp Password</td><td style="padding:8px;">${password}</td></tr><tr><td style="padding:8px;background:#f0fdf4;font-weight:bold;">CAN Number</td><td style="padding:8px;">${can}</td></tr><tr><td style="padding:8px;background:#f0fdf4;font-weight:bold;">Village</td><td style="padding:8px;">${village || '--'}</td></tr><tr><td style="padding:8px;background:#f0fdf4;font-weight:bold;">Billing Cycle</td><td style="padding:8px;">${cycle}</td></tr></table><p style="color:#c1121f;font-size:0.88em;">Please change your password after first login.</p></div>`
+        });
+      } catch (_) {}
+      return res.json({ success: true, message: `Agent ${email} registered with CAN ${can}.`, can, email });
+    }
+    res.json({ success: true, message: 'Agent registered (offline mode).', can: req.body.can || '10100', email });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// PUT /api/admin/rates/:agentEmail — Admin sets milk rates for any agent
+app.put('/api/admin/rates/:agentEmail', async (req, res) => {
+  if (!await verifyAdminToken(req, res)) return;
+  const agentEmail = decodeURIComponent(req.params.agentEmail || '').toLowerCase().trim();
+  try {
+    const rateData = {
+      agentEmail,
+      cowBaseRate: parseFloat(req.body.cowBaseRate) || 45.0,
+      cowStdFat: parseFloat(req.body.cowStdFat) || 4.5,
+      cowStdSnf: parseFloat(req.body.cowStdSnf) || 8.5,
+      buffaloBaseRate: parseFloat(req.body.buffaloBaseRate) || 60.0,
+      buffaloStdFat: parseFloat(req.body.buffaloStdFat) || 4.0,
+      buffaloStdSnf: parseFloat(req.body.buffaloStdSnf) || 9.0
+    };
+    if (mongoose.connection.readyState === 1) {
+      await RateConfig.findOneAndUpdate({ agentEmail }, rateData, { upsert: true, new: true });
+      return res.json({ success: true, message: `Rates updated for ${agentEmail}.` });
+    }
+    res.json({ success: true, message: 'Rates saved (offline mode).' });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
+
+// GET /api/admin/activity-report — Aggregated data for admin charts/reports
+app.get('/api/admin/activity-report', async (req, res) => {
+  if (!await verifyAdminToken(req, res)) return;
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      return res.json({ success: true, report: { daily: { dates: [], milk: [], value: [] }, agentWise: [], topFarmers: [], shifts: {}, milkTypes: {} } });
+    }
+    const collections = await Collection.find();
+    const farmers = await Farmer.find();
+    const last30 = new Date(); last30.setDate(last30.getDate() - 30);
+    const last30Str = last30.toISOString().slice(0, 10);
+    const recentCols = collections.filter(c => c.date >= last30Str);
+    const dailyMap = {};
+    recentCols.forEach(c => {
+      if (!dailyMap[c.date]) dailyMap[c.date] = { milk: 0, value: 0 };
+      dailyMap[c.date].milk += c.qty || 0;
+      dailyMap[c.date].value += c.total || 0;
+    });
+    const dailyDates = Object.keys(dailyMap).sort();
+    const agentMap = {};
+    collections.forEach(c => {
+      const ae = (c.agentEmail || 'unknown').split('@')[0];
+      if (!agentMap[ae]) agentMap[ae] = { milk: 0, value: 0 };
+      agentMap[ae].milk += c.qty || 0;
+      agentMap[ae].value += c.total || 0;
+    });
+    const farmerMap = {};
+    collections.forEach(c => { const fn = c.farmerName || 'Unknown'; farmerMap[fn] = (farmerMap[fn] || 0) + (c.qty || 0); });
+    const topFarmers = Object.entries(farmerMap).sort((a, b) => b[1] - a[1]).slice(0, 10);
+    const shifts = { AM: 0, PM: 0 };
+    collections.forEach(c => { const s = (c.shift || 'AM').toUpperCase(); shifts[s] = (shifts[s] || 0) + (c.qty || 0); });
+    const milkTypes = { Cow: 0, Buffalo: 0 };
+    collections.forEach(c => { const t = c.type || 'Cow'; milkTypes[t] = (milkTypes[t] || 0) + (c.qty || 0); });
+    return res.json({
+      success: true,
+      report: {
+        daily: { dates: dailyDates, milk: dailyDates.map(d => parseFloat(dailyMap[d].milk.toFixed(2))), value: dailyDates.map(d => parseFloat(dailyMap[d].value.toFixed(2))) },
+        agentWise: Object.entries(agentMap).map(([name, d]) => ({ name, milk: parseFloat(d.milk.toFixed(2)), value: parseFloat(d.value.toFixed(2)) })),
+        topFarmers: topFarmers.map(([name, milk]) => ({ name, milk: parseFloat(milk.toFixed(2)) })),
+        shifts, milkTypes, totalFarmers: farmers.length, totalCollections: collections.length
+      }
+    });
+  } catch (err) { res.status(500).json({ success: false, message: err.message }); }
+});
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`🚀 Smart Dairy Cloud Server running on port ${PORT}`);
+  console.log(`ðŸš€ Smart Dairy Cloud Server running on port ${PORT}`);
 });

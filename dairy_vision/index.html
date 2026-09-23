@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -161,7 +161,7 @@
                   <input type="text" id="agent-login-otp" placeholder="Enter 6-digit OTP" pattern="[0-9]{6}">
                   <button type="button" class="btn btn-gold btn-sm" style="margin-top:8px; width:100%;" onclick="sendAgentLoginOtp()"><i class="fa-solid fa-paper-plane"></i> Send Gmail OTP</button>
                   <div id="agent-otp-countdown-info" class="otp-timer-badge hidden" style="margin-top: 8px; font-size: 0.85em; color: #c1121f; font-weight: bold; text-align: center;">
-                    ⏱️ OTP Valid for: <span id="agent-otp-seconds">60</span>s
+                    â±ï¸ OTP Valid for: <span id="agent-otp-seconds">60</span>s
                   </div>
                 </div>
 
@@ -195,7 +195,7 @@
                 <label>Enter 6-Digit Gmail OTP</label>
                 <input type="text" id="reset-agent-otp" placeholder="Enter OTP received in Gmail">
                 <div id="reset-otp-countdown-info" class="otp-timer-badge hidden" style="margin-top: 8px; font-size: 0.85em; color: #c1121f; font-weight: bold; text-align: center;">
-                  ⏱️ OTP Valid for: <span id="reset-otp-seconds">60</span>s
+                  â±ï¸ OTP Valid for: <span id="reset-otp-seconds">60</span>s
                 </div>
               </div>
 
@@ -246,7 +246,7 @@
                   <input type="text" id="farmer-login-otp" placeholder="Enter 6-digit OTP">
                   <button type="button" id="btn-send-farmer-otp" class="btn btn-gold btn-sm" style="width: 100%; margin-top: 8px;" onclick="sendFarmerLoginOtp()"><i class="fa-solid fa-paper-plane"></i> Send OTP to Gmail</button>
                   <div id="farmer-otp-countdown-info" class="otp-timer-badge hidden" style="margin-top: 8px; font-size: 0.85em; color: #c1121f; font-weight: bold; text-align: center;">
-                    ⏱️ OTP Valid for: <span id="farmer-otp-seconds">60</span>s
+                    â±ï¸ OTP Valid for: <span id="farmer-otp-seconds">60</span>s
                   </div>
                 </div>
 
@@ -280,7 +280,7 @@
                 <label>Enter 6-Digit Gmail OTP</label>
                 <input type="text" id="reset-farmer-otp" placeholder="Enter OTP received in Gmail">
                 <div id="farmer-reset-otp-countdown-info" class="otp-timer-badge hidden" style="margin-top: 8px; font-size: 0.85em; color: #c1121f; font-weight: bold; text-align: center;">
-                  ⏱️ OTP Valid for: <span id="farmer-reset-otp-seconds">60</span>s
+                  â±ï¸ OTP Valid for: <span id="farmer-reset-otp-seconds">60</span>s
                 </div>
               </div>
 
@@ -315,7 +315,7 @@
               <form id="admin-login-form">
                 <div class="form-group">
                   <label><i class="fa-solid fa-envelope"></i> Admin Email *</label>
-                  <input type="email" id="admin-email-input" placeholder="11249a125@kanchiuniv.ac.in" required style="background:#fdf6ff; border:1px solid #9c27b0;">
+                  <input type="text" id="admin-email-input" placeholder="Enter admin email" required autocomplete="off" spellcheck="false" style="background:#fdf6ff; border:1px solid #9c27b0; -webkit-text-security:none;">
                 </div>
                 <div class="form-group">
                   <label><i class="fa-solid fa-lock"></i> Admin Password *</label>
@@ -352,7 +352,7 @@
                   <label style="color:#4a0072;"><i class="fa-solid fa-shield-halved"></i> Enter OTP (sent to admin email) *</label>
                   <input type="text" id="admin-forgot-otp" placeholder="Enter 6-digit OTP" pattern="[0-9]{6}">
                   <div id="admin-forgot-otp-timer" class="otp-timer-badge hidden" style="margin-top:6px; font-size:0.85em; color:#c1121f; font-weight:bold; text-align:center;">
-                    ⏱️ OTP Valid for: <span id="admin-forgot-seconds">300</span>s
+                    â±ï¸ OTP Valid for: <span id="admin-forgot-seconds">300</span>s
                   </div>
                 </div>
                 <div id="admin-forgot-newpass-block" class="form-group hidden">
@@ -364,7 +364,7 @@
                   <button type="button" id="btn-confirm-admin-reset" class="btn btn-success hidden" onclick="confirmAdminForgotReset()"><i class="fa-solid fa-save"></i> Verify OTP &amp; Set New Password</button>
                 </div>
                 <p style="text-align:center; margin-top:12px;">
-                  <a href="#" onclick="toggleAdminForgotPass(false)" style="color:#666; font-size:0.85em;">← Back to Admin Login</a>
+                  <a href="#" onclick="toggleAdminForgotPass(false)" style="color:#666; font-size:0.85em;">â† Back to Admin Login</a>
                 </p>
               </div>
 
@@ -619,7 +619,7 @@
               <form id="rate-settings-form">
                 <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
                   <div class="form-group">
-                    <label><i class="fa-solid fa-cow"></i> Cow Base Rate (₹/L)</label>
+                    <label><i class="fa-solid fa-cow"></i> Cow Base Rate (â‚¹/L)</label>
                     <input type="number" step="0.1" id="rate-cow-base" value="45.0" required>
                   </div>
                   <div class="form-group">
@@ -631,7 +631,7 @@
                     <input type="number" step="0.1" id="rate-cow-snf" value="8.5" required>
                   </div>
                   <div class="form-group">
-                    <label><i class="fa-solid fa-cloud-sun"></i> Buffalo Base Rate (₹/L)</label>
+                    <label><i class="fa-solid fa-cloud-sun"></i> Buffalo Base Rate (â‚¹/L)</label>
                     <input type="number" step="0.1" id="rate-buffalo-base" value="60.0" required>
                   </div>
                   <div class="form-group">
@@ -722,7 +722,7 @@
                   <th>FAT %</th>
                   <th>SNF %</th>
                   <th>Water %</th>
-                  <th>Total (₹)</th>
+                  <th>Total (â‚¹)</th>
                   <th>Manage Entry</th>
                 </tr>
               </thead>
@@ -786,7 +786,7 @@
                   <input type="date" id="deduction-date" required>
                 </div>
                 <div class="form-group">
-                  <label>Amount (₹) *</label>
+                  <label>Amount (â‚¹) *</label>
                   <input type="number" id="deduction-amount" required placeholder="0.00">
                 </div>
               </div>
@@ -802,7 +802,7 @@
                   <th>Date</th>
                   <th>Farmer Code & Name</th>
                   <th>Deduction Reason / Item</th>
-                  <th>Amount (₹)</th>
+                  <th>Amount (â‚¹)</th>
                   <th>Action</th>
                 </tr>
               </thead>
@@ -828,7 +828,7 @@
                   <th>Farmer Details</th>
                   <th>Requirement</th>
                   <th>Delivery Date</th>
-                  <th>Cost (₹)</th>
+                  <th>Cost (â‚¹)</th>
                   <th>Status</th>
                   <th>Target Billing Cycle</th>
                   <th>Action</th>
@@ -848,7 +848,7 @@
             <div class="req-slip-row"><span>Requirement Item:</span><strong id="slip-item-name">--</strong></div>
             <div class="req-slip-row"><span>Delivery Date:</span><strong id="slip-delivery-date">--</strong></div>
             <div class="req-slip-row"><span>Status:</span><strong id="slip-status">--</strong></div>
-            <div class="req-slip-row"><span>Cost:</span><strong id="slip-cost" style="color:var(--primary); font-size:1.1em;">₹0</strong></div>
+            <div class="req-slip-row"><span>Cost:</span><strong id="slip-cost" style="color:var(--primary); font-size:1.1em;">â‚¹0</strong></div>
             <div class="req-slip-row"><span>Bill Deduction Cycle:</span><strong id="slip-billing-cycle">--</strong></div>
             <div style="margin-top:20px; text-align:center;" class="no-print">
               <button class="btn btn-success btn-sm" onclick="window.print()"><i class="fa-solid fa-print"></i> Print Requirement Slip</button>
@@ -977,7 +977,7 @@
         <!-- Admin Header Banner -->
         <div style="background:linear-gradient(135deg,#4a0072,#7b2d8b); color:#fff; padding:18px 22px; border-radius:10px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
           <div>
-            <h2 style="margin:0;"><i class="fa-solid fa-shield-halved"></i> Smart Dairy — Admin Control Panel</h2>
+            <h2 style="margin:0;"><i class="fa-solid fa-shield-halved"></i> Smart Dairy â€” Admin Control Panel</h2>
             <p style="margin:4px 0 0; font-size:0.88em; color:#e1bee7;">Logged in as: <strong id="admin-logged-email">11249a125@kanchiuniv.ac.in</strong> | Full system access</p>
           </div>
           <div style="display:flex; gap:10px; flex-wrap:wrap;">
@@ -992,6 +992,8 @@
           <button class="btn btn-outline" id="admin-tab-btn-agents" onclick="switchAdminTab('agents')"><i class="fa-solid fa-users-gear"></i> Agent Management</button>
           <button class="btn btn-outline" id="admin-tab-btn-farmers" onclick="switchAdminTab('farmers')"><i class="fa-solid fa-tractor"></i> All Farmers</button>
           <button class="btn btn-outline" id="admin-tab-btn-collections" onclick="switchAdminTab('collections')"><i class="fa-solid fa-flask"></i> Collection Records</button>
+          <button class="btn btn-outline" id="admin-tab-btn-rates" onclick="switchAdminTab('rates')" style="border-color:#b58302;color:#b58302;"><i class="fa-solid fa-indian-rupee-sign"></i> Rate Settings</button>
+          <button class="btn btn-outline" id="admin-tab-btn-reports" onclick="switchAdminTab('reports')" style="border-color:#1565c0;color:#1565c0;"><i class="fa-solid fa-chart-line"></i> Reports &amp; Analytics</button>
         </div>
 
         <!-- Tab: Overview Dashboard -->
@@ -1011,7 +1013,7 @@
             </div>
             <div class="card" style="border-left:5px solid #40916c; text-align:center;">
               <h4><i class="fa-solid fa-indian-rupee-sign"></i> Today's Value (All)</h4>
-              <h2 id="admin-stat-today-value" style="color:#40916c; margin-top:8px;">₹0</h2>
+              <h2 id="admin-stat-today-value" style="color:#40916c; margin-top:8px;">â‚¹0</h2>
             </div>
           </div>
 
@@ -1039,7 +1041,7 @@
                     <th>Farmers</th>
                     <th>Collections</th>
                     <th>Total Milk (L)</th>
-                    <th>Total Value (₹)</th>
+                    <th>Total Value (â‚¹)</th>
                     <th>Today Milk (L)</th>
                   </tr>
                 </thead>
@@ -1076,6 +1078,41 @@
             </div>
           </div>
 
+          <!-- Register New Agent Form -->
+          <div class="card" style="border:2px solid #1b4332; margin-bottom:18px; background:#f0fdf4;">
+            <h3 style="color:#1b4332; margin-bottom:12px;"><i class="fa-solid fa-user-plus"></i> Register New Agent</h3>
+            <p style="font-size:0.88em; color:#555; margin-bottom:14px;">Admin creates agent accounts here. A welcome email with login credentials will be sent automatically.</p>
+            <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; align-items:end;">
+              <div class="form-group" style="margin:0;">
+                <label style="color:#1b4332;"><i class="fa-solid fa-envelope"></i> Agent Email *</label>
+                <input type="email" id="admin-new-agent-email" placeholder="agent@email.com" autocomplete="off" style="border:1px solid #1b4332;">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="color:#1b4332;"><i class="fa-solid fa-key"></i> Temp Password *</label>
+                <input type="text" id="admin-new-agent-password" placeholder="Min 4 chars" autocomplete="off" style="border:1px solid #1b4332;">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="color:#1b4332;"><i class="fa-solid fa-map-marker-alt"></i> Village Name</label>
+                <input type="text" id="admin-new-agent-village" placeholder="e.g. Palamaner" style="border:1px solid #1b4332;">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="color:#1b4332;"><i class="fa-solid fa-calendar-days"></i> Billing Cycle</label>
+                <select id="admin-new-agent-cycle" style="border:1px solid #1b4332; padding:10px; border-radius:6px; width:100%;">
+                  <option value="10-DAY">10-DAY</option>
+                  <option value="15-DAY">15-DAY</option>
+                  <option value="MONTHLY">MONTHLY</option>
+                  <option value="WEEKLY">WEEKLY</option>
+                </select>
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label style="color:#1b4332;"><i class="fa-solid fa-hashtag"></i> CAN No. (auto if blank)</label>
+                <input type="text" id="admin-new-agent-can" placeholder="e.g. 10103 (optional)" style="border:1px solid #1b4332;">
+              </div>
+              <div style="display:flex; align-items:flex-end;">
+                <button class="btn btn-success" style="width:100%; background:#1b4332;" onclick="adminRegisterAgent()"><i class="fa-solid fa-user-plus"></i> Register Agent</button>
+              </div>
+            </div>
+          </div>
           <!-- Reset Password Modal Area -->
           <div id="admin-reset-pass-card" class="card hidden" style="border:2px solid #9c27b0; max-width:480px; margin:0 auto;">
             <h3 style="color:#4a0072;"><i class="fa-solid fa-key"></i> Reset Agent Password</h3>
@@ -1095,7 +1132,7 @@
         <div id="admin-tab-farmers" class="hidden">
           <div class="card">
             <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
-              <h3 style="color:#4a0072;"><i class="fa-solid fa-tractor"></i> All Farmers — System Wide</h3>
+              <h3 style="color:#4a0072;"><i class="fa-solid fa-tractor"></i> All Farmers â€” System Wide</h3>
               <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 <input type="text" id="admin-farmer-filter" placeholder="Filter by name, email or village..." oninput="filterAdminFarmers()" style="width:220px; margin-bottom:0;">
                 <button class="btn btn-sm" style="background:#7b2d8b;color:#fff;" onclick="loadAdminFarmers()"><i class="fa-solid fa-rotate"></i> Refresh</button>
@@ -1151,8 +1188,8 @@
                     <th>FAT%</th>
                     <th>SNF%</th>
                     <th>Water%</th>
-                    <th>Rate (₹)</th>
-                    <th>Total (₹)</th>
+                    <th>Rate (â‚¹)</th>
+                    <th>Total (â‚¹)</th>
                     <th>Actions</th>
                   </tr>
                 </thead>
@@ -1170,8 +1207,8 @@
               <div class="form-group"><label>FAT %</label><input type="number" step="0.1" id="admin-edit-fat" placeholder="e.g. 4.2"></div>
               <div class="form-group"><label>SNF %</label><input type="number" step="0.1" id="admin-edit-snf" placeholder="e.g. 8.5"></div>
               <div class="form-group"><label>Water %</label><input type="number" step="0.1" id="admin-edit-water" placeholder="e.g. 0"></div>
-              <div class="form-group"><label>Rate (₹/L)</label><input type="number" step="0.01" id="admin-edit-rate" placeholder="e.g. 45.00"></div>
-              <div class="form-group"><label>Total (₹)</label><input type="number" step="0.01" id="admin-edit-total" placeholder="e.g. 225.00"></div>
+              <div class="form-group"><label>Rate (â‚¹/L)</label><input type="number" step="0.01" id="admin-edit-rate" placeholder="e.g. 45.00"></div>
+              <div class="form-group"><label>Total (â‚¹)</label><input type="number" step="0.01" id="admin-edit-total" placeholder="e.g. 225.00"></div>
             </div>
             <div style="display:flex; gap:10px; margin-top:10px;">
               <button class="btn btn-success btn-sm" onclick="confirmAdminEditCollection()"><i class="fa-solid fa-save"></i> Save Changes</button>
@@ -1180,6 +1217,90 @@
           </div>
         </div>
 
+
+        <!-- Tab: Rate Settings -->
+        <div id="admin-tab-rates" class="hidden">
+          <div class="card" style="border-left:5px solid #b58302;">
+            <h3 style="color:#b58302; margin-bottom:14px;"><i class="fa-solid fa-indian-rupee-sign"></i> Milk Rate Settings — Per Agent</h3>
+            <p style="font-size:0.88em; color:#555; margin-bottom:16px;">Select an agent and set their milk procurement rates. These rates will be used for their collection calculations.</p>
+            <div class="form-group" style="max-width:400px;">
+              <label><i class="fa-solid fa-user"></i> Select Agent *</label>
+              <select id="admin-rate-agent-select" onchange="loadRatesForAgent()" style="padding:10px; border-radius:6px; border:1px solid #b58302; width:100%;">
+                <option value="">-- Select Agent --</option>
+              </select>
+            </div>
+            <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr)); gap:14px; margin-top:16px;">
+              <div class="card" style="background:#f4fdf8; border:1px solid #b7e4c7;">
+                <h4 style="color:#1b4332; margin-bottom:10px;"><i class="fa-solid fa-cow"></i> Cow Milk Rates</h4>
+                <div class="form-group"><label>Base Rate (₹/L)</label><input type="number" step="0.01" id="admin-rate-cow-base" value="45.00" style="border:1px solid #1b4332;"></div>
+                <div class="form-group"><label>Standard FAT %</label><input type="number" step="0.1" id="admin-rate-cow-fat" value="4.5" style="border:1px solid #1b4332;"></div>
+                <div class="form-group"><label>Standard SNF %</label><input type="number" step="0.1" id="admin-rate-cow-snf" value="8.5" style="border:1px solid #1b4332;"></div>
+              </div>
+              <div class="card" style="background:#e8f4fd; border:1px solid #90caf9;">
+                <h4 style="color:#1565c0; margin-bottom:10px;"><i class="fa-solid fa-hippo"></i> Buffalo Milk Rates</h4>
+                <div class="form-group"><label>Base Rate (₹/L)</label><input type="number" step="0.01" id="admin-rate-buf-base" value="60.00" style="border:1px solid #1565c0;"></div>
+                <div class="form-group"><label>Standard FAT %</label><input type="number" step="0.1" id="admin-rate-buf-fat" value="4.0" style="border:1px solid #1565c0;"></div>
+                <div class="form-group"><label>Standard SNF %</label><input type="number" step="0.1" id="admin-rate-buf-snf" value="9.0" style="border:1px solid #1565c0;"></div>
+              </div>
+            </div>
+            <button class="btn" style="background:#b58302; color:#fff; margin-top:16px; padding:12px 28px;" onclick="adminSaveRates()"><i class="fa-solid fa-save"></i> Save Rates for Selected Agent</button>
+          </div>
+        </div>
+
+        <!-- Tab: Reports & Analytics -->
+        <div id="admin-tab-reports" class="hidden">
+          <!-- Summary Stats -->
+          <div class="grid" style="margin-bottom:20px;">
+            <div class="card" style="border-left:5px solid #1b4332; text-align:center;">
+              <h4><i class="fa-solid fa-tractor"></i> Total Farmers</h4>
+              <h2 id="admin-report-stat-total-farmers" style="color:#1b4332; margin-top:8px;">0</h2>
+            </div>
+            <div class="card" style="border-left:5px solid #7b2d8b; text-align:center;">
+              <h4><i class="fa-solid fa-flask"></i> Total Collections</h4>
+              <h2 id="admin-report-stat-total-cols" style="color:#7b2d8b; margin-top:8px;">0</h2>
+            </div>
+            <div class="card" style="border-left:5px solid #40916c; text-align:center;">
+              <h4><i class="fa-solid fa-cow"></i> Total Cow Milk</h4>
+              <h2 id="admin-report-stat-cow" style="color:#40916c; margin-top:8px;">0 L</h2>
+            </div>
+            <div class="card" style="border-left:5px solid #1565c0; text-align:center;">
+              <h4><i class="fa-solid fa-hippo"></i> Total Buffalo Milk</h4>
+              <h2 id="admin-report-stat-buf" style="color:#1565c0; margin-top:8px;">0 L</h2>
+            </div>
+          </div>
+
+          <div style="display:flex; justify-content:flex-end; margin-bottom:14px;">
+            <button class="btn" style="background:#1565c0;color:#fff;" onclick="loadAdminActivityReport()"><i class="fa-solid fa-rotate"></i> Refresh Reports</button>
+          </div>
+
+          <!-- Charts Row 1: Daily trend + Agent-wise -->
+          <div class="grid" style="grid-template-columns:1fr 1fr; gap:18px; margin-bottom:18px;">
+            <div class="card">
+              <h4 style="color:#1b4332; margin-bottom:10px;"><i class="fa-solid fa-chart-line"></i> Daily Milk Collection (Last 30 Days)</h4>
+              <div style="height:260px;"><canvas id="admin-daily-chart"></canvas></div>
+            </div>
+            <div class="card">
+              <h4 style="color:#7b2d8b; margin-bottom:10px;"><i class="fa-solid fa-chart-bar"></i> Agent-wise Total Milk</h4>
+              <div style="height:260px;"><canvas id="admin-agentwise-chart"></canvas></div>
+            </div>
+          </div>
+
+          <!-- Charts Row 2: Type + Shift + Top Farmers -->
+          <div class="grid" style="grid-template-columns:1fr 1fr 2fr; gap:18px; margin-bottom:18px;">
+            <div class="card">
+              <h4 style="color:#40916c; margin-bottom:10px;"><i class="fa-solid fa-chart-pie"></i> Cow vs Buffalo</h4>
+              <div style="height:220px;"><canvas id="admin-milktype-chart"></canvas></div>
+            </div>
+            <div class="card">
+              <h4 style="color:#b58302; margin-bottom:10px;"><i class="fa-solid fa-clock"></i> AM vs PM Shift</h4>
+              <div style="height:220px;"><canvas id="admin-shift-chart"></canvas></div>
+            </div>
+            <div class="card">
+              <h4 style="color:#1565c0; margin-bottom:10px;"><i class="fa-solid fa-trophy"></i> Top 10 Farmers by Milk</h4>
+              <div style="height:220px;"><canvas id="admin-topfarmers-chart"></canvas></div>
+            </div>
+          </div>
+        </div>
         <footer class="portal-footer-bar no-print" style="margin-top:25px; padding:12px 20px; background:linear-gradient(135deg,#4a0072,#7b2d8b); color:#fff; border-radius:8px; display:flex; justify-content:space-between; align-items:center; font-size:0.9em;">
           <div><i class="fa-solid fa-shield-halved"></i> <strong>Admin Portal Active</strong> | Smart Dairy Control Center</div>
           <div><i class="fa-solid fa-database"></i> MongoDB Connected | Full System Access</div>
@@ -1204,29 +1325,29 @@
 
           <div style="background: #ffffff; padding: 16px; border-radius: 8px; border: 1px solid #ffe58f;">
             <p style="margin-bottom: 10px; font-weight: bold; color: #1b4332;">
-              📌 Standard Dairy Base Payout Rates (Standard Total Solids TS):
+              ðŸ“Œ Standard Dairy Base Payout Rates (Standard Total Solids TS):
             </p>
             <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); margin-bottom: 12px;">
               <div style="background: #f4fdf8; padding: 12px; border-radius: 6px; border: 1px solid #b7e4c7;">
                 <strong style="color: #1b4332;"><i class="fa-solid fa-cow"></i> Cow Milk Standard Base Rate:</strong>
-                <div style="font-size: 1.5em; font-weight: bold; color: #2e7d32; margin-top: 4px;">₹45.00 / Liter</div>
+                <div style="font-size: 1.5em; font-weight: bold; color: #2e7d32; margin-top: 4px;">â‚¹45.00 / Liter</div>
                 <small style="color: #555;">(Standard FAT 4.0% + SNF 8.5%)</small>
               </div>
 
               <div style="background: #fffdf0; padding: 12px; border-radius: 6px; border: 1px solid #ffe58f;">
                 <strong style="color: #873800;"><i class="fa-solid fa-cloud-sun"></i> Buffalo Milk Standard Base Rate:</strong>
-                <div style="font-size: 1.5em; font-weight: bold; color: #d48806; margin-top: 4px;">₹60.00 / Liter</div>
+                <div style="font-size: 1.5em; font-weight: bold; color: #d48806; margin-top: 4px;">â‚¹60.00 / Liter</div>
                 <small style="color: #555;">(Standard FAT 6.0% + SNF 9.0%)</small>
               </div>
             </div>
 
             <p style="font-size: 0.9em; color: #333; line-height: 1.5; margin: 0;">
-              <strong>⚠️ Total Solids (TS) Rate Adjustment Notice:</strong><br>
+              <strong>âš ï¸ Total Solids (TS) Rate Adjustment Notice:</strong><br>
               Per-liter milk payout rates increase or decrease dynamically based on sample <strong>Total Solids (TS = FAT% + SNF%)</strong> quality. When station agents adjust FAT/SNF rate multipliers according to Dairy TS guidelines, your milk payout rate automatically scales according to your sample quality.
             </p>
 
             <div id="notice-current-rates" style="margin-top: 12px; font-size: 0.9em; font-weight: bold; color: var(--primary); background: #f4f7f6; padding: 10px 14px; border-radius: 6px; border-left: 4px solid var(--gold);">
-              Station Rate Configuration: Cow FAT ₹7.0/SNF ₹4.0 | Buffalo FAT ₹8.0/SNF ₹5.0
+              Station Rate Configuration: Cow FAT â‚¹7.0/SNF â‚¹4.0 | Buffalo FAT â‚¹8.0/SNF â‚¹5.0
             </div>
           </div>
         </div>
@@ -1242,11 +1363,11 @@
               <div class="form-group">
                 <label>Select Requirement Item & Price *</label>
                 <select id="booking-item-type" required>
-                  <option value="Cattle Feed (10kg Bag)|320">Cattle Feed (10kg Bag) - ₹320</option>
-                  <option value="Cattle Feed (50kg Bag)|1600">Cattle Feed (50kg Bag) - ₹1,600</option>
-                  <option value="Chelated Mineral Mixture (1kg)|220">Chelated Mineral Mixture (1kg) - ₹220</option>
-                  <option value="Bypass FAT Powder (1kg)|350">Bypass FAT Powder (1kg) - ₹350</option>
-                  <option value="Calcium Tonic / Supplement (5L)|650">Calcium Tonic / Supplement (5L) - ₹650</option>
+                  <option value="Cattle Feed (10kg Bag)|320">Cattle Feed (10kg Bag) - â‚¹320</option>
+                  <option value="Cattle Feed (50kg Bag)|1600">Cattle Feed (50kg Bag) - â‚¹1,600</option>
+                  <option value="Chelated Mineral Mixture (1kg)|220">Chelated Mineral Mixture (1kg) - â‚¹220</option>
+                  <option value="Bypass FAT Powder (1kg)|350">Bypass FAT Powder (1kg) - â‚¹350</option>
+                  <option value="Calcium Tonic / Supplement (5L)|650">Calcium Tonic / Supplement (5L) - â‚¹650</option>
                 </select>
               </div>
 
@@ -1329,15 +1450,15 @@
             </div>
             <div class="card" style="border-left: 5px solid var(--primary);">
               <h4>Gross Milk Earnings</h4>
-              <h2 id="farmer-total-earnings" style="color: var(--primary); margin-top: 6px;">₹ 0.00</h2>
+              <h2 id="farmer-total-earnings" style="color: var(--primary); margin-top: 6px;">â‚¹ 0.00</h2>
             </div>
             <div class="card" style="border-left: 5px solid var(--danger);">
               <h4>Product Deductions</h4>
-              <h2 id="farmer-total-deductions" style="color: var(--danger); margin-top: 6px;">- ₹ 0.00</h2>
+              <h2 id="farmer-total-deductions" style="color: var(--danger); margin-top: 6px;">- â‚¹ 0.00</h2>
             </div>
             <div class="card" style="border-left: 5px solid #40916c;">
               <h4>Net Payable Amount</h4>
-              <h2 id="farmer-net-payable" style="color: #40916c; margin-top: 6px;">₹ 0.00</h2>
+              <h2 id="farmer-net-payable" style="color: #40916c; margin-top: 6px;">â‚¹ 0.00</h2>
             </div>
           </div>
 
@@ -1372,8 +1493,8 @@
                   <th>FAT %</th>
                   <th>SNF %</th>
                   <th>Water %</th>
-                  <th>Rate/L (₹)</th>
-                  <th>Amount (₹)</th>
+                  <th>Rate/L (â‚¹)</th>
+                  <th>Amount (â‚¹)</th>
                 </tr>
               </thead>
               <tbody id="farmer-itemized-tbody"></tbody>
@@ -1389,7 +1510,7 @@
                   <th>Requirement Item</th>
                   <th>Delivery Date</th>
                   <th>Target Billing Cycle</th>
-                  <th>Amount Deducted (₹)</th>
+                  <th>Amount Deducted (â‚¹)</th>
                 </tr>
               </thead>
               <tbody id="farmer-deductions-tbody"></tbody>
@@ -1403,11 +1524,11 @@
                 <div class="form-group">
                   <label>Overall Experience Rating *</label>
                   <select id="feedback-rating" required>
-                    <option value="5">⭐⭐⭐⭐⭐ 5 Stars - Excellent Service</option>
-                    <option value="4">⭐⭐⭐⭐ 4 Stars - Very Good</option>
-                    <option value="3">⭐⭐⭐ 3 Stars - Average</option>
-                    <option value="2">⭐⭐ 2 Stars - Needs Improvement</option>
-                    <option value="1">⭐ 1 Star - Poor Service</option>
+                    <option value="5">â­â­â­â­â­ 5 Stars - Excellent Service</option>
+                    <option value="4">â­â­â­â­ 4 Stars - Very Good</option>
+                    <option value="3">â­â­â­ 3 Stars - Average</option>
+                    <option value="2">â­â­ 2 Stars - Needs Improvement</option>
+                    <option value="1">â­ 1 Star - Poor Service</option>
                   </select>
                 </div>
                 <div class="form-group" style="grid-column: span 2;">

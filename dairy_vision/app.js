@@ -7,19 +7,13 @@ const API_BASE_URL = (window.location.hostname === 'localhost' || window.locatio
   ? 'http://localhost:5000'
   : 'https://all-labs.onrender.com';
 
-const ALLOWED_AGENTS = [
-  "karanamharish93@gmail.com",
-  "11249a251@kanchiuniv.ac.in",
-  "11249a255@kanchiuniv.ac.in"
-];
+// ALLOWED_AGENTS is now dynamic — admin registers agents via admin portal.
+// Kept as empty fallback; real verification is done via /api/agent/verify
+const ALLOWED_AGENTS = [];
 
 let DB = JSON.parse(localStorage.getItem('SMART_DAIRY_GLOBAL_DB') || localStorage.getItem('DAIRY_VISION_GLOBAL_DB') || JSON.stringify({
-  agentCAN: "CAN-PLM-2026-01",
-  agentAccounts: {
-    "karanamharish93@gmail.com": { password: null },
-    "11249a251@kanchiuniv.ac.in": { password: null },
-    "11249a255@kanchiuniv.ac.in": { password: null }
-  },
+  agentCAN: "10100",
+  agentAccounts: {},
   agentConfigs: {},
   rates: {
     cowBaseRate: 45.0,
@@ -1002,7 +996,7 @@ async function confirmAdminForgotReset() {
 }
 
 function switchAdminTab(tab) {
-  ['overview','agents','farmers','collections'].forEach(t => {
+  ['overview','agents','farmers','collections','rates','reports'].forEach(t => {
     document.getElementById(`admin-tab-${t}`)?.classList.toggle('hidden', t !== tab);
     const btn = document.getElementById(`admin-tab-btn-${t}`);
     if (btn) {
@@ -1013,7 +1007,199 @@ function switchAdminTab(tab) {
   if (tab === 'agents') loadAdminAgents();
   else if (tab === 'farmers') loadAdminFarmers();
   else if (tab === 'collections') loadAdminCollections();
+  else if (tab === 'rates') loadAdminRateSettings();
+  else if (tab === 'reports') loadAdminActivityReport();
   else loadAdminOverview();
+}
+
+// ---- Admin: Register New Agent ----
+async function adminRegisterAgent() {
+  const email = (document.getElementById('admin-new-agent-email')?.value || '').trim().toLowerCase();
+  const password = (document.getElementById('admin-new-agent-password')?.value || '').trim();
+  const village = (document.getElementById('admin-new-agent-village')?.value || '').trim();
+  const cycle = document.getElementById('admin-new-agent-cycle')?.value || '10-DAY';
+  const can = (document.getElementById('admin-new-agent-can')?.value || '').trim();
+  if (!email) { showAlert('Agent email is required.', 'danger'); return; }
+  if (!password || password.length < 4) { showAlert('Password must be at least 4 characters.', 'danger'); return; }
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/register-agent`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': currentAdminToken },
+      body: JSON.stringify({ email, password, village, cycle, can })
+    });
+    const data = await res.json();
+    if (data.success) {
+      showAlert(`✅ ${data.message} — Welcome email sent to ${email}.`, 'success');
+      document.getElementById('admin-new-agent-email').value = '';
+      document.getElementById('admin-new-agent-password').value = '';
+      document.getElementById('admin-new-agent-village').value = '';
+      document.getElementById('admin-new-agent-can').value = '';
+      loadAdminAgents();
+    } else {
+      showAlert(`❌ ${data.message}`, 'danger');
+    }
+  } catch (err) {
+    showAlert('Failed to register agent. Check connection.', 'danger');
+  }
+}
+
+// ---- Admin: Rate Settings ----
+let adminRateAgentsList = [];
+let adminReportCharts = {};
+
+async function loadAdminRateSettings() {
+  if (!currentAdminToken) return;
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/agents`, {
+      headers: { 'x-admin-token': currentAdminToken }
+    });
+    const data = await res.json();
+    adminRateAgentsList = data.agents || [];
+    const select = document.getElementById('admin-rate-agent-select');
+    if (select) {
+      select.innerHTML = '<option value="">-- Select Agent --</option>' +
+        adminRateAgentsList.map(a => `<option value="${a.email}">${a.email} (CAN: ${a.can})</option>`).join('');
+    }
+  } catch (err) {
+    showAlert('Failed to load agents for rate settings.', 'danger');
+  }
+}
+
+async function loadRatesForAgent() {
+  const email = document.getElementById('admin-rate-agent-select')?.value;
+  if (!email) return;
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/rates?agentEmail=${encodeURIComponent(email)}`);
+    const data = await res.json();
+    const r = data.rates || {};
+    document.getElementById('admin-rate-cow-base').value = r.cowBaseRate || 45.0;
+    document.getElementById('admin-rate-cow-fat').value = r.cowStdFat || 4.5;
+    document.getElementById('admin-rate-cow-snf').value = r.cowStdSnf || 8.5;
+    document.getElementById('admin-rate-buf-base').value = r.buffaloBaseRate || 60.0;
+    document.getElementById('admin-rate-buf-fat').value = r.buffaloStdFat || 4.0;
+    document.getElementById('admin-rate-buf-snf').value = r.buffaloStdSnf || 9.0;
+  } catch (_) {}
+}
+
+async function adminSaveRates() {
+  const email = document.getElementById('admin-rate-agent-select')?.value;
+  if (!email) { showAlert('Please select an agent first.', 'danger'); return; }
+  const rateData = {
+    cowBaseRate: parseFloat(document.getElementById('admin-rate-cow-base')?.value) || 45.0,
+    cowStdFat: parseFloat(document.getElementById('admin-rate-cow-fat')?.value) || 4.5,
+    cowStdSnf: parseFloat(document.getElementById('admin-rate-cow-snf')?.value) || 8.5,
+    buffaloBaseRate: parseFloat(document.getElementById('admin-rate-buf-base')?.value) || 60.0,
+    buffaloStdFat: parseFloat(document.getElementById('admin-rate-buf-fat')?.value) || 4.0,
+    buffaloStdSnf: parseFloat(document.getElementById('admin-rate-buf-snf')?.value) || 9.0
+  };
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/rates/${encodeURIComponent(email)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json', 'x-admin-token': currentAdminToken },
+      body: JSON.stringify(rateData)
+    });
+    const data = await res.json();
+    if (data.success) showAlert(`✅ ${data.message}`, 'success');
+    else showAlert(`❌ ${data.message}`, 'danger');
+  } catch (err) {
+    showAlert('Failed to save rates. Check connection.', 'danger');
+  }
+}
+
+// ---- Admin: Activity Reports & Charts ----
+async function loadAdminActivityReport() {
+  if (!currentAdminToken) return;
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/activity-report`, {
+      headers: { 'x-admin-token': currentAdminToken }
+    });
+    if (!res.ok) { showAlert('Failed to load activity report.', 'danger'); return; }
+    const data = await res.json();
+    if (!data.success) { showAlert('Report data unavailable.', 'danger'); return; }
+    const r = data.report;
+    document.getElementById('admin-report-stat-total-farmers').textContent = r.totalFarmers || 0;
+    document.getElementById('admin-report-stat-total-cols').textContent = r.totalCollections || 0;
+    const cowMilk = r.milkTypes?.Cow || 0;
+    const bufMilk = r.milkTypes?.Buffalo || 0;
+    document.getElementById('admin-report-stat-cow').textContent = `${cowMilk.toFixed(1)} L`;
+    document.getElementById('admin-report-stat-buf').textContent = `${bufMilk.toFixed(1)} L`;
+    renderAdminReportCharts(r);
+  } catch (err) {
+    showAlert('⚠️ Could not load report. Wait 30s and retry if server just started.', 'danger');
+  }
+}
+
+function renderAdminReportCharts(r) {
+  const charts = ['adminDailyChart','adminAgentChart','adminTypeChart','adminShiftChart','adminFarmerChart'];
+  charts.forEach(id => { if (adminReportCharts[id]) { adminReportCharts[id].destroy(); delete adminReportCharts[id]; } });
+
+  // 1. Daily milk collection (line chart)
+  const dailyCtx = document.getElementById('admin-daily-chart');
+  if (dailyCtx && r.daily?.dates?.length) {
+    adminReportCharts['adminDailyChart'] = new Chart(dailyCtx, {
+      type: 'line',
+      data: {
+        labels: r.daily.dates,
+        datasets: [
+          { label: 'Milk (L)', data: r.daily.milk, borderColor: '#1b4332', backgroundColor: 'rgba(27,67,50,0.1)', fill: true, tension: 0.3 },
+          { label: 'Value (₹)', data: r.daily.value, borderColor: '#ffb703', backgroundColor: 'rgba(255,183,3,0.08)', fill: true, tension: 0.3, yAxisID: 'y2' }
+        ]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true }, y2: { beginAtZero: true, position: 'right', grid: { drawOnChartArea: false } } } }
+    });
+  }
+
+  // 2. Agent-wise bar chart
+  const agentCtx = document.getElementById('admin-agentwise-chart');
+  if (agentCtx && r.agentWise?.length) {
+    adminReportCharts['adminAgentChart'] = new Chart(agentCtx, {
+      type: 'bar',
+      data: {
+        labels: r.agentWise.map(a => a.name),
+        datasets: [{ label: 'Total Milk (L)', data: r.agentWise.map(a => a.milk), backgroundColor: ['#7b2d8b','#1b4332','#b58302','#40916c','#c62828','#1565c0','#e65100'].slice(0, r.agentWise.length), borderRadius: 6 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+  }
+
+  // 3. Milk type doughnut
+  const typeCtx = document.getElementById('admin-milktype-chart');
+  if (typeCtx) {
+    adminReportCharts['adminTypeChart'] = new Chart(typeCtx, {
+      type: 'doughnut',
+      data: {
+        labels: ['Cow', 'Buffalo'],
+        datasets: [{ data: [r.milkTypes?.Cow || 0, r.milkTypes?.Buffalo || 0], backgroundColor: ['#40916c','#1565c0'] }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+  }
+
+  // 4. Shift AM vs PM bar
+  const shiftCtx = document.getElementById('admin-shift-chart');
+  if (shiftCtx) {
+    adminReportCharts['adminShiftChart'] = new Chart(shiftCtx, {
+      type: 'bar',
+      data: {
+        labels: ['AM (Morning)', 'PM (Evening)'],
+        datasets: [{ label: 'Milk (L)', data: [r.shifts?.AM || 0, r.shifts?.PM || 0], backgroundColor: ['#ffb703','#7b2d8b'], borderRadius: 8 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+    });
+  }
+
+  // 5. Top farmers horizontal bar
+  const farmerCtx = document.getElementById('admin-topfarmers-chart');
+  if (farmerCtx && r.topFarmers?.length) {
+    adminReportCharts['adminFarmerChart'] = new Chart(farmerCtx, {
+      type: 'bar',
+      data: {
+        labels: r.topFarmers.map(f => f.name),
+        datasets: [{ label: 'Milk (L)', data: r.topFarmers.map(f => f.milk), backgroundColor: '#1b4332', borderRadius: 4 }]
+      },
+      options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true } } }
+    });
+  }
 }
 
 async function loadAdminOverview() {
@@ -2346,29 +2532,45 @@ document.addEventListener('DOMContentLoaded', () => {
     deliveryDateInput.min = tomorrowStr;
   }
 
-  document.getElementById('agent-login-form')?.addEventListener('submit', function(e) {
+  document.getElementById('agent-login-form')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     if (!verifyCaptcha('agent')) return;
     const email = document.getElementById('agent-email-input').value.trim().toLowerCase();
-    const isRegistered = ALLOWED_AGENTS.includes(email) || Boolean(DB.agentAccounts[email]);
-    if (!isRegistered) {
-      showAlert('Unregistered Agent Email. Please click "First Time Agent? Register / Set Password".', 'danger');
-      addAiLog('tag-security', 'AI-SECURITY', `Unauthorized/Unregistered login attempt for email ${email}`);
-      return;
-    }
+    if (!email) { showAlert('Please enter your agent email.', 'danger'); return; }
 
     if (agentAuthMode === 'password') {
       const pass = document.getElementById('agent-password-input').value;
-      const storedPass = DB.agentAccounts[email]?.password || 'agent123';
-      if (pass === storedPass) {
-        currentAgentEmail = email;
-        addAiLog('tag-security', 'AI-SECURITY', `Agent ${email} logged in successfully via password.`);
-        initAppView('agent');
-      } else {
-        showAlert('Incorrect password.', 'danger');
-        addAiLog('tag-security', 'AI-SECURITY', `Failed password login attempt for ${email}`);
+      try {
+        const res = await fetch(`${API_BASE_URL}/api/agent/verify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password: pass })
+        });
+        const data = await res.json();
+        if (data.success) {
+          currentAgentEmail = email;
+          if (!DB.agentAccounts[email]) DB.agentAccounts[email] = {};
+          DB.agentAccounts[email].password = pass;
+          saveDB();
+          addAiLog('tag-security', 'AI-SECURITY', `Agent ${email} logged in via password (DB verified).`);
+          initAppView('agent');
+        } else {
+          showAlert(data.message || 'Login failed. Contact admin if you are not registered.', 'danger');
+          addAiLog('tag-security', 'AI-SECURITY', `Failed login attempt for ${email}: ${data.message}`);
+        }
+      } catch (err) {
+        // Network offline — try local cache
+        const storedPass = DB.agentAccounts[email]?.password;
+        if (storedPass && pass === storedPass) {
+          currentAgentEmail = email;
+          addAiLog('tag-security', 'AI-SECURITY', `Agent ${email} logged in offline via cached password.`);
+          initAppView('agent');
+        } else {
+          showAlert('Server unreachable. If previously logged in, use your cached password.', 'danger');
+        }
       }
     } else {
+      // OTP mode — send OTP first, then verify
       handleVerifyOTP('agent-email-input', 'agent-login-otp', () => {
         currentAgentEmail = email;
         addAiLog('tag-security', 'AI-SECURITY', `Agent ${email} logged in via Gmail OTP.`);
