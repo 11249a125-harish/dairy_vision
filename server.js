@@ -207,6 +207,31 @@ async function sendEmailHelper({ toEmail, toName, subject, htmlContent }) {
     }
   }
 
+  if (process.env.BREVO_API_KEY) {
+    try {
+      const response = await fetch('https://api.brevo.com/v3/smtp/email', {
+        method: 'POST',
+        headers: {
+          'accept': 'application/json',
+          'api-key': process.env.BREVO_API_KEY,
+          'content-type': 'application/json'
+        },
+        body: JSON.stringify({
+          sender: { name: senderName, email: senderEmail },
+          to: [{ email: toEmail, name: toName || 'User' }],
+          subject,
+          htmlContent
+        })
+      });
+
+      if (response.ok) {
+        return { success: true, method: 'Brevo' };
+      }
+    } catch (err) {
+      console.error('Brevo API Dispatch Error:', err.message);
+    }
+  }
+
   return { success: true, method: 'Simulated' };
 }
 
@@ -235,11 +260,29 @@ app.get('/api/rates', async (req, res) => {
     const agentEmail = (req.query.agentEmail || '').toLowerCase().trim();
     if (mongoose.connection.readyState === 1) {
       let rates = null;
-      if (agentEmail) rates = await RateConfig.findOne({ agentEmail });
-      if (!rates) rates = await RateConfig.findOne({ $or: [{ agentEmail: '' }, { agentEmail: {$exists: false } }] });
+      if (agentEmail) {
+        rates = await RateConfig.findOne({ agentEmail });
+      }
+      if (!rates) {
+        rates = await RateConfig.findOne({ $or: [{ agentEmail: '' }, { agentEmail: {$exists: false } }] });
+      }
       return res.json({ success: true, rates: rates || {} });
     }
     res.json({ success: true, rates: {} });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/rates', async (req, res) => {
+  try {
+    const agentEmail = (req.body.agentEmail || '').toLowerCase().trim();
+    if (mongoose.connection.readyState === 1) {
+      const filter = agentEmail ? { agentEmail } : {};
+      const rates = await RateConfig.findOneAndUpdate(filter, req.body, { upsert: true, new: true });
+      return res.json({ success: true, rates });
+    }
+    res.json({ success: true, rates: req.body });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -253,6 +296,20 @@ app.get('/api/station-config', async (req, res) => {
       return res.json({ success: true, config: config || {} });
     }
     res.json({ success: true, config: {} });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.post('/api/station-config', async (req, res) => {
+  try {
+    const agentEmail = (req.body.agentEmail || '').toLowerCase().trim();
+    if (!agentEmail) return res.status(400).json({ success: false, message: 'agentEmail is required.' });
+    if (mongoose.connection.readyState === 1) {
+      const config = await StationConfig.findOneAndUpdate({ agentEmail }, req.body, { upsert: true, new: true });
+      return res.json({ success: true, config });
+    }
+    res.json({ success: true, config: req.body });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
@@ -370,6 +427,15 @@ app.post('/api/collections', async (req, res) => {
       return res.json({ success: true, collection: entry });
     }
     res.json({ success: true, collection: req.body });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+app.delete('/api/collections/:id', async (req, res) => {
+  try {
+    if (mongoose.connection.readyState === 1) await Collection.deleteOne({ id: req.params.id });
+    res.json({ success: true, message: 'Collection deleted.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
