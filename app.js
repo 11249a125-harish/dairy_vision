@@ -921,6 +921,86 @@ function adminLogout() {
   switchLoginRole('agent');
 }
 
+function toggleAdminForgotPass(show) {
+  document.getElementById('admin-login-form')?.classList.toggle('hidden', show);
+  document.getElementById('admin-forgot-wrapper')?.classList.toggle('hidden', !show);
+  if (show) {
+    // Reset forgot form state
+    document.getElementById('admin-forgot-email').value = '';
+    document.getElementById('admin-forgot-otp').value = '';
+    document.getElementById('admin-forgot-newpass').value = '';
+    document.getElementById('admin-forgot-otp-block')?.classList.add('hidden');
+    document.getElementById('admin-forgot-newpass-block')?.classList.add('hidden');
+    document.getElementById('btn-confirm-admin-reset')?.classList.add('hidden');
+    document.getElementById('btn-send-admin-reset-otp')?.classList.remove('hidden');
+    document.getElementById('admin-forgot-otp-timer')?.classList.add('hidden');
+  }
+}
+
+let adminResetTimerInterval = null;
+
+async function sendAdminForgotOtp() {
+  const email = (document.getElementById('admin-forgot-email')?.value || '').trim().toLowerCase();
+  if (!email) { showAlert('Please enter the admin email address.', 'danger'); return; }
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/forgot-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (!data.success) { showAlert(`❌ ${data.message}`, 'danger'); return; }
+    showAlert(`✅ ${data.message}`, 'success');
+    document.getElementById('admin-forgot-otp-block')?.classList.remove('hidden');
+    document.getElementById('admin-forgot-newpass-block')?.classList.remove('hidden');
+    document.getElementById('btn-confirm-admin-reset')?.classList.remove('hidden');
+    document.getElementById('btn-send-admin-reset-otp')?.classList.add('hidden');
+    // Start 5-minute countdown
+    const timerEl = document.getElementById('admin-forgot-otp-timer');
+    const secEl = document.getElementById('admin-forgot-seconds');
+    if (timerEl && secEl) {
+      timerEl.classList.remove('hidden');
+      let secs = 300;
+      secEl.textContent = secs;
+      if (adminResetTimerInterval) clearInterval(adminResetTimerInterval);
+      adminResetTimerInterval = setInterval(() => {
+        secs--;
+        secEl.textContent = secs;
+        if (secs <= 0) {
+          clearInterval(adminResetTimerInterval);
+          timerEl.innerHTML = '<span style="color:#c1121f;">⏱️ OTP Expired. Please request a new OTP.</span>';
+          document.getElementById('btn-confirm-admin-reset')?.classList.add('hidden');
+          document.getElementById('btn-send-admin-reset-otp')?.classList.remove('hidden');
+        }
+      }, 1000);
+    }
+  } catch (err) {
+    showAlert('Failed to send reset OTP. Check server connection.', 'danger');
+  }
+}
+
+async function confirmAdminForgotReset() {
+  const email = (document.getElementById('admin-forgot-email')?.value || '').trim().toLowerCase();
+  const otp = (document.getElementById('admin-forgot-otp')?.value || '').trim();
+  const newPassword = (document.getElementById('admin-forgot-newpass')?.value || '').trim();
+  if (!otp || otp.length !== 6) { showAlert('Please enter the 6-digit OTP.', 'danger'); return; }
+  if (!newPassword || newPassword.length < 6) { showAlert('New password must be at least 6 characters.', 'danger'); return; }
+  try {
+    const res = await fetch(`${API_BASE_URL}/api/admin/reset-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, otp, newPassword })
+    });
+    const data = await res.json();
+    if (!data.success) { showAlert(`❌ ${data.message}`, 'danger'); return; }
+    if (adminResetTimerInterval) clearInterval(adminResetTimerInterval);
+    showAlert(`✅ ${data.message}`, 'success');
+    setTimeout(() => toggleAdminForgotPass(false), 1500);
+  } catch (err) {
+    showAlert('Password reset failed. Check server connection.', 'danger');
+  }
+}
+
 function switchAdminTab(tab) {
   ['overview','agents','farmers','collections'].forEach(t => {
     document.getElementById(`admin-tab-${t}`)?.classList.toggle('hidden', t !== tab);
@@ -942,6 +1022,11 @@ async function loadAdminOverview() {
     const res = await fetch(`${API_BASE_URL}/api/admin/overview`, {
       headers: { 'x-admin-token': currentAdminToken }
     });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      showAlert(`Admin API error (${res.status}): ${err.message || 'Check server status.'}`, 'danger');
+      return;
+    }
     const data = await res.json();
     if (!data.success) { showAlert('Admin: Could not load overview.', 'danger'); return; }
     const ov = data.overview;
@@ -964,11 +1049,12 @@ async function loadAdminOverview() {
           <td style="color:var(--primary); font-weight:bold;">${a.totalMilk} L</td>
           <td style="color:#40916c; font-weight:bold;">₹${a.totalValue}</td>
           <td style="color:var(--gold); font-weight:bold;">${a.todayMilk} L</td>
-        </tr>`).join('') : '<tr><td colspan="9" style="text-align:center;color:#888;">No agent data found.</td></tr>';
+        </tr>`).join('') : '<tr><td colspan="9" style="text-align:center;color:#888;">No agent data found. Agents appear here after they register and configure their station.</td></tr>';
     }
     renderAdminCharts(breakdown);
   } catch (err) {
-    showAlert('Admin overview fetch failed. Check connection.', 'danger');
+    // Network error — server may still be starting on Render (cold start takes ~30s)
+    showAlert('⚠️ Could not reach server. If you just deployed, wait 30 seconds and click Refresh.', 'danger');
   }
 }
 

@@ -335,7 +335,39 @@
                   </div>
                 </div>
                 <button type="submit" class="btn" style="width:100%; padding:12px; margin-top:15px; background:linear-gradient(135deg,#4a0072,#7b2d8b); color:#fff; font-weight:bold; border:none; border-radius:8px; cursor:pointer;"><i class="fa-solid fa-right-to-bracket"></i> Login to Admin Portal</button>
+                <p style="text-align:center; margin-top:10px;">
+                  <a href="#" onclick="toggleAdminForgotPass(true)" style="color:#7b2d8b; font-size:0.85em; font-weight:bold; text-decoration:none;"><i class="fa-solid fa-key"></i> Forgot Admin Password?</a>
+                </p>
               </form>
+
+              <!-- ADMIN FORGOT PASSWORD FORM -->
+              <div id="admin-forgot-wrapper" class="hidden">
+                <h3 style="color:#4a0072; text-align:center; margin-bottom:12px;"><i class="fa-solid fa-key"></i> Admin Password Reset</h3>
+                <p style="font-size:0.85em; color:#666; text-align:center; margin-bottom:15px;">Enter admin email to receive a 5-minute OTP for password reset.</p>
+                <div class="form-group">
+                  <label style="color:#4a0072;"><i class="fa-solid fa-envelope"></i> Admin Email *</label>
+                  <input type="email" id="admin-forgot-email" placeholder="admin@smartdairy.com" style="border:1px solid #9c27b0;">
+                </div>
+                <div id="admin-forgot-otp-block" class="form-group hidden" style="background:#f3e5f5; padding:12px; border-radius:8px; border:1px solid #9c27b0;">
+                  <label style="color:#4a0072;"><i class="fa-solid fa-shield-halved"></i> Enter OTP (sent to admin email) *</label>
+                  <input type="text" id="admin-forgot-otp" placeholder="Enter 6-digit OTP" pattern="[0-9]{6}">
+                  <div id="admin-forgot-otp-timer" class="otp-timer-badge hidden" style="margin-top:6px; font-size:0.85em; color:#c1121f; font-weight:bold; text-align:center;">
+                    ⏱️ OTP Valid for: <span id="admin-forgot-seconds">300</span>s
+                  </div>
+                </div>
+                <div id="admin-forgot-newpass-block" class="form-group hidden">
+                  <label style="color:#4a0072;"><i class="fa-solid fa-lock"></i> New Password * (min 6 chars)</label>
+                  <input type="password" id="admin-forgot-newpass" placeholder="Enter new admin password" style="border:1px solid #9c27b0;">
+                </div>
+                <div style="display:flex; gap:10px; flex-direction:column;">
+                  <button type="button" id="btn-send-admin-reset-otp" class="btn" style="background:#7b2d8b; color:#fff;" onclick="sendAdminForgotOtp()"><i class="fa-solid fa-paper-plane"></i> Send Reset OTP to Admin Email</button>
+                  <button type="button" id="btn-confirm-admin-reset" class="btn btn-success hidden" onclick="confirmAdminForgotReset()"><i class="fa-solid fa-save"></i> Verify OTP &amp; Set New Password</button>
+                </div>
+                <p style="text-align:center; margin-top:12px;">
+                  <a href="#" onclick="toggleAdminForgotPass(false)" style="color:#666; font-size:0.85em;">← Back to Admin Login</a>
+                </p>
+              </div>
+
             </div>
 
           </div>

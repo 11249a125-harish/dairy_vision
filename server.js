@@ -848,30 +848,108 @@ app.post('/api/backup/restore', async (req, res) => {
 // ============================================================
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'admin@smartdairy.com').toLowerCase().trim();
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'Admin@2026';
+const ADMIN_PASSWORD_ENV = process.env.ADMIN_PASSWORD || 'Admin@2026';
 
-function verifyAdminToken(req, res) {
+// AdminConfig — stores password override if admin resets via OTP
+const adminConfigSchema = new mongoose.Schema({
+  key: { type: String, required: true, unique: true },
+  value: { type: String, required: true },
+  updatedAt: { type: Date, default: Date.now }
+});
+const AdminConfig = mongoose.model('AdminConfig', adminConfigSchema);
+
+async function getAdminPassword() {
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const cfg = await AdminConfig.findOne({ key: 'admin_password' });
+      if (cfg && cfg.value) return cfg.value;
+    }
+  } catch (_) {}
+  return ADMIN_PASSWORD_ENV;
+}
+
+async function verifyAdminToken(req, res) {
   const token = req.headers['x-admin-token'] || '';
-  if (token !== ADMIN_PASSWORD) {
+  const currentPassword = await getAdminPassword();
+  if (token !== currentPassword) {
     res.status(401).json({ success: false, message: 'Unauthorized: Invalid admin token.' });
     return false;
   }
   return true;
 }
 
-// POST /api/admin/login — Verify admin credentials
-app.post('/api/admin/login', (req, res) => {
+// POST /api/admin/login — Verify admin credentials (checks DB override first, then env)
+app.post('/api/admin/login', async (req, res) => {
   const email = (req.body.email || '').toLowerCase().trim();
   const password = (req.body.password || '').trim();
-  if (email === ADMIN_EMAIL && password === ADMIN_PASSWORD) {
-    return res.json({ success: true, token: ADMIN_PASSWORD, adminEmail: ADMIN_EMAIL });
+  const currentPassword = await getAdminPassword();
+  if (email === ADMIN_EMAIL && password === currentPassword) {
+    return res.json({ success: true, token: currentPassword, adminEmail: ADMIN_EMAIL });
   }
-  return res.status(401).json({ success: false, message: 'Invalid admin credentials.' });
+  return res.status(401).json({ success: false, message: 'Invalid admin credentials. Check email and password.' });
 });
+
+// POST /api/admin/forgot-password — Send OTP to admin email for password reset
+app.post('/api/admin/forgot-password', async (req, res) => {
+  const email = (req.body.email || '').toLowerCase().trim();
+  if (email !== ADMIN_EMAIL) {
+    return res.status(403).json({ success: false, message: 'This email is not registered as admin.' });
+  }
+  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes for admin reset
+  otpStore[`admin_reset_${email}`] = { otp, expiresAt };
+  try {
+    await sendEmailHelper({
+      toEmail: email,
+      toName: 'Smart Dairy Admin',
+      subject: `Admin Password Reset OTP: ${otp}`,
+      htmlContent: `
+        <div style="font-family:Arial,sans-serif; max-width:500px; padding:24px; border:2px solid #4a0072; border-radius:10px;">
+          <h2 style="color:#4a0072; text-align:center;">Smart Dairy — Admin Password Reset</h2>
+          <p>A password reset was requested for the admin account.</p>
+          <div style="text-align:center; margin:20px 0;">
+            <h1 style="color:#fff; background:#4a0072; display:inline-block; padding:12px 28px; border-radius:6px; letter-spacing:4px;">${otp}</h1>
+          </div>
+          <p style="color:#c1121f; font-weight:bold;">⚡ This OTP is valid for 5 minutes only.</p>
+          <p style="color:#555; font-size:0.9em;">If you did not request this, ignore this email.</p>
+        </div>`
+    });
+    return res.json({ success: true, message: `OTP dispatched to ${email}. Valid for 5 minutes.` });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: 'Failed to send OTP email.' });
+  }
+});
+
+// POST /api/admin/reset-password — Verify OTP and set new admin password in DB
+app.post('/api/admin/reset-password', async (req, res) => {
+  const email = (req.body.email || '').toLowerCase().trim();
+  const otp = (req.body.otp || '').trim();
+  const newPassword = (req.body.newPassword || '').trim();
+  if (email !== ADMIN_EMAIL) return res.status(403).json({ success: false, message: 'Unauthorized email.' });
+  if (!newPassword || newPassword.length < 6) return res.status(400).json({ success: false, message: 'New password must be at least 6 characters.' });
+  const record = otpStore[`admin_reset_${email}`];
+  if (!record || Date.now() > record.expiresAt || String(record.otp).trim() !== String(otp).trim()) {
+    return res.status(400).json({ success: false, message: 'Invalid or expired OTP. Please request a new one.' });
+  }
+  delete otpStore[`admin_reset_${email}`];
+  try {
+    if (mongoose.connection.readyState === 1) {
+      await AdminConfig.findOneAndUpdate(
+        { key: 'admin_password' },
+        { key: 'admin_password', value: newPassword, updatedAt: new Date() },
+        { upsert: true, new: true }
+      );
+    }
+    return res.json({ success: true, message: 'Admin password updated successfully. Use your new password to login.' });
+  } catch (err) {
+    return res.status(500).json({ success: false, message: err.message });
+  }
+});
+
 
 // GET /api/admin/overview — Aggregate stats across all agents
 app.get('/api/admin/overview', async (req, res) => {
-  if (!verifyAdminToken(req, res)) return;
+  if (!await verifyAdminToken(req, res)) return;
   try {
     if (mongoose.connection.readyState !== 1) {
       return res.json({ success: true, overview: { farmersCount: 0, collectionsCount: 0, agentsCount: 0, todayMilk: 0, todayValue: 0, agentBreakdown: [] } });
@@ -930,7 +1008,7 @@ app.get('/api/admin/overview', async (req, res) => {
 
 // GET /api/admin/agents — All agents with station configs & farmer counts
 app.get('/api/admin/agents', async (req, res) => {
-  if (!verifyAdminToken(req, res)) return;
+  if (!await verifyAdminToken(req, res)) return;
   try {
     if (mongoose.connection.readyState !== 1) return res.json({ success: true, agents: [] });
     const agents = await Agent.find().sort({ createdAt: 1 });
@@ -964,7 +1042,7 @@ app.get('/api/admin/agents', async (req, res) => {
 
 // POST /api/admin/agents/:email/reset-password — Reset agent password
 app.post('/api/admin/agents/:email/reset-password', async (req, res) => {
-  if (!verifyAdminToken(req, res)) return;
+  if (!await verifyAdminToken(req, res)) return;
   const email = (req.params.email || '').toLowerCase().trim();
   const newPassword = (req.body.newPassword || '').trim();
   if (!newPassword || newPassword.length < 4) {
@@ -984,7 +1062,7 @@ app.post('/api/admin/agents/:email/reset-password', async (req, res) => {
 
 // DELETE /api/admin/agents/:email — Remove/delete an agent account
 app.delete('/api/admin/agents/:email', async (req, res) => {
-  if (!verifyAdminToken(req, res)) return;
+  if (!await verifyAdminToken(req, res)) return;
   const email = (req.params.email || '').toLowerCase().trim();
   try {
     if (mongoose.connection.readyState === 1) {
@@ -1001,7 +1079,7 @@ app.delete('/api/admin/agents/:email', async (req, res) => {
 
 // GET /api/admin/farmers — All farmers across all agents
 app.get('/api/admin/farmers', async (req, res) => {
-  if (!verifyAdminToken(req, res)) return;
+  if (!await verifyAdminToken(req, res)) return;
   try {
     if (mongoose.connection.readyState === 1) {
       const farmers = await Farmer.find().sort({ createdAt: -1 });
@@ -1015,7 +1093,7 @@ app.get('/api/admin/farmers', async (req, res) => {
 
 // GET /api/admin/collections — All collections with optional date filter
 app.get('/api/admin/collections', async (req, res) => {
-  if (!verifyAdminToken(req, res)) return;
+  if (!await verifyAdminToken(req, res)) return;
   try {
     if (mongoose.connection.readyState === 1) {
       let query = {};
@@ -1035,7 +1113,7 @@ app.get('/api/admin/collections', async (req, res) => {
 
 // PUT /api/admin/collections/:id — Edit any collection entry (admin override)
 app.put('/api/admin/collections/:id', async (req, res) => {
-  if (!verifyAdminToken(req, res)) return;
+  if (!await verifyAdminToken(req, res)) return;
   try {
     if (mongoose.connection.readyState === 1) {
       const updated = await Collection.findOneAndUpdate({ id: req.params.id }, req.body, { new: true });
@@ -1050,7 +1128,7 @@ app.put('/api/admin/collections/:id', async (req, res) => {
 
 // DELETE /api/admin/collections/:id — Delete any collection entry (admin override)
 app.delete('/api/admin/collections/:id', async (req, res) => {
-  if (!verifyAdminToken(req, res)) return;
+  if (!await verifyAdminToken(req, res)) return;
   try {
     if (mongoose.connection.readyState === 1) {
       await Collection.deleteOne({ id: req.params.id });
