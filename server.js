@@ -58,14 +58,14 @@ const farmerSchema = new mongoose.Schema({
   id: { type: String, required: true, unique: true, index: true }, // Primary Key
   name: { type: String, required: true },
   mobile: { type: String, required: true, unique: true, index: true }, // Unique Key
-  email: { type: String, required: true, unique: true, index: true }, // Unique Key / Alternate PK
+  email: { type: String, required: true, unique: true, index: true }, // Unique Key / Alternate PK (Gmail for Portal Login)
   address: { type: String, default: '' },
   village: { type: String, default: 'Palamaner Village' },
   aadhaar: { type: String, default: '' },
   bankName: { type: String, required: true },
   account: { type: String, required: true },
   ifsc: { type: String, required: true },
-  password: { type: String, default: 'farmer123' },
+  password: { type: String, default: 'farmer123' }, // Default Portal Access Password
   registeredBy: { type: String, default: 'Agent' },
   agentEmail: { type: String, default: '', index: true },
   createdAt: { type: Date, default: Date.now }
@@ -269,8 +269,6 @@ app.get('/api/agents', async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 });
-
-// RESTRICTED: Public self-registration endpoint removed. Agents must be created via Admin Portal.
 
 app.get('/api/rates', async (req, res) => {
   try {
@@ -605,7 +603,13 @@ app.post('/api/farmers', async (req, res) => {
         return res.status(400).json({ success: false, message: `Farmer Registration Error: Mobile number ${mobile} is already registered to Farmer ID ${existingMobile.id}!` });
       }
 
-      const newFarmer = await Farmer.findOneAndUpdate({ id }, req.body, { upsert: true, new: true });
+      // Automatically assign default portal access password if not provided
+      const farmerPayload = {
+        ...req.body,
+        password: req.body.password || 'farmer123'
+      };
+
+      const newFarmer = await Farmer.findOneAndUpdate({ id }, farmerPayload, { upsert: true, new: true });
       return res.json({ success: true, farmer: newFarmer });
     }
     res.json({ success: true, farmer: req.body });
@@ -784,7 +788,6 @@ async function performAutoBackup() {
   }
 }
 
-// Background automated snapshot timer every 5 minutes
 setInterval(performAutoBackup, 5 * 60 * 1000);
 
 app.get('/api/backup/export', async (req, res) => {
@@ -837,11 +840,6 @@ app.post('/api/backup/restore', async (req, res) => {
   }
 });
 
-// ============================================================
-// AGENT VERIFY — Dynamic login check with strict DB registration check
-// ============================================================
-
-// POST /api/agent/verify — Verify agent login credentials from MongoDB
 app.post('/api/agent/verify', async (req, res) => {
   const email = (req.body.email || '').toLowerCase().trim();
   const password = (req.body.password || '').trim();
@@ -849,7 +847,7 @@ app.post('/api/agent/verify', async (req, res) => {
   
   try {
     if (mongoose.connection.readyState !== 1) {
-      return res.status(503).json({ success: false, message: 'Database disconnected. Standalone login disabled for unregistered security check.' });
+      return res.status(53.3).json({ success: false, message: 'Database disconnected. Standalone login disabled.' });
     }
     
     const agent = await Agent.findOne({ email });
@@ -877,14 +875,9 @@ app.post('/api/agent/verify', async (req, res) => {
   }
 });
 
-// ============================================================
-// ADMIN MODULE — All /api/admin/* routes
-// ============================================================
-
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '11249a125@kanchiuniv.ac.in').toLowerCase().trim();
 const ADMIN_PASSWORD_ENV = process.env.ADMIN_PASSWORD || 'Admin@2026';
 
-// AdminConfig — stores password override if admin resets via OTP
 const adminConfigSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true },
   value: { type: String, required: true },
@@ -912,7 +905,6 @@ async function verifyAdminToken(req, res) {
   return true;
 }
 
-// POST /api/admin/login — Verify admin credentials (checks DB override first, then env)
 app.post('/api/admin/login', async (req, res) => {
   const email = (req.body.email || '').toLowerCase().trim();
   const password = (req.body.password || '').trim();
@@ -923,14 +915,13 @@ app.post('/api/admin/login', async (req, res) => {
   return res.status(401).json({ success: false, message: 'Invalid admin credentials. Check email and password.' });
 });
 
-// POST /api/admin/forgot-password — Send OTP to admin email for password reset
 app.post('/api/admin/forgot-password', async (req, res) => {
   const email = (req.body.email || '').toLowerCase().trim();
   if (email !== ADMIN_EMAIL) {
     return res.status(403).json({ success: false, message: 'This email is not registered as admin.' });
   }
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
-  const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes for admin reset
+  const expiresAt = Date.now() + 5 * 60 * 1000;
   otpStore[`admin_reset_${email}`] = { otp, expiresAt };
   try {
     await sendEmailHelper({
@@ -945,7 +936,6 @@ app.post('/api/admin/forgot-password', async (req, res) => {
             <h1 style="color:#fff; background:#4a0072; display:inline-block; padding:12px 28px; border-radius:6px; letter-spacing:4px;">${otp}</h1>
           </div>
           <p style="color:#c1121f; font-weight:bold;">⚡ This OTP is valid for 5 minutes only.</p>
-          <p style="color:#555; font-size:0.9em;">If you did not request this, ignore this email.</p>
         </div>`
     });
     return res.json({ success: true, message: `OTP dispatched to ${email}. Valid for 5 minutes.` });
@@ -954,7 +944,6 @@ app.post('/api/admin/forgot-password', async (req, res) => {
   }
 });
 
-// POST /api/admin/reset-password — Verify OTP and set new admin password in DB
 app.post('/api/admin/reset-password', async (req, res) => {
   const email = (req.body.email || '').toLowerCase().trim();
   const otp = (req.body.otp || '').trim();
@@ -963,7 +952,7 @@ app.post('/api/admin/reset-password', async (req, res) => {
   if (!newPassword || newPassword.length < 6) return res.status(400).json({ success: false, message: 'New password must be at least 6 characters.' });
   const record = otpStore[`admin_reset_${email}`];
   if (!record || Date.now() > record.expiresAt || String(record.otp).trim() !== String(otp).trim()) {
-    return res.status(400).json({ success: false, message: 'Invalid or expired OTP. Please request a new one.' });
+    return res.status(400).json({ success: false, message: 'Invalid or expired OTP.' });
   }
   delete otpStore[`admin_reset_${email}`];
   try {
@@ -974,14 +963,12 @@ app.post('/api/admin/reset-password', async (req, res) => {
         { upsert: true, new: true }
       );
     }
-    return res.json({ success: true, message: 'Admin password updated successfully. Use your new password to login.' });
+    return res.json({ success: true, message: 'Admin password updated successfully.' });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
-
-// GET /api/admin/overview — Aggregate stats across all agents
 app.get('/api/admin/overview', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1040,7 +1027,6 @@ app.get('/api/admin/overview', async (req, res) => {
   }
 });
 
-// GET /api/admin/agents — All agents with station configs & farmer counts
 app.get('/api/admin/agents', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1074,7 +1060,6 @@ app.get('/api/admin/agents', async (req, res) => {
   }
 });
 
-// POST /api/admin/agents/:email/reset-password — Reset agent password
 app.post('/api/admin/agents/:email/reset-password', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   const email = (req.params.email || '').toLowerCase().trim();
@@ -1085,7 +1070,7 @@ app.post('/api/admin/agents/:email/reset-password', async (req, res) => {
   try {
     if (mongoose.connection.readyState === 1) {
       const agent = await Agent.findOneAndUpdate({ email }, { password: newPassword }, { new: true });
-      if (!agent) return res.status(404).json({ success: false, message: 'Agent not found in database.' });
+      if (!agent) return res.status(404).json({ success: false, message: 'Agent not found.' });
       return res.json({ success: true, message: `Password reset successfully for ${email}.` });
     }
     res.json({ success: true, message: 'Password reset (offline mode).' });
@@ -1094,7 +1079,6 @@ app.post('/api/admin/agents/:email/reset-password', async (req, res) => {
   }
 });
 
-// DELETE /api/admin/agents/:email — Remove/delete an agent account and cascade delete their farmers
 app.delete('/api/admin/agents/:email', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   const email = (req.params.email || '').toLowerCase().trim();
@@ -1103,7 +1087,6 @@ app.delete('/api/admin/agents/:email', async (req, res) => {
       await Agent.deleteOne({ email });
       await StationConfig.deleteOne({ agentEmail: email });
       await RateConfig.deleteOne({ agentEmail: email });
-      // Cascade remove farmers registered by this deleted agent
       await Farmer.deleteMany({ $or: [{ agentEmail: email }, { registeredBy: email }] });
       return res.json({ success: true, message: `Agent ${email} and associated farmer records removed successfully.` });
     }
@@ -1113,7 +1096,6 @@ app.delete('/api/admin/agents/:email', async (req, res) => {
   }
 });
 
-// GET /api/admin/farmers — All active registered farmers (excluding those whose agent was deleted)
 app.get('/api/admin/farmers', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1136,7 +1118,6 @@ app.get('/api/admin/farmers', async (req, res) => {
   }
 });
 
-// GET /api/admin/collections — All collections with optional date filter
 app.get('/api/admin/collections', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1156,7 +1137,6 @@ app.get('/api/admin/collections', async (req, res) => {
   }
 });
 
-// PUT /api/admin/collections/:id — Edit any collection entry (admin override)
 app.put('/api/admin/collections/:id', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1171,7 +1151,6 @@ app.put('/api/admin/collections/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/admin/collections/:id — Delete any collection entry (admin override)
 app.delete('/api/admin/collections/:id', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1185,8 +1164,6 @@ app.delete('/api/admin/collections/:id', async (req, res) => {
   }
 });
 
-
-// POST /api/admin/register-agent — Admin creates a new agent account
 app.post('/api/admin/register-agent', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   const email = (req.body.email || '').toLowerCase().trim();
@@ -1206,7 +1183,7 @@ app.post('/api/admin/register-agent', async (req, res) => {
         await sendEmailHelper({
           toEmail: email, toName: 'Agent',
           subject: 'Welcome to Smart Dairy - Your Agent Account is Ready',
-          htmlContent: `<div style="font-family:Arial,sans-serif;max-width:520px;padding:24px;border:2px solid #1b4332;border-radius:10px;"><h2 style="color:#1b4332;text-align:center;">Smart Dairy - Agent Account Created</h2><p>Your agent account has been created by the admin. Use the details below to login:</p><table style="width:100%;margin:16px 0;border-collapse:collapse;"><tr><td style="padding:8px;background:#f0fdf4;font-weight:bold;">Email</td><td style="padding:8px;">${email}</td></tr><tr><td style="padding:8px;background:#f0fdf4;font-weight:bold;">Temp Password</td><td style="padding:8px;">${password}</td></tr><tr><td style="padding:8px;background:#f0fdf4;font-weight:bold;">CAN Number</td><td style="padding:8px;">${can}</td></tr><tr><td style="padding:8px;background:#f0fdf4;font-weight:bold;">Village</td><td style="padding:8px;">${village || '--'}</td></tr><tr><td style="padding:8px;background:#f0fdf4;font-weight:bold;">Billing Cycle</td><td style="padding:8px;">${cycle}</td></tr></table><p style="color:#c1121f;font-size:0.88em;">Please change your password after first login.</p></div>`
+          htmlContent: `<div style="font-family:Arial,sans-serif;max-width:520px;padding:24px;border:2px solid #1b4332;border-radius:10px;"><h2 style="color:#1b4332;text-align:center;">Smart Dairy - Agent Account Created</h2><p>Your agent account has been created by the admin. Use the details below to login:</p><table style="width:100%;margin:16px 0;border-collapse:collapse;"><tr><td style="padding:8px;background:#f0fdf4;font-weight:bold;">Email</td><td style="padding:8px;">${email}</td></tr><tr><td style="padding:8px;background:#f0fdf4;font-weight:bold;">Temp Password</td><td style="padding:8px;">${password}</td></tr><tr><td style="padding:8px;background:#f0fdf4;font-weight:bold;">CAN Number</td><td style="padding:8px;">${can}</td></tr><tr><td style="padding:8px;background:#f0fdf4;font-weight:bold;">Village</td><td style="padding:8px;">${village || '--'}</td></tr><tr><td style="padding:8px;background:#f0fdf4;font-weight:bold;">Billing Cycle</td><td style="padding:8px;">${cycle}</td></tr></table></div>`
         });
       } catch (_) {}
       return res.json({ success: true, message: `Agent ${email} registered with CAN ${can}.`, can, email });
@@ -1215,7 +1192,6 @@ app.post('/api/admin/register-agent', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-// PUT /api/admin/rates/:agentEmail — Admin sets milk rates for any agent
 app.put('/api/admin/rates/:agentEmail', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   const agentEmail = decodeURIComponent(req.params.agentEmail || '').toLowerCase().trim();
@@ -1237,7 +1213,6 @@ app.put('/api/admin/rates/:agentEmail', async (req, res) => {
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
 
-// GET /api/admin/activity-report — Aggregated data for admin charts/reports
 app.get('/api/admin/activity-report', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
