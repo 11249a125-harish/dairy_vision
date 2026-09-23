@@ -22,11 +22,11 @@ app.use((req, res, next) => {
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-  console.warn('âš ï¸ WARNING: MONGODB_URI environment variable is missing. Running with in-memory fallback.');
+  console.warn('⚠️ WARNING: MONGODB_URI environment variable is missing. Running with in-memory fallback.');
 } else {
   mongoose.connect(MONGODB_URI)
-    .then(() => console.log('ðŸƒ Connected to MongoDB Atlas Database'))
-    .catch(err => console.error('âŒ MongoDB Connection Error:', err.message));
+    .then(() => console.log('🍃 Connected to MongoDB Atlas Database'))
+    .catch(err => console.error('❌ MongoDB Connection Error:', err.message));
 }
 
 const agentSchema = new mongoose.Schema({
@@ -202,7 +202,7 @@ async function sendEmailHelper({ toEmail, toName, subject, htmlContent }) {
         html: htmlContent
       });
 
-      console.log(`âœ‰ï¸ Email dispatched via SMTP to ${toEmail}. Message ID: ${info.messageId}`);
+      console.log(`✉️ Email dispatched via SMTP to ${toEmail}. Message ID: ${info.messageId}`);
       return { success: true, method: 'SMTP', messageId: info.messageId };
     } catch (err) {
       console.error('SMTP Email Error:', err.message);
@@ -227,7 +227,7 @@ async function sendEmailHelper({ toEmail, toName, subject, htmlContent }) {
       });
 
       if (response.ok) {
-        console.log(`âœ‰ï¸ Email dispatched via Brevo API to ${toEmail}`);
+        console.log(`✉️ Email dispatched via Brevo API to ${toEmail}`);
         return { success: true, method: 'Brevo' };
       }
     } catch (err) {
@@ -236,7 +236,7 @@ async function sendEmailHelper({ toEmail, toName, subject, htmlContent }) {
   }
 
   console.log(`\n======================================================`);
-  console.log(`ðŸ“§ SIMULATED EMAIL DISPATCH (No active SMTP / Brevo key configured)`);
+  console.log(`📧 SIMULATED EMAIL DISPATCH (No active SMTP / Brevo key configured)`);
   console.log(`TO: ${toEmail} (${toName || 'User'})`);
   console.log(`SUBJECT: ${subject}`);
   console.log(`======================================================\n`);
@@ -369,7 +369,7 @@ app.post('/api/send-otp', async (req, res) => {
           <div style="text-align: center; margin: 20px 0;">
             <h1 style="color: #ffb703; background: #1b4332; display: inline-block; padding: 12px 28px; border-radius: 6px; letter-spacing: 4px;">${generatedOtp}</h1>
           </div>
-          <p style="color: #c1121f; font-size: 0.9em; font-weight: bold;">âš¡ This OTP code will expire in 1 minute (60 seconds).</p>
+          <p style="color: #c1121f; font-size: 0.9em; font-weight: bold;">⚡ This OTP code will expire in 1 minute (60 seconds).</p>
         </div>
       `
     });
@@ -482,11 +482,11 @@ app.post('/api/send-milk-bill', async (req, res) => {
             </tr>
             <tr>
               <td style="padding: 12px; border: 1px solid #e5e7eb;"><strong>Rate per Liter:</strong></td>
-              <td style="padding: 12px; border: 1px solid #e5e7eb;">â‚¹${finalRate.toFixed(2)}</td>
+              <td style="padding: 12px; border: 1px solid #e5e7eb;">₹${finalRate.toFixed(2)}</td>
             </tr>
             <tr style="background-color: #eaf5ec;">
               <td style="padding: 14px; border: 1px solid #c8e6c9; font-size: 16px;"><strong>Total Amount:</strong></td>
-              <td style="padding: 14px; border: 1px solid #c8e6c9; font-size: 18px; color: #2e7d32; font-weight: bold;">â‚¹${finalTotal.toFixed(2)}</td>
+              <td style="padding: 14px; border: 1px solid #c8e6c9; font-size: 18px; color: #2e7d32; font-weight: bold;">₹${finalTotal.toFixed(2)}</td>
             </tr>
           </table>
 
@@ -559,7 +559,7 @@ app.post('/api/send-requirement-slip', async (req, res) => {
             </tr>
             <tr style="background-color: #e8f5e9;">
               <td style="padding: 12px; border: 1px solid #ddd; font-size: 15px;"><strong>Cost Amount:</strong></td>
-              <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px; color: #1b4332;"><strong>â‚¹${finalCost}</strong></td>
+              <td style="padding: 12px; border: 1px solid #ddd; font-size: 16px; color: #1b4332;"><strong>₹${finalCost}</strong></td>
             </tr>
           </table>
 
@@ -582,7 +582,7 @@ app.get('/api/farmers', async (req, res) => {
   try {
     const agentEmail = (req.query.agentEmail || '').toLowerCase().trim();
     if (mongoose.connection.readyState === 1) {
-      const query = agentEmail ? { $or: [{ agentEmail }, { registeredBy: agentEmail }, { agentEmail: '' }, { agentEmail: { $exists: false } }] } : {};
+      const query = agentEmail ? { $or: [{ agentEmail }, { registeredBy: agentEmail }, { agentEmail: '' }, { agentEmail: {$exists: false } }] } : {};
       const farmers = await Farmer.find(query).sort({ createdAt: -1 });
       return res.json({ success: true, farmers });
     }
@@ -631,7 +631,7 @@ app.get('/api/collections', async (req, res) => {
   try {
     const agentEmail = (req.query.agentEmail || '').toLowerCase().trim();
     if (mongoose.connection.readyState === 1) {
-      const query = agentEmail ? { $or: [{ agentEmail }, { agentEmail: '' }, { agentEmail: { $exists: false } }] } : {};
+      const query = agentEmail ? { $or: [{ agentEmail }, { agentEmail: '' }, { agentEmail: {$exists: false } }] } : {};
       const collections = await Collection.find(query).sort({ createdAt: -1 });
       return res.json({ success: true, collections });
     }
@@ -666,7 +666,7 @@ app.get('/api/bookings', async (req, res) => {
   try {
     const agentEmail = (req.query.agentEmail || '').toLowerCase().trim();
     if (mongoose.connection.readyState === 1) {
-      const query = agentEmail ? { $or: [{ agentEmail }, { agentEmail: '' }, { agentEmail: { $exists: false } }] } : {};
+      const query = agentEmail ? { $or: [{ agentEmail }, { agentEmail: '' }, { agentEmail: {$exists: false } }] } : {};
       const bookings = await Booking.find(query).sort({ createdAt: -1 });
       return res.json({ success: true, bookings });
     }
@@ -714,7 +714,7 @@ app.get('/api/deductions', async (req, res) => {
   try {
     const agentEmail = (req.query.agentEmail || '').toLowerCase().trim();
     if (mongoose.connection.readyState === 1) {
-      const query = agentEmail ? { $or: [{ agentEmail }, { agentEmail: '' }, { agentEmail: { $exists: false } }] } : {};
+      const query = agentEmail ? { $or: [{ agentEmail }, { agentEmail: '' }, { agentEmail: {$exists: false } }] } : {};
       const deductions = await Deduction.find(query).sort({ createdAt: -1 });
       return res.json({ success: true, deductions });
     }
@@ -842,26 +842,32 @@ app.post('/api/backup/restore', async (req, res) => {
 });
 
 // ============================================================
-// AGENT VERIFY â€” Dynamic login check (replaces hardcoded list)
+// AGENT VERIFY — Dynamic login check with strict DB registration check
 // ============================================================
 
-// POST /api/agent/verify â€” Verify agent login credentials from MongoDB
+// POST /api/agent/verify — Verify agent login credentials from MongoDB
 app.post('/api/agent/verify', async (req, res) => {
   const email = (req.body.email || '').toLowerCase().trim();
   const password = (req.body.password || '').trim();
   if (!email) return res.status(400).json({ success: false, message: 'Email is required.' });
+  
   try {
     if (mongoose.connection.readyState !== 1) {
-      // Offline mode: allow login (DB unreachable)
-      return res.json({ success: true, offlineMode: true, agentEmail: email });
+      return res.status(503).json({ success: false, message: 'Database disconnected. Standalone login disabled for unregistered security check.' });
     }
+    
     const agent = await Agent.findOne({ email });
     if (!agent) {
-      return res.status(404).json({ success: false, message: 'Agent not registered. Please contact admin to create your account.' });
+      return res.status(403).json({ 
+        success: false, 
+        message: 'Access Denied: You are not a registered agent. Please contact the admin to create your account.' 
+      });
     }
+    
     if (agent.password && password && agent.password !== password) {
       return res.status(401).json({ success: false, message: 'Incorrect password.' });
     }
+    
     const stationConfig = await StationConfig.findOne({ agentEmail: email });
     return res.json({
       success: true,
@@ -876,13 +882,13 @@ app.post('/api/agent/verify', async (req, res) => {
 });
 
 // ============================================================
-// ADMIN MODULE â€” All /api/admin/* routes
+// ADMIN MODULE — All /api/admin/* routes
 // ============================================================
 
 const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || '11249a125@kanchiuniv.ac.in').toLowerCase().trim();
 const ADMIN_PASSWORD_ENV = process.env.ADMIN_PASSWORD || 'Admin@2026';
 
-// AdminConfig â€” stores password override if admin resets via OTP
+// AdminConfig — stores password override if admin resets via OTP
 const adminConfigSchema = new mongoose.Schema({
   key: { type: String, required: true, unique: true },
   value: { type: String, required: true },
@@ -910,7 +916,7 @@ async function verifyAdminToken(req, res) {
   return true;
 }
 
-// POST /api/admin/login â€” Verify admin credentials (checks DB override first, then env)
+// POST /api/admin/login — Verify admin credentials (checks DB override first, then env)
 app.post('/api/admin/login', async (req, res) => {
   const email = (req.body.email || '').toLowerCase().trim();
   const password = (req.body.password || '').trim();
@@ -921,7 +927,7 @@ app.post('/api/admin/login', async (req, res) => {
   return res.status(401).json({ success: false, message: 'Invalid admin credentials. Check email and password.' });
 });
 
-// POST /api/admin/forgot-password â€” Send OTP to admin email for password reset
+// POST /api/admin/forgot-password — Send OTP to admin email for password reset
 app.post('/api/admin/forgot-password', async (req, res) => {
   const email = (req.body.email || '').toLowerCase().trim();
   if (email !== ADMIN_EMAIL) {
@@ -937,12 +943,12 @@ app.post('/api/admin/forgot-password', async (req, res) => {
       subject: `Admin Password Reset OTP: ${otp}`,
       htmlContent: `
         <div style="font-family:Arial,sans-serif; max-width:500px; padding:24px; border:2px solid #4a0072; border-radius:10px;">
-          <h2 style="color:#4a0072; text-align:center;">Smart Dairy â€” Admin Password Reset</h2>
+          <h2 style="color:#4a0072; text-align:center;">Smart Dairy — Admin Password Reset</h2>
           <p>A password reset was requested for the admin account.</p>
           <div style="text-align:center; margin:20px 0;">
             <h1 style="color:#fff; background:#4a0072; display:inline-block; padding:12px 28px; border-radius:6px; letter-spacing:4px;">${otp}</h1>
           </div>
-          <p style="color:#c1121f; font-weight:bold;">âš¡ This OTP is valid for 5 minutes only.</p>
+          <p style="color:#c1121f; font-weight:bold;">⚡ This OTP is valid for 5 minutes only.</p>
           <p style="color:#555; font-size:0.9em;">If you did not request this, ignore this email.</p>
         </div>`
     });
@@ -952,7 +958,7 @@ app.post('/api/admin/forgot-password', async (req, res) => {
   }
 });
 
-// POST /api/admin/reset-password â€” Verify OTP and set new admin password in DB
+// POST /api/admin/reset-password — Verify OTP and set new admin password in DB
 app.post('/api/admin/reset-password', async (req, res) => {
   const email = (req.body.email || '').toLowerCase().trim();
   const otp = (req.body.otp || '').trim();
@@ -979,7 +985,7 @@ app.post('/api/admin/reset-password', async (req, res) => {
 });
 
 
-// GET /api/admin/overview â€” Aggregate stats across all agents
+// GET /api/admin/overview — Aggregate stats across all agents
 app.get('/api/admin/overview', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1038,7 +1044,7 @@ app.get('/api/admin/overview', async (req, res) => {
   }
 });
 
-// GET /api/admin/agents â€” All agents with station configs & farmer counts
+// GET /api/admin/agents — All agents with station configs & farmer counts
 app.get('/api/admin/agents', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1072,7 +1078,7 @@ app.get('/api/admin/agents', async (req, res) => {
   }
 });
 
-// POST /api/admin/agents/:email/reset-password â€” Reset agent password
+// POST /api/admin/agents/:email/reset-password — Reset agent password
 app.post('/api/admin/agents/:email/reset-password', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   const email = (req.params.email || '').toLowerCase().trim();
@@ -1092,7 +1098,7 @@ app.post('/api/admin/agents/:email/reset-password', async (req, res) => {
   }
 });
 
-// DELETE /api/admin/agents/:email â€” Remove/delete an agent account
+// DELETE /api/admin/agents/:email — Remove/delete an agent account
 app.delete('/api/admin/agents/:email', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   const email = (req.params.email || '').toLowerCase().trim();
@@ -1109,7 +1115,7 @@ app.delete('/api/admin/agents/:email', async (req, res) => {
   }
 });
 
-// GET /api/admin/farmers â€” All farmers across all agents
+// GET /api/admin/farmers — All farmers across all agents
 app.get('/api/admin/farmers', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1123,7 +1129,7 @@ app.get('/api/admin/farmers', async (req, res) => {
   }
 });
 
-// GET /api/admin/collections â€” All collections with optional date filter
+// GET /api/admin/collections — All collections with optional date filter
 app.get('/api/admin/collections', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1143,7 +1149,7 @@ app.get('/api/admin/collections', async (req, res) => {
   }
 });
 
-// PUT /api/admin/collections/:id â€” Edit any collection entry (admin override)
+// PUT /api/admin/collections/:id — Edit any collection entry (admin override)
 app.put('/api/admin/collections/:id', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1158,7 +1164,7 @@ app.put('/api/admin/collections/:id', async (req, res) => {
   }
 });
 
-// DELETE /api/admin/collections/:id â€” Delete any collection entry (admin override)
+// DELETE /api/admin/collections/:id — Delete any collection entry (admin override)
 app.delete('/api/admin/collections/:id', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
@@ -1268,7 +1274,8 @@ app.get('/api/admin/activity-report', async (req, res) => {
     });
   } catch (err) { res.status(500).json({ success: false, message: err.message }); }
 });
+
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
-  console.log(`ðŸš€ Smart Dairy Cloud Server running on port ${PORT}`);
+  console.log(`🚀 Smart Dairy Cloud Server running on port ${PORT}`);
 });
