@@ -270,21 +270,7 @@ app.get('/api/agents', async (req, res) => {
   }
 });
 
-app.post('/api/agents', async (req, res) => {
-  const email = (req.body.email || '').toLowerCase().trim();
-  const password = req.body.password;
-  if (!email || !password) return res.status(400).json({ success: false, message: 'Email and password required.' });
-
-  try {
-    if (mongoose.connection.readyState === 1) {
-      const agent = await Agent.findOneAndUpdate({ email }, { email, password }, { upsert: true, new: true });
-      return res.json({ success: true, agent });
-    }
-    res.json({ success: true, agent: { email, password } });
-  } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
+// RESTRICTED: Public self-registration endpoint removed. Agents must be created via Admin Portal.
 
 app.get('/api/rates', async (req, res) => {
   try {
@@ -582,14 +568,12 @@ app.get('/api/farmers', async (req, res) => {
   try {
     const agentEmail = (req.query.agentEmail || '').toLowerCase().trim();
     if (mongoose.connection.readyState === 1) {
-      // Cascade/Filter check: Only return farmers whose agents still exist in the Agent collection
       const activeAgents = await Agent.find({}, { email: 1 });
       const activeAgentEmails = new Set(activeAgents.map(a => a.email.toLowerCase().trim()));
 
       const query = agentEmail ? { $or: [{ agentEmail }, { registeredBy: agentEmail }, { agentEmail: '' }, { agentEmail: {$exists: false } }] } : {};
       const allFarmers = await Farmer.find(query).sort({ createdAt: -1 });
 
-      // Filter out farmers whose agent account has been deleted by admin
       const farmers = allFarmers.filter(f => {
         const ag = (f.agentEmail || f.registeredBy || '').toLowerCase().trim();
         if (!ag || ag === 'agent') return true;
