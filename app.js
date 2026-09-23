@@ -7,8 +7,6 @@ const API_BASE_URL = (window.location.hostname === 'localhost' || window.locatio
   ? 'http://localhost:5000'
   : 'https://all-labs.onrender.com';
 
-// ALLOWED_AGENTS is now dynamic — admin registers agents via admin portal.
-// Kept as empty fallback; real verification is done via /api/agent/verify
 const ALLOWED_AGENTS = [];
 
 let DB = JSON.parse(localStorage.getItem('SMART_DAIRY_GLOBAL_DB') || localStorage.getItem('DAIRY_VISION_GLOBAL_DB') || JSON.stringify({
@@ -919,7 +917,6 @@ function toggleAdminForgotPass(show) {
   document.getElementById('admin-login-form')?.classList.toggle('hidden', show);
   document.getElementById('admin-forgot-wrapper')?.classList.toggle('hidden', !show);
   if (show) {
-    // Reset forgot form state
     document.getElementById('admin-forgot-email').value = '';
     document.getElementById('admin-forgot-otp').value = '';
     document.getElementById('admin-forgot-newpass').value = '';
@@ -949,7 +946,6 @@ async function sendAdminForgotOtp() {
     document.getElementById('admin-forgot-newpass-block')?.classList.remove('hidden');
     document.getElementById('btn-confirm-admin-reset')?.classList.remove('hidden');
     document.getElementById('btn-send-admin-reset-otp')?.classList.add('hidden');
-    // Start 5-minute countdown
     const timerEl = document.getElementById('admin-forgot-otp-timer');
     const secEl = document.getElementById('admin-forgot-seconds');
     if (timerEl && secEl) {
@@ -1012,7 +1008,6 @@ function switchAdminTab(tab) {
   else loadAdminOverview();
 }
 
-// ---- Admin: Register New Agent ----
 async function adminRegisterAgent() {
   const email = (document.getElementById('admin-new-agent-email')?.value || '').trim().toLowerCase();
   const password = (document.getElementById('admin-new-agent-password')?.value || '').trim();
@@ -1043,7 +1038,6 @@ async function adminRegisterAgent() {
   }
 }
 
-// ---- Admin: Rate Settings ----
 let adminRateAgentsList = [];
 let adminReportCharts = {};
 
@@ -1106,7 +1100,6 @@ async function adminSaveRates() {
   }
 }
 
-// ---- Admin: Activity Reports & Charts ----
 async function loadAdminActivityReport() {
   if (!currentAdminToken) return;
   try {
@@ -1133,7 +1126,6 @@ function renderAdminReportCharts(r) {
   const charts = ['adminDailyChart','adminAgentChart','adminTypeChart','adminShiftChart','adminFarmerChart'];
   charts.forEach(id => { if (adminReportCharts[id]) { adminReportCharts[id].destroy(); delete adminReportCharts[id]; } });
 
-  // 1. Daily milk collection (line chart)
   const dailyCtx = document.getElementById('admin-daily-chart');
   if (dailyCtx && r.daily?.dates?.length) {
     adminReportCharts['adminDailyChart'] = new Chart(dailyCtx, {
@@ -1149,7 +1141,6 @@ function renderAdminReportCharts(r) {
     });
   }
 
-  // 2. Agent-wise bar chart
   const agentCtx = document.getElementById('admin-agentwise-chart');
   if (agentCtx && r.agentWise?.length) {
     adminReportCharts['adminAgentChart'] = new Chart(agentCtx, {
@@ -1162,7 +1153,6 @@ function renderAdminReportCharts(r) {
     });
   }
 
-  // 3. Milk type doughnut
   const typeCtx = document.getElementById('admin-milktype-chart');
   if (typeCtx) {
     adminReportCharts['adminTypeChart'] = new Chart(typeCtx, {
@@ -1175,7 +1165,6 @@ function renderAdminReportCharts(r) {
     });
   }
 
-  // 4. Shift AM vs PM bar
   const shiftCtx = document.getElementById('admin-shift-chart');
   if (shiftCtx) {
     adminReportCharts['adminShiftChart'] = new Chart(shiftCtx, {
@@ -1188,7 +1177,6 @@ function renderAdminReportCharts(r) {
     });
   }
 
-  // 5. Top farmers horizontal bar
   const farmerCtx = document.getElementById('admin-topfarmers-chart');
   if (farmerCtx && r.topFarmers?.length) {
     adminReportCharts['adminFarmerChart'] = new Chart(farmerCtx, {
@@ -1235,17 +1223,15 @@ async function loadAdminOverview() {
           <td style="color:var(--primary); font-weight:bold;">${a.totalMilk} L</td>
           <td style="color:#40916c; font-weight:bold;">₹${a.totalValue}</td>
           <td style="color:var(--gold); font-weight:bold;">${a.todayMilk} L</td>
-        </tr>`).join('') : '<tr><td colspan="9" style="text-align:center;color:#888;">No agent data found. Agents appear here after they register and configure their station.</td></tr>';
+        </tr>`).join('') : '<tr><td colspan="9" style="text-align:center;color:#888;">No agent data found.</td></tr>';
     }
     renderAdminCharts(breakdown);
   } catch (err) {
-    // Network error — server may still be starting on Render (cold start takes ~30s)
     showAlert('⚠️ Could not reach server. If you just deployed, wait 30 seconds and click Refresh.', 'danger');
   }
 }
 
 function renderAdminCharts(breakdown) {
-  // Destroy old charts
   if (adminMilkChartInstance) { adminMilkChartInstance.destroy(); adminMilkChartInstance = null; }
   if (adminVillagePieInstance) { adminVillagePieInstance.destroy(); adminVillagePieInstance = null; }
 
@@ -1896,7 +1882,7 @@ document.getElementById('farmer-verification-form')?.addEventListener('submit', 
       bankName: document.getElementById('farmer-bank-name').value,
       account: document.getElementById('farmer-account').value.trim(),
       ifsc: document.getElementById('farmer-ifsc').value.trim(),
-      password: 'farmer123',
+      password: 'farmer123', // Default portal password assigned automatically
       registeredBy: currentAgentEmail || 'Agent',
       agentEmail: currentAgentEmail || ''
     };
@@ -1910,8 +1896,8 @@ document.getElementById('farmer-verification-form')?.addEventListener('submit', 
       body: JSON.stringify(newFarmer)
     }).catch(err => console.warn('Farmer cloud sync offline:', err));
 
-    showAlert(`Farmer ${newFarmer.name} registered successfully! (Primary Key: ${id})`);
-    addAiLog('tag-security', 'AI-REGISTER', `Farmer ${newFarmer.name} (PK: ${id}) registered.`);
+    showAlert(`Farmer ${newFarmer.name} registered successfully! Portal access enabled for ${email} (Password: farmer123)`);
+    addAiLog('tag-security', 'AI-REGISTER', `Farmer ${newFarmer.name} (PK: ${id}) registered with portal access.`);
     populateDropdowns();
     renderFarmers();
     this.reset();
@@ -2559,7 +2545,6 @@ document.addEventListener('DOMContentLoaded', () => {
           addAiLog('tag-security', 'AI-SECURITY', `Failed login attempt for ${email}: ${data.message}`);
         }
       } catch (err) {
-        // Network offline — try local cache
         const storedPass = DB.agentAccounts[email]?.password;
         if (storedPass && pass === storedPass) {
           currentAgentEmail = email;
@@ -2570,7 +2555,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     } else {
-      // OTP mode — send OTP first, then verify
       handleVerifyOTP('agent-email-input', 'agent-login-otp', () => {
         currentAgentEmail = email;
         addAiLog('tag-security', 'AI-SECURITY', `Agent ${email} logged in via Gmail OTP.`);
@@ -2665,13 +2649,15 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAgentFeedbacks();
   });
 
-  document.getElementById('farmer-login-form')?.addEventListener('submit', function(e) {
+  document.getElementById('farmer-login-form')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     if (!verifyCaptcha('farmer')) return;
     const email = document.getElementById('farmer-login-email').value.trim().toLowerCase();
+    
+    // Check MongoDB / Local DB for the farmer registered by their Gmail
     const farmer = DB.farmers.find(f => f.email === email);
     if (!farmer) {
-      showAlert('No registered farmer found with this Gmail.', 'danger');
+      showAlert('No registered farmer found with this Gmail address.', 'danger');
       return;
     }
 
@@ -2763,7 +2749,6 @@ document.addEventListener('DOMContentLoaded', () => {
   generateCaptcha('farmer');
   generateCaptcha('admin');
 
-  // Admin Login Form Submit
   document.getElementById('admin-login-form')?.addEventListener('submit', async function(e) {
     e.preventDefault();
     const email = (document.getElementById('admin-email-input')?.value || '').trim().toLowerCase();
@@ -2804,7 +2789,6 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Multi-PC Real-Time Syncing: Auto-poll MongoDB every 5 seconds for live multi-PC updates across agents and farmers
   setInterval(() => {
     if (currentAgentEmail || currentFarmer) {
       syncFromMongoDB(true);
