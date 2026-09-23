@@ -582,8 +582,20 @@ app.get('/api/farmers', async (req, res) => {
   try {
     const agentEmail = (req.query.agentEmail || '').toLowerCase().trim();
     if (mongoose.connection.readyState === 1) {
+      // Cascade/Filter check: Only return farmers whose agents still exist in the Agent collection
+      const activeAgents = await Agent.find({}, { email: 1 });
+      const activeAgentEmails = new Set(activeAgents.map(a => a.email.toLowerCase().trim()));
+
       const query = agentEmail ? { $or: [{ agentEmail }, { registeredBy: agentEmail }, { agentEmail: '' }, { agentEmail: {$exists: false } }] } : {};
-      const farmers = await Farmer.find(query).sort({ createdAt: -1 });
+      const allFarmers = await Farmer.find(query).sort({ createdAt: -1 });
+
+      // Filter out farmers whose agent account has been deleted by admin
+      const farmers = allFarmers.filter(f => {
+        const ag = (f.agentEmail || f.registeredBy || '').toLowerCase().trim();
+        if (!ag || ag === 'agent') return true;
+        return activeAgentEmails.has(ag);
+      });
+
       return res.json({ success: true, farmers });
     }
     res.json({ success: true, farmers: [] });
@@ -980,7 +992,7 @@ app.post('/api/admin/reset-password', async (req, res) => {
     }
     return res.json({ success: true, message: 'Admin password updated successfully. Use your new password to login.' });
   } catch (err) {
-    return res.status(500).json({ success: false, message: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -1098,7 +1110,7 @@ app.post('/api/admin/agents/:email/reset-password', async (req, res) => {
   }
 });
 
-// DELETE /api/admin/agents/:email — Remove/delete an agent account
+// DELETE /api/admin/agents/:email — Remove/delete an agent account and cascade delete their farmers
 app.delete('/api/admin/agents/:email', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   const email = (req.params.email || '').toLowerCase().trim();
@@ -1107,7 +1119,9 @@ app.delete('/api/admin/agents/:email', async (req, res) => {
       await Agent.deleteOne({ email });
       await StationConfig.deleteOne({ agentEmail: email });
       await RateConfig.deleteOne({ agentEmail: email });
-      return res.json({ success: true, message: `Agent ${email} removed successfully.` });
+      // Cascade remove farmers registered by this deleted agent
+      await Farmer.deleteMany({ $or: [{ agentEmail: email }, { registeredBy: email }] });
+      return res.json({ success: true, message: `Agent ${email} and associated farmer records removed successfully.` });
     }
     res.json({ success: true, message: 'Agent removed (offline mode).' });
   } catch (err) {
@@ -1115,12 +1129,21 @@ app.delete('/api/admin/agents/:email', async (req, res) => {
   }
 });
 
-// GET /api/admin/farmers — All farmers across all agents
+// GET /api/admin/farmers — All active registered farmers (excluding those whose agent was deleted)
 app.get('/api/admin/farmers', async (req, res) => {
   if (!await verifyAdminToken(req, res)) return;
   try {
     if (mongoose.connection.readyState === 1) {
-      const farmers = await Farmer.find().sort({ createdAt: -1 });
+      const activeAgents = await Agent.find({}, { email: 1 });
+      const activeAgentEmails = new Set(activeAgents.map(a => a.email.toLowerCase().trim()));
+
+      const allFarmers = await Farmer.find().sort({ createdAt: -1 });
+      const farmers = allFarmers.filter(f => {
+        const ag = (f.agentEmail || f.registeredBy || '').toLowerCase().trim();
+        if (!ag || ag === 'agent') return true;
+        return activeAgentEmails.has(ag);
+      });
+
       return res.json({ success: true, farmers });
     }
     res.json({ success: true, farmers: [] });
